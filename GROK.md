@@ -44,26 +44,31 @@ X + selective web for: audio/music **world models**, AI models for music/DJ, Met
 RT techniques, Cursor-product moves (freemium AI, privacy, closed product velocity), **harness/loop
 engineering**. Promote only when actionable — map to Strategy pillars + ADR-005 layers A/B/C.
 
-## Long harness like Claude Code (the Migx way)
+## Long harness (Grok Build full features + Migx disk)
 
-Claude Code has `/loop` + hooks + subagents natively. Grok 4.5 gets the **same closed-loop
-properties** via this repo:
+Grok Build **natively** has `/goal`, `/loop`, `monitor`, subagents (default background), worktree
+isolation, plan mode, compaction-surviving TODOs/bg tasks, multi-CLI resume (Claude/Codex/Cursor),
+and X/web research tools. Use them — do not degrade to chat-only. Details:
+`kanban/knowledge/grok-long-harness-and-loops.md` (pinned CLI 0.2.102+).
 
-| Need | Migx mechanism |
-|---|---|
-| Durable memory | `AGENTS.md`, `GROK.md`, kanban, federation mail |
-| Loop | Disk contract + waves (`runbooks/grok-long-harness-loop.md`) |
-| Multi-agent | `migx-fed` + worktrees (Claude implementer, Codex verifier; AGY paused) |
-| Verify | handoff bar / pre-commit / leave perf eval to Claude (`P-08`) |
-| Restart | read `contract.md` + `progress.md` only |
+| Need | Grok Build runtime | Migx durable SSoT |
+|---|---|---|
+| Multi-turn objective | `/goal` + `update_goal` | `contract.md` / dossier PS |
+| Recurring waves | `/loop`, `scheduler_*`, `monitor` | federation mail + commits |
+| Parallel work | `spawn_subagent` + `isolation:worktree` | git worktrees + `migx-fed` |
+| Plan before code | `/plan` (plan-file-only even under always-approve) | dossier waves |
+| Survive compaction | TODOs + bg task IDs | `progress.md` + git |
+| Restart after death | `/resume` + `/recap` | read contract + progress + fed poll |
+| Verify | `/check-work`, independent subagent | pre-commit / ctest / peer (`P-08`) |
 
-**Rule:** write the loop, not the prompt. State on disk. Short waves. Evaluator outside generator.
+**Rule:** arm `/goal` + disk contract for any run >2 waves. Short waves. Evaluator ≠ generator.
 
 ```bash
 # one-time per long run
 RUN_ID="scout-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p kanban/federation/scratchpad/$RUN_ID
-# fill contract.md + progress.md per runbook — then wave until NEXT=stop
+# fill contract.md + progress.md per runbook
+# in TUI: /goal … then /loop 4h "one Mode A wave RUN=$RUN_ID"
 ```
 
 ## Worktree preference
