@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "rendergraph/geometry.h"
 #include "track/track.h"
 #include "waveform/renderers/allshader/waveformrendererfiltered.h"
 #include "waveform/renderers/allshader/waveformrendererrgb.h"
@@ -360,6 +361,162 @@ void BM_WaveformVboUpload(benchmark::State& state) {
     state.SetItemsProcessed(static_cast<int64_t>(frameUs.size()));
 }
 
+// -----------------------------------------------------------------------------
+// Combined per-frame cost of ACTIVE SCRUBBING -- the coverage gap (EVD-0003).
+//
+// The benches above measure the two halves in isolation: the CPU vertex rebuild
+// (BM_WaveformRGBPreprocess, no GL) and a fixed-size GPU upload
+// (BM_WaveformVboUpload, decoupled from scrub position). Neither measures what a
+// scrubbing frame actually pays: when the display window moves every frame,
+// preprocess() rebuilds the whole client vertex buffer AND marks the geometry
+// dirty, which forces the mandatory persistent-VBO re-upload for that *same*
+// frame. This bench drives that combined frame -- preprocess() then the exact
+// dirty re-upload src/rendergraph/opengl/backend/basegeometrynode.cpp performs
+// (glBufferData orphan + glBufferSubData of geometry.vertexData()) -- against a
+// live offscreen GL context, sweeping scrub positions, reporting the combined
+// per-frame distribution. This is precisely the regime the persistent-VBO win
+// does NOT help (every frame is dirty), and the baseline the scrub-regime
+// optimization (PS-MTL-03) is judged against.
+//
+// Needs a live GL context; skips honestly if none is available.
+//
+// Run: build/mixxx-test --benchmark --benchmark_filter=BM_WaveformScrubFrame
+
+void BM_WaveformScrubFrame(benchmark::State& state) {
+    QSurfaceFormat format;
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setVersion(2, 1);
+
+    QOffscreenSurface surface;
+    surface.setFormat(format);
+    surface.create();
+    if (!surface.isValid()) {
+        state.SkipWithError(
+                "offscreen surface unavailable (no GL) -- combined scrub-frame "
+                "needs GUI/hardware verification");
+        return;
+    }
+
+    QOpenGLContext context;
+    context.setFormat(format);
+    if (!context.create() || !context.makeCurrent(&surface)) {
+        state.SkipWithError(
+                "GL context unavailable (offscreen QPA) -- combined scrub-frame "
+                "needs GUI/hardware verification");
+        return;
+    }
+
+    QOpenGLFunctions gl(&context);
+    gl.initializeOpenGLFunctions();
+
+    WaveformPointer pWaveform = makeSyntheticWaveform();
+    TrackPointer pTrack = makeSyntheticTrack(pWaveform);
+
+    BenchWaveformWidgetRenderer wwr;
+    wwr.setTrack(pTrack);
+    wwr.resizeRenderer(kWidth, kHeight, kDevicePixelRatio);
+
+    allshader::WaveformRendererRGB renderer(&wwr,
+            ::WaveformRendererAbstract::Play,
+            ::WaveformRendererSignalBase::Option::None);
+
+    const double window = displayWindow(pWaveform->getDataSize());
+    const double pMin = window / 2.0;
+    const double pMax = 1.0 - window / 2.0;
+    const double span = std::max(pMax - pMin, 0.0);
+
+    GLuint vbo = 0;
+    gl.glGenBuffers(1, &vbo);
+    gl.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    int vboByteSize = -1;
+
+    std::vector<double> frameUs;
+    frameUs.reserve(1 << 16);
+
+    std::size_t frame = 0;
+    for (auto _ : state) {
+        const double t = (kScrubSteps > 1)
+                ? static_cast<double>(frame % kScrubSteps) / (kScrubSteps - 1)
+                : 0.0;
+        const double p = pMin + span * t;
+        wwr.setDisplayWindow(p - window / 2.0, p + window / 2.0);
+
+        const auto start = std::chrono::steady_clock::now();
+        // 1. CPU vertex rebuild for the new window (marks geometry dirty).
+        renderer.preprocess();
+        // 2. The mandatory dirty re-upload for this frame -- the exact path
+        //    basegeometrynode.cpp takes when the geometry is dirty. Every
+        //    scrubbing frame is dirty, so this always runs (the VBO win, which
+        //    skips the upload for unchanged frames, does not apply here).
+        auto& geometry = renderer.geometry();
+        const int vertexBytes =
+                geometry.vertexCount() * geometry.sizeOfVertex();
+        if (vertexBytes != vboByteSize) {
+            gl.glBufferData(GL_ARRAY_BUFFER,
+                    vertexBytes,
+                    geometry.vertexData(),
+                    GL_DYNAMIC_DRAW);
+            vboByteSize = vertexBytes;
+        } else {
+            gl.glBufferData(
+                    GL_ARRAY_BUFFER, vertexBytes, nullptr, GL_DYNAMIC_DRAW);
+            gl.glBufferSubData(
+                    GL_ARRAY_BUFFER, 0, vertexBytes, geometry.vertexData());
+        }
+        const auto end = std::chrono::steady_clock::now();
+
+        benchmark::DoNotOptimize(geometry.vertexCount());
+        frameUs.push_back(
+                std::chrono::duration<double, std::micro>(end - start).count());
+        ++frame;
+    }
+
+    gl.glFinish();
+    gl.glDeleteBuffers(1, &vbo);
+    context.doneCurrent();
+
+    if (frameUs.empty()) {
+        return;
+    }
+    std::sort(frameUs.begin(), frameUs.end());
+    const auto pct = [&](double q) {
+        const auto idx = static_cast<std::size_t>(
+                q * static_cast<double>(frameUs.size() - 1) + 0.5);
+        return frameUs[idx];
+    };
+    double sum = 0.0;
+    for (double v : frameUs) {
+        sum += v;
+    }
+    const double p50 = pct(0.50);
+    const double p90 = pct(0.90);
+    const double p99 = pct(0.99);
+    const double maxv = frameUs.back();
+    const double minv = frameUs.front();
+    const double mean = sum / static_cast<double>(frameUs.size());
+
+    state.counters["p50_us"] = p50;
+    state.counters["p90_us"] = p90;
+    state.counters["p99_us"] = p99;
+    state.counters["max_us"] = maxv;
+    state.counters["min_us"] = minv;
+    state.counters["mean_us"] = mean;
+    state.counters["frames"] = static_cast<double>(frameUs.size());
+
+    char label[256];
+    std::snprintf(label,
+            sizeof(label),
+            "p50=%.1fus p90=%.1fus p99=%.1fus max=%.1fus min=%.1fus n=%zu",
+            p50,
+            p90,
+            p99,
+            maxv,
+            minv,
+            frameUs.size());
+    state.SetLabel(label);
+    state.SetItemsProcessed(static_cast<int64_t>(frameUs.size()));
+}
+
 } // namespace
 
 // Fixed iteration count so two runs are directly comparable (reproducibility
@@ -373,6 +530,10 @@ BENCHMARK(BM_WaveformFilteredPreprocess)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 BENCHMARK(BM_WaveformVboUpload)
+        ->Iterations(4000)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+BENCHMARK(BM_WaveformScrubFrame)
         ->Iterations(4000)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
