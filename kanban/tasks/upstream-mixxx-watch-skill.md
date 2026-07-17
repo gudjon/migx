@@ -2,7 +2,7 @@
 id: upstream-mixxx-watch-skill
 type: task
 title: "Agent skill: periodic upstream mixxxdj/mixxx watch (cherry-pick candidates, no ancestry)"
-status: open
+status: done
 owner: gudjon
 priority: low
 initiative: initiative-apple-silicon
