@@ -1,18 +1,24 @@
 {
   "schema": "migx.intent-inbox/1",
-  "note": "Offline dogfood intents — production path must marshal via ControlObject single-writer (P-06), never RT thread.",
+  "note": "Offline dogfood intents \u2014 production path must marshal via ControlObject single-writer (P-06), never RT thread.",
   "intents": [
     {
-      "id": "intent-001",
+      "id": "intent-copilot-why-next",
       "type": "suggest_next_track",
       "status": "proposed",
-      "from_song_id": "song-01-deep-intro",
-      "to_song_id": "song-02-peak",
-      "reason": "Camelot 8A→9A adjacent; energy lift; see TRANSITION-PROOF.md + P08-EVAL-codex.md",
+      "from_song_id": "song-02-peak",
+      "to_song_id": "song-04-spotify-uri-only",
+      "relation": "sequence-only",
+      "score": 102.0,
+      "reason": "source policy: local\u2192spotify is sequence-only (no dual Spotify multi-deck; multi_deck cur=True cand=False); session edge harmonically-compatible: 9A \u2192 10A Camelot +1; agent ranking only \u2014 sequence if SP playback later; session edge sequence-only: Local\u2192Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro; Camelot compatible: 9A \u2192 10A (self/\u00b11/mode flip); energy lift: tail 0.28 \u2192 head 0.38 (\u0394+0.10); matches planned order (next in session.order)",
+      "requires_human_ack": true,
       "co_writes": [
-        { "group": "[Channel2]", "key": "LoadTrack", "value_note": "load song-02 — illustrative only" }
-      ],
-      "requires_human_ack": true
+        {
+          "group": "[Channel2]",
+          "key": "LoadTrack",
+          "value_note": "load song-04-spotify-uri-only \u2014 illustrative only"
+        }
+      ]
     }
   ]
 }

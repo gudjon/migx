@@ -1,0 +1,86 @@
+{
+  "schema": "migx.copilot-why-next/1",
+  "generated_utc": "2026-07-17T12:05:23Z",
+  "current_song_id": "song-02-peak",
+  "current_source": "local",
+  "current_camelot": "9A",
+  "proposal": {
+    "song_id": "song-04-spotify-uri-only",
+    "score": 102.0,
+    "relation": "sequence-only",
+    "source": "spotify",
+    "camelot": "10A",
+    "playback": {
+      "mode": "prep_only",
+      "multi_deck_allowed": false
+    },
+    "reasons": [
+      "source policy: local\u2192spotify is sequence-only (no dual Spotify multi-deck; multi_deck cur=True cand=False)",
+      "session edge harmonically-compatible: 9A \u2192 10A Camelot +1; agent ranking only \u2014 sequence if SP playback later",
+      "session edge sequence-only: Local\u2192Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro",
+      "Camelot compatible: 9A \u2192 10A (self/\u00b11/mode flip)",
+      "energy lift: tail 0.28 \u2192 head 0.38 (\u0394+0.10)",
+      "matches planned order (next in session.order)"
+    ]
+  },
+  "ranked": [
+    {
+      "song_id": "song-04-spotify-uri-only",
+      "score": 102.0,
+      "relation": "sequence-only",
+      "source": "spotify",
+      "camelot": "10A",
+      "playback": {
+        "mode": "prep_only",
+        "multi_deck_allowed": false
+      },
+      "reasons": [
+        "source policy: local\u2192spotify is sequence-only (no dual Spotify multi-deck; multi_deck cur=True cand=False)",
+        "session edge harmonically-compatible: 9A \u2192 10A Camelot +1; agent ranking only \u2014 sequence if SP playback later",
+        "session edge sequence-only: Local\u2192Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro",
+        "Camelot compatible: 9A \u2192 10A (self/\u00b11/mode flip)",
+        "energy lift: tail 0.28 \u2192 head 0.38 (\u0394+0.10)",
+        "matches planned order (next in session.order)"
+      ]
+    },
+    {
+      "song_id": "song-01-deep-intro",
+      "score": 41.0,
+      "relation": "harmonically-compatible",
+      "source": "local",
+      "camelot": "8A",
+      "playback": {
+        "mode": "engine_multi_deck",
+        "multi_deck_allowed": true
+      },
+      "reasons": [
+        "source policy: local\u2192local; multi-deck allowed if both local",
+        "Camelot compatible: 9A \u2192 8A (self/\u00b11/mode flip)",
+        "energy steady: tail 0.28 \u2192 head 0.22"
+      ]
+    },
+    {
+      "song_id": "song-03-cool-down",
+      "score": 20.0,
+      "relation": "planned-transition",
+      "source": "local",
+      "camelot": "7A",
+      "playback": {
+        "mode": "engine_multi_deck",
+        "multi_deck_allowed": true
+      },
+      "reasons": [
+        "source policy: local\u2192local; multi-deck allowed if both local",
+        "Camelot not adjacent: 9A \u2192 7A (energy/sequence may still hold)",
+        "energy steady: tail 0.28 \u2192 head 0.28",
+        "appears later in planned order"
+      ]
+    }
+  ],
+  "policy": {
+    "spotify_multi_deck": false,
+    "human_ack_required": true,
+    "rt_safe": "no engine writes; intent only",
+    "ux": "Predict \u2192 Ask \u2192 Explain"
+  }
+}

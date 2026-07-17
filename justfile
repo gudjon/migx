@@ -120,6 +120,29 @@ exo-spotify-import:
 # Structural check of EXO song/session fixtures (incl. hybrid + paste-import)
 exo-fixtures-check:
     python3 tools/exo/check_fixtures.py
+
+# Offline Layer B co-pilot: why-next over hybrid or demo session (no engine / no network)
+exo_session_hybrid := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sessions/session-hybrid-prep-demo.json"
+exo_mirror := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/dogfood/session-mirror.v1.json"
+exo_why_md := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/results/COPILOT-WHY-NEXT.md"
+exo_why_json := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/results/COPILOT-WHY-NEXT.json"
+exo_intent := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/dogfood/intent-inbox.v1.json"
+
+exo-copilot-why:
+    python3 tools/exo/copilot_why_next.py \
+      --session {{exo_session_hybrid}} \
+      --current song-02-peak \
+      --md-out {{exo_why_md}} \
+      --json-out {{exo_why_json}} \
+      --write-intent {{exo_intent}}
+
+exo-copilot-why-mirror:
+    python3 tools/exo/copilot_why_next.py \
+      --mirror {{exo_mirror}} \
+      --md-out {{exo_why_md}} \
+      --json-out {{exo_why_json}} \
+      --write-intent {{exo_intent}}
+
 # Night tick (log-only; safe for cron)
 night-loop:
     bash kanban/scripts/migx-night-loop.sh

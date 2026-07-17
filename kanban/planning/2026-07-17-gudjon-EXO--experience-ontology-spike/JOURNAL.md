@@ -43,3 +43,10 @@
 - Sample: `fixtures/import/sample-paste.txt` → `songs/imported/` + `session-paste-import-demo.json`
 - Task: `kanban/tasks/spotify-octave-step1b-paste-import.md` (done)
 - Still no network / no OAuth / no playback
+
+## 2026-07-17 (Layer B co-pilot why-next — grok)
+- X deep alignment: elevate “co-pilot where you work” → offline Explain path
+- Tool: `tools/exo/copilot_why_next.py` + `just exo-copilot-why` / `exo-copilot-why-mirror`
+- Hybrid after song-02-peak → song-04 Spotify URI (sequence-only, score 102, 9A→10A)
+- Artifacts: `results/COPILOT-WHY-NEXT.md` + dogfood `intent-inbox.v1.json` (proposed)
+- Open task: `kanban/tasks/layer-b-copilot-qml-chrome.md`

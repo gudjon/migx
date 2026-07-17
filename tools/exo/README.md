@@ -1,5 +1,20 @@
 # tools/exo — experience ontology helpers
 
+Offline Layer B tooling. **No RT engine, no network required** for ranking/import.
+
+| Tool | Purpose |
+|---|---|
+| `spotify_uri_import.py` | Paste Spotify URIs → prep-only song ontology stubs |
+| `check_fixtures.py` | Structural + policy checks on EXO fixtures |
+| `copilot_why_next.py` | Explainable next-track proposal (Predict → Ask → Explain) |
+
+```bash
+just exo-fixtures-check
+just exo-spotify-import
+just exo-copilot-why          # hybrid session after song-02
+just exo-copilot-why-mirror   # dogfood session-mirror
+```
+
 ## `spotify_uri_import.py`
 
 Paste Spotify track URIs/URLs into EXO song ontology stubs.
