@@ -11,8 +11,9 @@ Offline Layer B tooling. **No RT engine, no network required** for ranking/impor
 ```bash
 just exo-fixtures-check
 just exo-spotify-import
-just exo-copilot-why          # hybrid session after song-02
-just exo-copilot-why-mirror   # dogfood session-mirror
+just exo-copilot-why          # hybrid + copies JSON → res/qml/CoPilot/fixture_why_next.json
+just exo-copilot-why-mirror   # dogfood session-mirror + same QML fixture copy
+# Then: Migx Settings → Co-Pilot (dogfood)
 ```
 
 ## `spotify_uri_import.py`

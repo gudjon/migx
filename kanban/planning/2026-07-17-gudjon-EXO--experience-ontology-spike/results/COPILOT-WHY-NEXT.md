@@ -1,6 +1,6 @@
 # Co-pilot — why next (offline Layer B)
 
-**Generated:** 2026-07-17T12:05:23Z
+**Generated:** 2026-07-17T14:00:30Z
 **Current:** `song-02-peak` (local, 9A)
 **UX:** Predict → Ask → Explain
 

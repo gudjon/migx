@@ -47,7 +47,12 @@ just exo-fixtures-check
 | `../sessions/session-hybrid-prep-demo.json` | Hybrid crate + sequence policy |
 | `../../results/COPILOT-WHY-NEXT.md` | Last explain artifact |
 
-## Next (product)
+## QML surface (dogfood)
 
-Thin QML “next + why” chrome over these files — task `layer-b-copilot-qml-chrome` when ready.
-No dual Spotify stream; no stems on this path.
+Settings → **Co-Pilot (dogfood)** (`res/qml/Settings/CoPilot.qml`)
+
+```bash
+just exo-copilot-why   # also copies results JSON → res/qml/CoPilot/fixture_why_next.json
+```
+
+Ack/Reject update **UI status only** — no ControlObject / deck load yet.

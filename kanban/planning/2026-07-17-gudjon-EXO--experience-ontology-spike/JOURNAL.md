@@ -49,4 +49,9 @@
 - Tool: `tools/exo/copilot_why_next.py` + `just exo-copilot-why` / `exo-copilot-why-mirror`
 - Hybrid after song-02-peak → song-04 Spotify URI (sequence-only, score 102, 9A→10A)
 - Artifacts: `results/COPILOT-WHY-NEXT.md` + dogfood `intent-inbox.v1.json` (proposed)
-- Open task: `kanban/tasks/layer-b-copilot-qml-chrome.md`
+
+## 2026-07-17 (Layer B QML chrome — grok)
+- Settings → **Co-Pilot (dogfood)**: `res/qml/Settings/CoPilot.qml` + wire in Settings.qml
+- Fixture: `res/qml/CoPilot/fixture_why_next.json` synced by `just exo-copilot-why`
+- Ack/Reject UI-only; Theme tokens; no CO / RT
+- Task `layer-b-copilot-qml-chrome` → done

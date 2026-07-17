@@ -128,6 +128,8 @@ exo_why_md := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/
 exo_why_json := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/results/COPILOT-WHY-NEXT.json"
 exo_intent := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/dogfood/intent-inbox.v1.json"
 
+exo_qml_fixture := "res/qml/CoPilot/fixture_why_next.json"
+
 exo-copilot-why:
     python3 tools/exo/copilot_why_next.py \
       --session {{exo_session_hybrid}} \
@@ -135,6 +137,8 @@ exo-copilot-why:
       --md-out {{exo_why_md}} \
       --json-out {{exo_why_json}} \
       --write-intent {{exo_intent}}
+    mkdir -p res/qml/CoPilot
+    cp {{exo_why_json}} {{exo_qml_fixture}}
 
 exo-copilot-why-mirror:
     python3 tools/exo/copilot_why_next.py \
@@ -142,6 +146,8 @@ exo-copilot-why-mirror:
       --md-out {{exo_why_md}} \
       --json-out {{exo_why_json}} \
       --write-intent {{exo_intent}}
+    mkdir -p res/qml/CoPilot
+    cp {{exo_why_json}} {{exo_qml_fixture}}
 
 # Night tick (log-only; safe for cron)
 night-loop:

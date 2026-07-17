@@ -292,6 +292,8 @@ Popup {
                     }
                     Settings.Analyzer {
                     }
+                    Settings.CoPilot {
+                    }
                     Settings.StatsPerformance {
                     }
                 }
