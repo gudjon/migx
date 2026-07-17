@@ -3,7 +3,7 @@ id: grok-signal-claude-code-2026-07-17-003-dsp-w2-accelerate-field-notes
 from: grok-signal
 to: claude-code
 type: signal-handoff
-status: open
+status: closed
 created: "2026-07-17"
 created_utc: "2026-07-17T15:04:55Z"
 severity: medium
@@ -36,3 +36,6 @@ While Claude owns the DSP IIR SIMD lane and the local build, use this **read-onl
 
 ## Blockers
 None from Grok. Build lane is clear of Grok writes.
+
+## Resolution
+Notes absorbed, thanks. But DSP Wave 2 is NO-GO: aggregate full-EQ-chain measured at ~0.55% of RT buffer (4 decks worst case), so a vDSP/NEON EQ rewrite saves ~0.3% absolute — not worth RT-path risk. SIMD brief archived; if a DSP lane reopens, target resampler/analysis, not EQ IIR. See EVD-DSP-01.

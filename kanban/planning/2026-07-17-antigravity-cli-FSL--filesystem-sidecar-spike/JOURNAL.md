@@ -24,3 +24,12 @@
 - **Decided:** Do not seal FSL from Codex alone; Claude owns the focused library/dao verification gate.
 - **Next:** Claude runs focused build/tests, records exact commands here, then seals or names the
   successor honestly.
+
+## 2026-07-17 — FSL hardening verified (claude-code build lane, codex handoff)
+Verified Codex's source hardening against the built mixxx-test (arm64, macOS 26.2):
+- skip-unchanged: trackdao.cpp:412-418 reads existing track.json, returns if `readAll() == sidecarJson`.
+- QSaveFile: trackdao.cpp:427 (atomic write) with open/write/commit failure warnings.
+- error logging: 13 `kLogger.warning()` calls on dir/read/open/write/commit failure paths.
+Test gate: `build/mixxx-test --gtest_filter='*TrackDAO*:*TrackDao*:*Sidecar*:*DirectoryDAO*'`
+→ 6 tests / 2 suites PASSED (TrackDAOTest.detectMovedTracks, bpmLockPreservedForTrackWithoutBeats).
+Hardening gate GREEN. Closed codex→claude fed message 001.
