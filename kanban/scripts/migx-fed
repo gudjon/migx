@@ -319,6 +319,84 @@ def claim_row(root: Path, p: Path, st: str, fm: dict[str, str]) -> dict[str, obj
     }
 
 
+def paths_overlap(left: str, right: str) -> bool:
+    left = left.strip().strip("/").removeprefix("./")
+    right = right.strip().strip("/").removeprefix("./")
+    if not left or not right:
+        return False
+    return (
+        left == right
+        or left.startswith(right + "/")
+        or right.startswith(left + "/")
+    )
+
+
+def claim_overlap_paths(left: list[str], right: list[str]) -> list[str]:
+    overlaps: list[str] = []
+    for left_path in left:
+        for right_path in right:
+            if paths_overlap(left_path, right_path):
+                pair = f"{left_path} <-> {right_path}"
+                if pair not in overlaps:
+                    overlaps.append(pair)
+    return overlaps
+
+
+def find_claim_collisions(claims: list[dict[str, object]]) -> list[dict[str, object]]:
+    collisions: list[dict[str, object]] = []
+    live_claims = [row for row in claims if not row.get("expired")]
+    for index, left in enumerate(live_claims):
+        left_paths = left.get("paths", [])
+        if not isinstance(left_paths, list):
+            continue
+        for right in live_claims[index + 1 :]:
+            right_paths = right.get("paths", [])
+            if not isinstance(right_paths, list):
+                continue
+            overlaps = claim_overlap_paths(
+                [str(path) for path in left_paths],
+                [str(path) for path in right_paths],
+            )
+            if overlaps:
+                collisions.append(
+                    {
+                        "left": left.get("id", ""),
+                        "left_owner": left.get("owner", ""),
+                        "right": right.get("id", ""),
+                        "right_owner": right.get("owner", ""),
+                        "overlaps": overlaps,
+                    }
+                )
+    return collisions
+
+
+def find_new_claim_conflicts(
+    root: Path,
+    paths: list[str],
+    owner: str,
+) -> list[dict[str, object]]:
+    conflicts: list[dict[str, object]] = []
+    for p, st, fm in list_claims(root, "active"):
+        row = claim_row(root, p, st, fm)
+        if row.get("expired"):
+            continue
+        existing_paths = row.get("paths", [])
+        if not isinstance(existing_paths, list):
+            continue
+        overlaps = claim_overlap_paths(paths, [str(path) for path in existing_paths])
+        if overlaps:
+            conflicts.append(
+                {
+                    "id": row.get("id", ""),
+                    "owner": row.get("owner", ""),
+                    "same_owner": row.get("owner") == owner,
+                    "overlaps": overlaps,
+                    "file": row.get("file", ""),
+                }
+            )
+    return conflicts
+
+
 def validate_message(root: Path, p: Path, folder_status: str) -> list[str]:
     text = p.read_text(encoding="utf-8", errors="replace")
     fm = parse_frontmatter(text)
@@ -684,6 +762,7 @@ def build_sync_payload(root: Path) -> dict[str, object]:
             active_claims,
             key=lambda row: (bool(row["expired"]), str(row["owner"]), str(row["id"])),
         ),
+        "claim_collisions": find_claim_collisions(active_claims),
         "worktrees": worktrees if rc_wt == 0 else [{"error": worktree_err or worktree_text}],
         "dirty_sync_paths": git_status_lines(root, SYNC_STATUS_PATHS),
         "sidecar_artifacts": find_sidecar_artifacts(root),
@@ -749,6 +828,24 @@ def print_sync(payload: dict[str, object]) -> None:
                 print(f"    path: {path}")
             if len(paths) > 6:
                 print(f"    ... {len(paths) - 6} more paths")
+
+    print("\n## Claim Collisions")
+    claim_collisions = payload["claim_collisions"]
+    assert isinstance(claim_collisions, list)
+    if not claim_collisions:
+        print("(none)")
+    else:
+        for row in claim_collisions:
+            print(
+                f"- {row['left_owner']}:{row['left']} overlaps "
+                f"{row['right_owner']}:{row['right']}"
+            )
+            overlaps = row.get("overlaps", [])
+            assert isinstance(overlaps, list)
+            for overlap in overlaps[:6]:
+                print(f"    {overlap}")
+            if len(overlaps) > 6:
+                print(f"    ... {len(overlaps) - 6} more overlaps")
 
     print("\n## Worktrees")
     worktrees = payload["worktrees"]
@@ -925,6 +1022,7 @@ def cmd_claim(
     paths: list[str],
     ttl_hours: int,
     note: str,
+    force: bool,
 ) -> int:
     if by not in ACTIVE_SIDES:
         if by in KNOWN_SIDES:
@@ -939,6 +1037,20 @@ def cmd_claim(
     if not clean_paths:
         print("--paths must name at least one repo path", file=sys.stderr)
         return 2
+    conflicts = find_new_claim_conflicts(root, clean_paths, by)
+    if conflicts and not force:
+        print("claim overlaps active claim(s); release first or pass --force:", file=sys.stderr)
+        for conflict in conflicts:
+            owner = conflict.get("owner", "?")
+            claim_id = conflict.get("id", "?")
+            print(f"- {owner}:{claim_id}", file=sys.stderr)
+            overlaps = conflict.get("overlaps", [])
+            if isinstance(overlaps, list):
+                for overlap in overlaps[:6]:
+                    print(f"    {overlap}", file=sys.stderr)
+                if len(overlaps) > 6:
+                    print(f"    ... {len(overlaps) - 6} more overlaps", file=sys.stderr)
+        return 3
 
     now = dt.datetime.now(dt.timezone.utc)
     day = now.strftime("%Y-%m-%d")
@@ -984,6 +1096,8 @@ Run `./kanban/scripts/migx-fed release --id {claim_id} --by {by} --resolution ".
     out = claims_dir(root, "active") / f"{claim_id}.md"
     out.write_text(fm + body.rstrip() + "\n", encoding="utf-8")
     print(f"wrote {out.relative_to(root)}")
+    if conflicts:
+        print("warning: claim overlaps existing active claim(s); written because --force was set")
     print("commit this claim so the peer sees it in migx-fed sync")
     return 0
 
@@ -1213,6 +1327,11 @@ def main(argv: list[str] | None = None) -> int:
         help=f"hours before the claim is stale (default: {CLAIM_DEFAULT_TTL_HOURS})",
     )
     p_claim.add_argument("--note", default="")
+    p_claim.add_argument(
+        "--force",
+        action="store_true",
+        help="write even when paths overlap an active live claim",
+    )
 
     p_release = sub.add_parser("release", help="move an active lane claim to closed")
     p_release.add_argument("--id", required=True)
@@ -1288,6 +1407,7 @@ def main(argv: list[str] | None = None) -> int:
             args.paths,
             args.ttl_hours,
             args.note,
+            args.force,
         )
     if args.cmd == "release":
         return cmd_release_claim(root, args.id, args.by, args.resolution)

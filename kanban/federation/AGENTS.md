@@ -45,6 +45,8 @@ open mail there. Protocol SSoT: [`FEDERATION.md`](FEDERATION.md). Do not invent 
 - **Pull delivery.** Sender commits; receiver polls. No expectation of instant chat.
 - **One owner per unit of work (MG-4).** A handoff does not steal an open dossier — it proposes; the
   implementer folds into an existing open dossier or scaffolds a new one.
+- **Claim before mutating shared lanes.** `migx-fed claim` blocks overlapping live claims unless the
+  peer explicitly uses `--force`; forced overlaps must be intentional and visible in `migx-fed sync`.
 - **House physics bind every implementer.** Grok may propose ideas that allocate on the RT thread;
   Claude rejects or redesigns (`P-02`). Signal is not authority.
 - **Worktrees for file mutation.** Federation messages may be written from either worktree; avoid

@@ -122,6 +122,10 @@ peer could reasonably touch. Do not claim for pure read-only orientation. Keep c
 release them when done. Expired claims show as stale in `migx-fed sync`; they are a warning to verify
 with git/status before editing.
 
+`migx-fed claim` refuses to create a live overlapping claim unless you pass `--force`. Use `--force`
+only when the overlap is intentional and coordinated; `migx-fed sync` will still report it under
+**Claim Collisions**.
+
 ## Message ID
 
 ```text
@@ -205,7 +209,7 @@ Scout mandate: [`roles/grok-signal.md`](roles/grok-signal.md).
 ./kanban/scripts/migx-fed doctor
 ./kanban/scripts/migx-fed sync                         # shared peer/mail/worktree snapshot
 ./kanban/scripts/migx-fed claims [--status active|closed|all]
-./kanban/scripts/migx-fed claim --by SIDE --subject short-lane --paths path [path ...]
+./kanban/scripts/migx-fed claim --by SIDE --subject short-lane --paths path [path ...] [--force]
 ./kanban/scripts/migx-fed release --id <claim-id> --by SIDE --resolution "done"
 ./kanban/scripts/migx-fed list [--to SIDE] [--status open|ack|closed|all]
 ./kanban/scripts/migx-fed poll --to SIDE          # print open messages for SIDE

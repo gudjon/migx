@@ -26,3 +26,6 @@ Run:
 ```bash
 ./kanban/scripts/migx-fed release --id <id> --by <side> --resolution "done / superseded / stale"
 ```
+
+If this claim overlaps another live claim, `migx-fed claim` will fail unless the sender passes
+`--force`. Forced overlaps must be intentional and visible in `migx-fed sync`.
