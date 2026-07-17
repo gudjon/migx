@@ -71,6 +71,11 @@ dossiers:
     title: "UI legacy retirement (dead renderers/widgets → QML-first)"
     facilitator: gudjon
     registered: "2026-07-17"
+  - prefix: PLT
+    slug: macos26-platform-alignment
+    title: "macOS 26+ AS platform alignment — SoundIO soak + CI/packaging prune + waveform parity gate"
+    facilitator: gudjon
+    registered: "2026-07-17"
 
 # --- Registered initiatives (id = initiative-<slug>; no typed anchor — see GLOSSARY) ---
 initiatives:

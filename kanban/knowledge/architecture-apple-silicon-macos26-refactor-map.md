@@ -6,6 +6,7 @@ status: active
 owner: gudjon
 created: "2026-07-17"
 lastUpdated: "2026-07-17"
+enriched: "2026-07-17 PLT dossier executed Waves 1–3 (EVD-PLT-0001, CI prune, parity HOLD)"
 defers_to:
   - kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md
   - kanban/architecture/README.md
@@ -400,16 +401,17 @@ From `apple-audio-frameworks-os26-wwdc25.md`:
 
 ```text
 Wave 0  floor lock ..................... DONE (ADR-006, CMake)
-Wave 1  tahoe-m4-soundio-soak .......... OPEN  (P0)
-Wave 2  narrow-platform packaging/CI ... OPEN
-Wave 3  waveform allshader + retire GL . OPEN (after parity)
+Wave 1  tahoe-m4-soundio-soak .......... DONE  EVD-PLT-0001 (built-in CA solid)
+Wave 2  narrow-platform packaging/CI ... DONE  PLT (GH Actions watch residual)
+Wave 3  waveform parity matrix ......... DONE  HOLD delete (matrix signed)
+Wave 3b retire deprecated GL ........... OPEN  UIX after visual dogfood
 Wave 4  Accelerate/CA decode ........... new dossier DSP/ASI
-Wave 5  native Core Audio device ....... optional after W1
+Wave 5  native Core Audio device ....... NOT indicated by W1 (optional product only)
 Wave 6  QML parity + CO co-pilot ....... after dogfood
 Wave 7  OS26 spatial/MusicKit flags .... research
 ```
 
-Register new dossier prefixes in `prefix-registry.yaml` when scaffolding (e.g. `PLT`, `AUD`, `DSP`).
+Dossier: `kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment/` (prefix `PLT`).
 
 ---
 

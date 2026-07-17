@@ -157,8 +157,13 @@ exo-copilot-why-mirror:
       --md-out {{exo_why_md}} \
       --json-out {{exo_why_json}} \
       --write-intent {{exo_intent}}
-    mkdir -p res/qml/CoPilot
-    cp {{exo_why_json}} {{exo_qml_fixture}}
+
+# PLT Wave 1: Core Audio HAL soak (measurement only — not product RT path).
+# Defaults: 20s · 256 frames · 48 kHz. Override via env:
+#   SOAK_SECONDS=30 SOAK_BUFFER=128 SOAK_RATE=44100 just soundio-soak
+soundio-soak:
+    @test -x tools/soundio/coreaudio_pa_soak || clang -O2 -std=c11 tools/soundio/coreaudio_pa_soak.c -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework CoreFoundation -o tools/soundio/coreaudio_pa_soak
+    ./tools/soundio/coreaudio_pa_soak --seconds "${SOAK_SECONDS:-20}" --buffer "${SOAK_BUFFER:-256}" --rate "${SOAK_RATE:-48000}"
 
 # Night tick (log-only; safe for cron)
 night-loop:

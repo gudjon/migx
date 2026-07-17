@@ -2,17 +2,19 @@
 id: tahoe-m4-soundio-soak-rebaseline
 type: task
 title: "P0: Tahoe 26 + M4 SoundIO soak + underrun re-baseline (validate, don't rewrite)"
-status: open
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-apple-silicon
-parent_dossier: ""
+parent_dossier: "kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment"
 depends_on: []
 authored_by: claude-code
 authored_kind: agent
 triggered_by: "Harvest of apple-audio-frameworks-os26-wwdc25.md §3.8/§5 P0 seed + ADR-006 (macOS 26 floor). Build box is on macOS 26.2 (25C56), M4, coreaudiod alive — actionable now."
 created: "2026-07-17"
 lastUpdated: "2026-07-17"
+completed: "2026-07-17"
+evidence: "kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment/results/EVD-PLT-0001-soundio-soak.md"
 acceptance: |
   Defensive survival check for the north-star ("zero underruns while co-pilot is live") on the ONLY
   supported OS (macOS 26, ADR-006). Produce an EVD-* record under initiative-apple-silicon that:

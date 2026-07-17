@@ -2,17 +2,19 @@
 id: narrow-platform-to-apple-silicon
 type: task
 title: "Prune non-macOS packaging/CI — macOS 26+ Apple Silicon only (ADR-006 Wave 2)"
-status: open
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-apple-silicon
-parent_dossier: ""
+parent_dossier: "kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment"
 depends_on: []
 authored_by: claude-code
 authored_kind: agent
 triggered_by: "ADR-006 sole product = macOS 26+ arm64; architecture-apple-silicon-macos26-refactor-map Wave 2"
 created: "2026-07-17"
 lastUpdated: "2026-07-17"
+completed: "2026-07-17"
+evidence: "PLT Wave 2: .github/workflows/build.yml macOS arm64 only; packaging DORMANT; release flatpak if:false"
 acceptance: |
   Executes ADR-006 Wave 2 (architecture-apple-silicon-macos26-refactor-map.md). Wave by wave with
   build+test gates on macOS arm64 26+ (deployment target already 26.0 — do not re-do that):

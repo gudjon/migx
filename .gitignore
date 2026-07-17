@@ -79,3 +79,4 @@ kanban/federation/scratchpad/
 # Local packaging output (app bundle, DMG, release notes) — never committed
 /dist/
 *.dmg
+tools/soundio/coreaudio_pa_soak

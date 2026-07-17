@@ -2,17 +2,18 @@
 id: retire-deprecated-gl-waveform-renderers
 type: task
 title: "Retire the deprecated GL/Qt waveform renderers + widgets (untangle live base classes first)"
-status: open
+status: blocked
 owner: gudjon
 priority: medium
 initiative: initiative-ui-modernization
-parent_dossier: ""
-depends_on: []
+parent_dossier: "kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment"
+depends_on: ["waveform-parity-visual-dogfood"]
 authored_by: claude-code
 authored_kind: agent
 triggered_by: "merge-all-branches 2026-07-17 — agy commit a6d109141b tried a bulk delete of src/waveform/**/deprecated/ but it breaks the build; captured here instead of landed."
 created: "2026-07-17"
 lastUpdated: "2026-07-17"
+blocked_reason: "PLT Wave 3 parity matrix written; HOLD until live base-class rewire + visual dogfood. See results/WAVEFORM-PARITY-MATRIX.md — do not bulk-delete."
 acceptance: |
   A dossier (prefix UIX) that retires the deprecated waveform renderers/widgets AND still builds arm64
   + passes waveform tests. It MUST first untangle the live dependencies that a naive delete misses:

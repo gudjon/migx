@@ -51,15 +51,16 @@ jobs:
     with:
       branch: ${{ github.head_ref || github.ref_name }}
 
+  # PLT Wave 2 / ADR-006: Flatpak is DORMANT — Migx does not ship Linux.
+  # packaging/flatpak/ retained for history; do not re-enable without product decision.
   publish:
+    if: false
     needs:
       - build
     uses: ./.github/workflows/flatpak.yml
-    # Flatpak repo only support stable (non-beta tag release), beta and alpha release publication
-    if: ${{ (github.ref_type == 'tag' && !contains('-', github.ref_name)) || github.ref_name == '2.6' || github.ref_name == 'main' }}
     with:
       ref: ${{ github.ref }}
-      update_repo: ${{ github.ref_name == 'main' }}
+      update_repo: false
       run_id: ${{ github.run_id }}
     secrets:
       DOWNLOADS_HOSTGATOR_DOT_MIXXX_DOT_ORG_KEY: ${{ secrets.DOWNLOADS_HOSTGATOR_DOT_MIXXX_DOT_ORG_KEY }}
