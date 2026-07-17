@@ -15,6 +15,7 @@ related:
   - kanban/knowledge/apple-audio-frameworks-os26-wwdc25.md
   - kanban/knowledge/arcflow-m4-perf-techniques.md
   - kanban/knowledge/oz-audio-engine-learnings.md
+  - kanban/knowledge/performance-capability-uplifts-x-field-map.md
   - kanban/initiatives/initiative-apple-silicon.md
   - kanban/tasks/narrow-platform-to-apple-silicon.md
   - kanban/tasks/tahoe-m4-soundio-soak-rebaseline.md

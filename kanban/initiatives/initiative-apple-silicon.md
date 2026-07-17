@@ -18,6 +18,7 @@ related:
   - kanban/knowledge/apple-audio-frameworks-os26-wwdc25.md
   - kanban/knowledge/arcflow-m4-perf-techniques.md
   - kanban/knowledge/architecture-apple-silicon-macos26-refactor-map.md
+  - kanban/knowledge/performance-capability-uplifts-x-field-map.md
   - kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md
 ---
 
