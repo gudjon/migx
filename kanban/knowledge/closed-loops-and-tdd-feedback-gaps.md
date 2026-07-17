@@ -165,6 +165,7 @@ Themes (not vendor endorsements):
 | **P2** | Live CO intent | Unit test CO reconciler without audio |
 | **P2** | Underrun continuous | Soak in schedule, not only PLT one-shot |
 | **P1 (queued)** | Headless mix simulation / golden WAV | Task `research-headless-sim-ground-truth-agentic-cli` — agent-runnable two-deck scenarios |
+| **P1 (queued)** | Output verification (formats/naming) | Task `research-output-verification-formats-naming` — stage contracts so downstream (QML, CI, peers) never guess |
 
 ---
 

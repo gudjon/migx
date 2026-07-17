@@ -17,6 +17,7 @@ created: "2026-07-18"
 lastUpdated: "2026-07-18"
 related:
   - closed-loops-and-tdd-feedback-gaps
+  - research-output-verification-formats-naming
   - world-model-experience-ontology
   - pat-03-benchmark-as-contract
   - P-08
