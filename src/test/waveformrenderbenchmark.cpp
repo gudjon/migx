@@ -18,10 +18,14 @@
 
 #include <benchmark/benchmark.h>
 
-#include <QOffscreenSurface>
-#include <QOpenGLContext>
-#include <QOpenGLFunctions>
-#include <QSurfaceFormat>
+#ifdef __APPLE__
+#ifndef GL_SILENCE_DEPRECATION
+#define GL_SILENCE_DEPRECATION
+#endif
+#include <OpenGL/OpenGL.h> // CGL: a headless GL context, no window server / QPA
+#include <OpenGL/gl.h>     // legacy-profile core GL (glGenBuffers/glBufferData…)
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -219,6 +223,67 @@ void BM_WaveformFilteredPreprocess(benchmark::State& state) {
     runScrub(state, wwr, renderer, displayWindow(pWaveform->getDataSize()));
 }
 
+#ifdef __APPLE__
+// A headless OpenGL context via CGL (Core OpenGL). Qt's offscreen QPA yields no
+// GL context in the CLI test binary (that is why the GL benches historically
+// skipped), but CGL creates a real context with no window-server surface, so
+// the upload / combined-scrub benches run headless. Prefers a hardware context;
+// falls back to software so the bench still produces a number if no accelerated
+// headless GPU is available (flagged in the EVD when that happens).
+class HeadlessGLContext {
+  public:
+    HeadlessGLContext() {
+        const CGLPixelFormatAttribute accel[] = {
+                kCGLPFAAccelerated,
+                kCGLPFAOpenGLProfile,
+                static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_Legacy),
+                static_cast<CGLPixelFormatAttribute>(0)};
+        const CGLPixelFormatAttribute software[] = {
+                kCGLPFAOpenGLProfile,
+                static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_Legacy),
+                static_cast<CGLPixelFormatAttribute>(0)};
+        CGLPixelFormatObj pix = nullptr;
+        GLint npix = 0;
+        if (CGLChoosePixelFormat(accel, &pix, &npix) != kCGLNoError ||
+                pix == nullptr) {
+            if (CGLChoosePixelFormat(software, &pix, &npix) != kCGLNoError ||
+                    pix == nullptr) {
+                return;
+            }
+        }
+        if (CGLCreateContext(pix, nullptr, &m_ctx) != kCGLNoError) {
+            m_ctx = nullptr;
+        }
+        CGLDestroyPixelFormat(pix);
+        if (m_ctx != nullptr) {
+            CGLSetCurrentContext(m_ctx);
+            // Report which GL renderer we bound so the EVD can flag whether the
+            // upload numbers are hardware (representative) or a software fallback.
+            const GLubyte* renderer = glGetString(GL_RENDERER);
+            const GLubyte* version = glGetString(GL_VERSION);
+            std::fprintf(stderr,
+                    "[HeadlessGLContext] renderer=%s version=%s\n",
+                    renderer ? reinterpret_cast<const char*>(renderer) : "?",
+                    version ? reinterpret_cast<const char*>(version) : "?");
+        }
+    }
+    ~HeadlessGLContext() {
+        if (m_ctx != nullptr) {
+            CGLSetCurrentContext(nullptr);
+            CGLDestroyContext(m_ctx);
+        }
+    }
+    HeadlessGLContext(const HeadlessGLContext&) = delete;
+    HeadlessGLContext& operator=(const HeadlessGLContext&) = delete;
+    bool valid() const {
+        return m_ctx != nullptr;
+    }
+
+  private:
+    CGLContextObj m_ctx = nullptr;
+};
+#endif // __APPLE__
+
 // -----------------------------------------------------------------------------
 // GPU upload cost of the per-frame vertex buffer (the P-22 / AP-12 win).
 //
@@ -255,31 +320,13 @@ int rgbFrameByteSize() {
 }
 
 void BM_WaveformVboUpload(benchmark::State& state) {
-    QSurfaceFormat format;
-    format.setRenderableType(QSurfaceFormat::OpenGL);
-    format.setVersion(2, 1);
-
-    QOffscreenSurface surface;
-    surface.setFormat(format);
-    surface.create();
-    if (!surface.isValid()) {
+    HeadlessGLContext glctx;
+    if (!glctx.valid()) {
         state.SkipWithError(
-                "offscreen surface unavailable (no GL) -- upload delta needs "
-                "GUI/hardware verification");
+                "headless CGL context unavailable -- upload delta needs a GL "
+                "context");
         return;
     }
-
-    QOpenGLContext context;
-    context.setFormat(format);
-    if (!context.create() || !context.makeCurrent(&surface)) {
-        state.SkipWithError(
-                "GL context unavailable (offscreen QPA) -- upload delta needs "
-                "GUI/hardware verification");
-        return;
-    }
-
-    QOpenGLFunctions gl(&context);
-    gl.initializeOpenGLFunctions();
 
     const int byteSize = rgbFrameByteSize();
     std::vector<float> src(byteSize / sizeof(float));
@@ -290,10 +337,10 @@ void BM_WaveformVboUpload(benchmark::State& state) {
     }
 
     GLuint vbo = 0;
-    gl.glGenBuffers(1, &vbo);
-    gl.glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    gl.glBufferData(GL_ARRAY_BUFFER, byteSize, src.data(), GL_DYNAMIC_DRAW);
-    gl.glFinish();
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, byteSize, src.data(), GL_DYNAMIC_DRAW);
+    glFinish();
 
     std::vector<double> frameUs;
     frameUs.reserve(1 << 16);
@@ -307,16 +354,15 @@ void BM_WaveformVboUpload(benchmark::State& state) {
         // this times the CPU-side, render-thread cost of the upload (the copy
         // eliminated for every unchanged frame). No glFinish() here: we measure
         // render-thread occupancy, not full GPU-completion latency.
-        gl.glBufferData(GL_ARRAY_BUFFER, byteSize, nullptr, GL_DYNAMIC_DRAW);
-        gl.glBufferSubData(GL_ARRAY_BUFFER, 0, byteSize, src.data());
+        glBufferData(GL_ARRAY_BUFFER, byteSize, nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, byteSize, src.data());
         const auto end = std::chrono::steady_clock::now();
         frameUs.push_back(
                 std::chrono::duration<double, std::micro>(end - start).count());
     }
 
-    gl.glFinish();
-    gl.glDeleteBuffers(1, &vbo);
-    context.doneCurrent();
+    glFinish();
+    glDeleteBuffers(1, &vbo);
 
     if (frameUs.empty()) {
         return;
@@ -383,31 +429,13 @@ void BM_WaveformVboUpload(benchmark::State& state) {
 // Run: build/mixxx-test --benchmark --benchmark_filter=BM_WaveformScrubFrame
 
 void BM_WaveformScrubFrame(benchmark::State& state) {
-    QSurfaceFormat format;
-    format.setRenderableType(QSurfaceFormat::OpenGL);
-    format.setVersion(2, 1);
-
-    QOffscreenSurface surface;
-    surface.setFormat(format);
-    surface.create();
-    if (!surface.isValid()) {
+    HeadlessGLContext glctx;
+    if (!glctx.valid()) {
         state.SkipWithError(
-                "offscreen surface unavailable (no GL) -- combined scrub-frame "
-                "needs GUI/hardware verification");
+                "headless CGL context unavailable -- combined scrub-frame needs "
+                "a GL context");
         return;
     }
-
-    QOpenGLContext context;
-    context.setFormat(format);
-    if (!context.create() || !context.makeCurrent(&surface)) {
-        state.SkipWithError(
-                "GL context unavailable (offscreen QPA) -- combined scrub-frame "
-                "needs GUI/hardware verification");
-        return;
-    }
-
-    QOpenGLFunctions gl(&context);
-    gl.initializeOpenGLFunctions();
 
     WaveformPointer pWaveform = makeSyntheticWaveform();
     TrackPointer pTrack = makeSyntheticTrack(pWaveform);
@@ -426,8 +454,8 @@ void BM_WaveformScrubFrame(benchmark::State& state) {
     const double span = std::max(pMax - pMin, 0.0);
 
     GLuint vbo = 0;
-    gl.glGenBuffers(1, &vbo);
-    gl.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     int vboByteSize = -1;
 
     std::vector<double> frameUs;
@@ -452,15 +480,15 @@ void BM_WaveformScrubFrame(benchmark::State& state) {
         const int vertexBytes =
                 geometry.vertexCount() * geometry.sizeOfVertex();
         if (vertexBytes != vboByteSize) {
-            gl.glBufferData(GL_ARRAY_BUFFER,
+            glBufferData(GL_ARRAY_BUFFER,
                     vertexBytes,
                     geometry.vertexData(),
                     GL_DYNAMIC_DRAW);
             vboByteSize = vertexBytes;
         } else {
-            gl.glBufferData(
+            glBufferData(
                     GL_ARRAY_BUFFER, vertexBytes, nullptr, GL_DYNAMIC_DRAW);
-            gl.glBufferSubData(
+            glBufferSubData(
                     GL_ARRAY_BUFFER, 0, vertexBytes, geometry.vertexData());
         }
         const auto end = std::chrono::steady_clock::now();
@@ -471,9 +499,8 @@ void BM_WaveformScrubFrame(benchmark::State& state) {
         ++frame;
     }
 
-    gl.glFinish();
-    gl.glDeleteBuffers(1, &vbo);
-    context.doneCurrent();
+    glFinish();
+    glDeleteBuffers(1, &vbo);
 
     if (frameUs.empty()) {
         return;

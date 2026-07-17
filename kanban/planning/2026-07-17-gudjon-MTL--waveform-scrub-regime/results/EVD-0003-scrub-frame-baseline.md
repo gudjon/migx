@@ -27,20 +27,35 @@ budget**. Scrubbing is not CPU-rebuild-bound. The open question Wave 2 targets i
 per-frame VBO re-upload** that the persistent-VBO steady-state win does *not* eliminate (every scrub
 frame is dirty → `markDirtyGeometry()` unconditional at `waveformrendererrgb.cpp:126`).
 
-## Pending — combined frame + GPU upload (needs GUI/hardware run)
-`BM_WaveformScrubFrame` and `BM_WaveformVboUpload` require a live GL context. In the headless test
-binary the offscreen QPA returns no GL context and the benches `SkipWithError` (by design — never
-fabricate a number). `QT_QPA_PLATFORM=cocoa` from an agent process cannot attach to the window server.
+## COMPLETE — combined frame + GPU upload (headless M4 hardware)
+The GUI blocker is removed: `BM_WaveformVboUpload` / `BM_WaveformScrubFrame` now bind a **headless CGL
+context** (Core OpenGL, no window server / QPA — `waveformrenderbenchmark.cpp` `HeadlessGLContext`).
+Confirmed **hardware**: `renderer=Apple M4, version=2.1 Metal - 90.5` (OpenGL-over-Metal on the real
+M4 GPU), not a software fallback. Three runs:
 
-**To complete EVD-0003, run from a logged-in GUI session:**
-```
-build/mixxx-test --benchmark --benchmark_filter='BM_Waveform(ScrubFrame|VboUpload)'
-```
-Record `BM_WaveformScrubFrame` p50/p90/p99/max here → that is the combined-frame baseline Wave 2's
-optimization is judged against (must not regress p99; max < 8333µs, zero frames over budget).
+| Bench | p50 | p90 | p99¹ |
+|---|---|---|---|
+| `BM_WaveformVboUpload` (isolated re-upload) | 7.0–7.1µs | 8.4–8.75µs | 41–51µs |
+| `BM_WaveformScrubFrame` (combined preprocess + dirty re-upload) | **39.3–39.5µs** | **43.0–43.6µs** | 78–95µs |
+
+¹ p99/max are inflated by GL-driver async jitter (no per-iteration `glFinish` — measures render-thread
+occupancy, not GPU completion). p50/p90 are the robust figures (EVD-0001 quiescent-host lesson).
+
+## What the number answers (Wave-2 lever confirmed)
+Combined scrub frame **p50 ≈ 39.4µs** decomposes as **CPU rebuild ~32µs (≈80%) + upload ~7µs (≈18%)**
+(additive, matches EVD-0001 CPU + isolated upload). **The CPU vertex rebuild dominates the frame, not
+the GPU upload** — answering research open-question #1. So Wave 2's lever is reducing the per-frame
+rebuild (`preprocessInner()` rebuilds *all* vertices at `waveformrendererrgb.cpp:126-140`), i.e. the
+**sliding-window / dirty-rect rebuild** from the folded Grok Metal brief — *not* the upload path. UMA /
+Metal-backend work stays deprioritized.
+
+Budget: one deck scrubbing = **0.47%** of the 8333µs (120Hz) frame budget (p50); 4 decks ≈ **1.9%**.
+Comfortably under budget, but the CPU rebuild is an *always-on playback* cost (preprocess runs every
+vsync, not only when scrubbing), so the sliding-window win compounds across all playback — a materially
+stronger case than the DSP-EQ no-go.
 
 ## Wave-1 gate status
-- ✅ Benchmark added, compiles, links into `mixxx-test`, reproducible CPU numbers.
-- ✅ Combined path is correct-by-construction — mirrors the exact dirty re-upload at
-  `basegeometrynode.cpp:110-125` (`glBufferData` orphan + `glBufferSubData` of `geometry.vertexData()`).
-- ⏳ Combined-frame p50/p99/max: **pending one GUI run** (env limit, not a bench defect).
+- ✅ Benchmark added, compiles, links, runs **headless on M4 hardware** (CGL) — reproducible.
+- ✅ Combined path correct-by-construction — mirrors the dirty re-upload at `basegeometrynode.cpp:110-125`.
+- ✅ Combined-frame p50/p90/p99 captured (no GUI needed). **Wave 1 complete.**
+- → Wave 2 = sliding-window rebuild (targets the dominant ~80% CPU-rebuild half).
