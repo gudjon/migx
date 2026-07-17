@@ -87,12 +87,13 @@ see them. Do not leave open handoffs only in uncommitted worktree dirt.
 
 ## Channels
 
-SSoT: [`channels.yaml`](channels.yaml). Two primary surfaces:
+SSoT: [`channels.yaml`](channels.yaml). Three primary surfaces:
 
 | Channel | Path | Writer | Consumer | Purpose |
 |---|---|---|---|---|
 | `signal` | `signal/*.md` | `grok-signal` | anyone (esp. Claude, Codex, Gudjon) | Field intel — X, papers, models, architecture ideas. **Not** a work order by itself. |
 | `messages` | `messages/{open,ack,closed}/` | any peer | addressed peer | Durable handoffs with lifecycle. **State IS location.** |
+| `claims` | `claims/{active,closed}/` | any peer | all peers | Temporary edit-lane ownership. **Not a lock**; a visible collision warning. |
 
 Optional later: `broadcast` (to all peers). Not needed until addressed mail becomes too narrow.
 
@@ -106,6 +107,20 @@ Optional later: `broadcast` (to all peers). Not needed until addressed mail beco
 
 - **Sender never closes their own message** (oz §52). Receiver owns `ack` and `closed`.
 - **Once closed**, treat as history. New work = new message (or a task/dossier).
+
+## Lane claims (temporary ownership)
+
+Claims answer "who is editing what right now?" They are for collision avoidance, not permission.
+
+```text
+  migx-fed claim   -> claims/active/<id>.md    status: active
+  migx-fed release -> claims/closed/<id>.md    status: closed
+```
+
+Use a claim when a peer will mutate a dossier, harness tool, task set, or source area that another
+peer could reasonably touch. Do not claim for pure read-only orientation. Keep claims narrow and
+release them when done. Expired claims show as stale in `migx-fed sync`; they are a warning to verify
+with git/status before editing.
 
 ## Message ID
 
@@ -189,6 +204,9 @@ Scout mandate: [`roles/grok-signal.md`](roles/grok-signal.md).
 # from repo root (or any worktree of this repo)
 ./kanban/scripts/migx-fed doctor
 ./kanban/scripts/migx-fed sync                         # shared peer/mail/worktree snapshot
+./kanban/scripts/migx-fed claims [--status active|closed|all]
+./kanban/scripts/migx-fed claim --by SIDE --subject short-lane --paths path [path ...]
+./kanban/scripts/migx-fed release --id <claim-id> --by SIDE --resolution "done"
 ./kanban/scripts/migx-fed list [--to SIDE] [--status open|ack|closed|all]
 ./kanban/scripts/migx-fed poll --to SIDE          # print open messages for SIDE
 ./kanban/scripts/migx-fed listen --to SIDE        # periodically poll open messages
@@ -229,9 +247,10 @@ export MIGX_REPO_ROOT=/Users/gudjon/code/migx
 0. migx-fed sync                           # shared queue/worktree/dirty snapshot
 1. migx-fed poll --to claude-code          # open handoffs
 2. For each open: triage → ack OR close-as-wontfix with reason
-3. Do heavy coding on owned dossiers (MTL, engine, …)
-4. When stuck on "what's out there?": send research-request → grok-signal
-5. On handoff done: close with Resolution (paths/SHAs/tasks)
+3. Claim any mutating dossier/source lane before heavy coding
+4. Do heavy coding on owned dossiers (MTL, engine, ...)
+5. When stuck on "what's out there?": send research-request → grok-signal
+6. On handoff done: release claim and close with Resolution (paths/SHAs/tasks)
 ```
 
 ### Codex CLI (`codex-cli`) — every verification / harness session
@@ -240,8 +259,9 @@ export MIGX_REPO_ROOT=/Users/gudjon/code/migx
 1. migx-fed sync, then poll --to codex-cli, or run migx-fed listen --to codex-cli for long harness mode
 2. Map repo state, active dossiers, dirty files, and ownership before proposing edits
 3. Trace code paths and verify claims with grep, tests, benches, browser/tooling, or local scripts
-4. File coordination messages when a second writer risk or verification gap appears
-5. Close with evidence: paths, commands, test output, or a task/dossier pointer
+4. Claim harness/docs/tooling lanes before mutating them
+5. File coordination messages when a second writer risk or verification gap appears
+6. Release any Codex claim, then close with evidence: paths, commands, test output, or a task/dossier pointer
 ```
 
 Long harness runbook: [`kanban/runbooks/codex-long-harness-loop.md`](../runbooks/codex-long-harness-loop.md).

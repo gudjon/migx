@@ -21,7 +21,7 @@ open mail there. Protocol SSoT: [`FEDERATION.md`](FEDERATION.md). Do not invent 
 
 1. This file + `FEDERATION.md` (skim if you already know the protocol).
 2. Your role charter under `roles/` (`grok-signal`, `claude-code`, `codex-cli`).
-3. `./kanban/scripts/migx-fed poll --to <your-side>` — act on open mail.
+3. `./kanban/scripts/migx-fed sync`, then `poll --to <your-side>` — act on open mail and active claims.
 
 ## Layout
 
@@ -33,7 +33,9 @@ open mail there. Protocol SSoT: [`FEDERATION.md`](FEDERATION.md). Do not invent 
 | `roles/` | Per-side mandate (what you do / don't do) |
 | `signal/` | Grok field intel briefs (not work orders) |
 | `messages/open\|ack\|closed/` | Handoffs; **state = folder** |
+| `claims/active\|closed/` | Temporary edit-lane claims; visible collision warnings |
 | `MSG-TEMPLATE.md` | Required body sections |
+| `CLAIM-TEMPLATE.md` | Claim frontmatter/body shape |
 | `scratchpad/` | Local only — **gitignored**; never commit |
 
 ## Rules of engagement
@@ -52,6 +54,9 @@ open mail there. Protocol SSoT: [`FEDERATION.md`](FEDERATION.md). Do not invent 
 
 ```bash
 ./kanban/scripts/migx-fed doctor
+./kanban/scripts/migx-fed sync
+./kanban/scripts/migx-fed claims
+./kanban/scripts/migx-fed claim --by "$MIGX_FED_SIDE" --subject short-lane --paths path
 ./kanban/scripts/migx-fed poll --to "$MIGX_FED_SIDE"
 ./kanban/scripts/migx-fed list --status open
 ```

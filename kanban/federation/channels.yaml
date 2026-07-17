@@ -28,6 +28,19 @@ channels:
     notes: >
       Durable handoffs. Receiver owns ack and closed. Sender never self-closes.
 
+  claims:
+    path: claims/
+    message_shape: CLAIM-TEMPLATE.md
+    writer: any-peer
+    consumers: [all-peers]
+    lifecycle: location-as-state   # active -> closed
+    states:
+      active: claims/active/
+      closed: claims/closed/
+    notes: >
+      Temporary edit-lane ownership. Claims are not locks; they make concurrent
+      work visible before another peer edits the same path or dossier.
+
   # Reserved for later (multi-peer broadcast) — UNWIRED
   # broadcast:
   #   path: broadcast/

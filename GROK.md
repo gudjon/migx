@@ -19,6 +19,8 @@ export MIGX_REPO_ROOT="$(git rev-parse --show-toplevel)"
 ```
 
 Then read only what the current **loop contract** needs (see long harness below) — not the whole monorepo.
+If Grok is asked to mutate repo docs or code instead of only writing `signal/`, create a narrow
+`migx-fed claim` first.
 
 ## Roles
 

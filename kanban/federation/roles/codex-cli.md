@@ -51,10 +51,13 @@ leave a precise artifact: a map, finding, patch, verifier, or coordination messa
 
 ## Session loop
 ```text
-migx-fed poll --to codex-cli
+migx-fed sync
+-> migx-fed poll --to codex-cli
 -> inspect git status and active dossiers
+-> claim a narrow lane before mutating harness/docs/tooling
 -> map/verify the requested claim or subsystem
 -> patch harness/docs/tooling only when it removes coordination risk
+-> release any active Codex claim
 -> send messages for ownership conflicts or research/implementation asks
 -> close with paths, commands, and evidence
 ```

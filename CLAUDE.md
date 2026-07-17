@@ -66,8 +66,9 @@ Grok 4.5 long loops (scout overnight / research): same closed-loop *properties* 
 disk contract + `migx-fed` — see `kanban/runbooks/grok-long-harness-loop.md`. You remain default
 implementer; Grok remains default field signal.
 
-**Federation sync:** before claiming work, run `just fed-sync` to see peer mail, worktrees, dirty
-sync paths, and generated sidecar artifacts. Then `just fleet` / `just fleet-drain` ranks open mail and runs Codex
+**Federation sync:** before claiming work, run `just fed-sync` to see peer mail, active lane claims,
+worktrees, dirty sync paths, and generated sidecar artifacts. For mutating multi-file/dossier lanes,
+write a narrow `migx-fed claim` and release it when done. Then `just fleet` / `just fleet-drain` ranks open mail and runs Codex
 seal drains. Model routing SSoT: `kanban/knowledge/fleet-operating-model.md` (Claude = implement;
 Codex = P-08; Grok = X). Antigravity re-enable path: `AGY.md` + `peers.yaml`.
 

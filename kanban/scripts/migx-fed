@@ -34,6 +34,8 @@ VALID_TYPES = (
 )
 VALID_SEVERITY = ("low", "medium", "high", "blocker")
 STATUS_DIRS = ("open", "ack", "closed")
+CLAIM_STATUS_DIRS = ("active", "closed")
+CLAIM_DEFAULT_TTL_HOURS = 12
 REQUIRED_BODY_SECTIONS = ("## Intent", "## Context", "## Evidence", "## Requested Action", "## Blockers")
 SYNC_STATUS_PATHS = (
     ".gitignore",
@@ -69,6 +71,10 @@ def messages_dir(root: Path, status: str) -> Path:
     return fed_root(root) / "messages" / status
 
 
+def claims_dir(root: Path, status: str) -> Path:
+    return fed_root(root) / "claims" / status
+
+
 def run_git(cwd: Path, args: list[str]) -> tuple[int, str, str]:
     proc = subprocess.run(
         ["git", "-C", str(cwd), *args],
@@ -94,6 +100,23 @@ def find_message(root: Path, msg_id: str) -> tuple[Path, str] | None:
             # frontmatter id:
             text = candidate.read_text(encoding="utf-8", errors="replace")
             if re.search(rf"^id:\s*[\"']?{re.escape(msg_id.removesuffix('.md'))}[\"']?\s*$", text, re.M):
+                return candidate, status
+    return None
+
+
+def find_claim(root: Path, claim_id: str) -> tuple[Path, str] | None:
+    """Return (path, status) if found."""
+    for status in CLAIM_STATUS_DIRS:
+        base = claim_id if claim_id.endswith(".md") else f"{claim_id}.md"
+        p = claims_dir(root, status) / base
+        if p.is_file():
+            return p, status
+        for candidate in claims_dir(root, status).glob("*.md"):
+            if candidate.name == base or candidate.stem == claim_id:
+                return candidate, status
+            text = candidate.read_text(encoding="utf-8", errors="replace")
+            claim_stem = re.escape(claim_id.removesuffix(".md"))
+            if re.search(rf"^id:\s*[\"']?{claim_stem}[\"']?\s*$", text, re.M):
                 return candidate, status
     return None
 
@@ -235,6 +258,67 @@ def list_messages(root: Path, to: str | None, status: str) -> list[tuple[Path, s
     return rows
 
 
+def list_claims(root: Path, status: str) -> list[tuple[Path, str, dict[str, str]]]:
+    statuses = CLAIM_STATUS_DIRS if status == "all" else (status,)
+    rows: list[tuple[Path, str, dict[str, str]]] = []
+    for st in statuses:
+        d = claims_dir(root, st)
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("_"):
+                continue
+            fm = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+            rows.append((p, st, fm))
+    return rows
+
+
+def parse_utc(stamp: str) -> dt.datetime | None:
+    if not stamp:
+        return None
+    try:
+        value = stamp.strip().strip("\"'")
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        parsed = dt.datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.astimezone(dt.timezone.utc)
+    except ValueError:
+        return None
+
+
+def parse_claim_paths(value: str) -> list[str]:
+    value = value.split("#", 1)[0].strip().strip("\"'")
+    if value.startswith("[") and value.endswith("]"):
+        value = value[1:-1]
+    return [part.strip().strip("\"'") for part in value.split(",") if part.strip()]
+
+
+def claim_expired(fm: dict[str, str], now: dt.datetime | None = None) -> bool:
+    expires = parse_utc(fm.get("expires_utc", ""))
+    if not expires:
+        return False
+    now = now or dt.datetime.now(dt.timezone.utc)
+    return expires < now
+
+
+def claim_row(root: Path, p: Path, st: str, fm: dict[str, str]) -> dict[str, object]:
+    return {
+        "id": fm.get("id", p.stem),
+        "owner": fm.get("owner", "?"),
+        "status": st,
+        "subject": fm.get("subject", ""),
+        "created_utc": fm.get("created_utc", ""),
+        "expires_utc": fm.get("expires_utc", ""),
+        "expired": claim_expired(fm) if st == "active" else False,
+        "paths": parse_claim_paths(fm.get("paths", "")),
+        "branch": fm.get("branch", ""),
+        "commit": fm.get("commit", ""),
+        "file": str(p.relative_to(root)),
+    }
+
+
 def validate_message(root: Path, p: Path, folder_status: str) -> list[str]:
     text = p.read_text(encoding="utf-8", errors="replace")
     fm = parse_frontmatter(text)
@@ -279,6 +363,46 @@ def validate_message(root: Path, p: Path, folder_status: str) -> list[str]:
     return issues
 
 
+def validate_claim(root: Path, p: Path, folder_status: str) -> list[str]:
+    text = p.read_text(encoding="utf-8", errors="replace")
+    fm = parse_frontmatter(text)
+    rel = p.relative_to(root)
+    issues: list[str] = []
+    if not fm:
+        return [f"{rel}: missing frontmatter"]
+
+    claim_id = fm.get("id", "")
+    if not claim_id:
+        issues.append(f"{rel}: missing id")
+    elif claim_id != p.stem:
+        issues.append(f"{rel}: id does not match filename stem ({claim_id} != {p.stem})")
+
+    owner = fm.get("owner", "")
+    if not owner:
+        issues.append(f"{rel}: missing owner")
+    elif owner not in KNOWN_SIDES:
+        issues.append(f"{rel}: unknown owner side {owner!r}")
+    elif folder_status == "active" and owner not in ACTIVE_SIDES:
+        issues.append(f"{rel}: active claim owned by inactive side {owner!r}")
+
+    status = fm.get("status", "")
+    if status != folder_status:
+        issues.append(f"{rel}: status {status!r} does not match folder {folder_status!r}")
+
+    for key in ("created_utc", "expires_utc", "paths"):
+        if not fm.get(key):
+            issues.append(f"{rel}: missing {key}")
+
+    if fm.get("created_utc") and not parse_utc(fm["created_utc"]):
+        issues.append(f"{rel}: invalid created_utc")
+    if fm.get("expires_utc") and not parse_utc(fm["expires_utc"]):
+        issues.append(f"{rel}: invalid expires_utc")
+    if fm.get("paths") and not parse_claim_paths(fm["paths"]):
+        issues.append(f"{rel}: paths is empty")
+
+    return issues
+
+
 def cmd_doctor(root: Path) -> int:
     fr = fed_root(root)
     ok = True
@@ -287,6 +411,7 @@ def cmd_doctor(root: Path) -> int:
         fr / "peers.yaml",
         fr / "channels.yaml",
         fr / "MSG-TEMPLATE.md",
+        fr / "CLAIM-TEMPLATE.md",
         fr / "roles" / "grok-signal.md",
         fr / "roles" / "claude-code.md",
         fr / "roles" / "codex-cli.md",
@@ -333,6 +458,15 @@ def cmd_doctor(root: Path) -> int:
             print(f"MISSING  messages/{st}/", file=sys.stderr)
             ok = False
 
+    for st in CLAIM_STATUS_DIRS:
+        d = claims_dir(root, st)
+        if d.is_dir():
+            n = len(list(d.glob("*.md")))
+            print(f"OK  claims/{st}/ ({n} claims)")
+        else:
+            print(f"MISSING  claims/{st}/", file=sys.stderr)
+            ok = False
+
     message_count = 0
     for st in STATUS_DIRS:
         d = messages_dir(root, st)
@@ -349,6 +483,23 @@ def cmd_doctor(root: Path) -> int:
                 ok = False
     if message_count:
         print(f"OK  message schema checked ({message_count} messages)")
+
+    claim_count = 0
+    for st in CLAIM_STATUS_DIRS:
+        d = claims_dir(root, st)
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("_"):
+                continue
+            claim_count += 1
+            issues = validate_claim(root, p, st)
+            for issue in issues:
+                print(f"BAD {issue}", file=sys.stderr)
+            if issues:
+                ok = False
+    if claim_count:
+        print(f"OK  claim schema checked ({claim_count} claims)")
 
     side = os.environ.get("MIGX_FED_SIDE", "")
     if side:
@@ -376,6 +527,36 @@ def cmd_list(root: Path, to: str | None, status: str) -> int:
             f"{fm.get('type', '?'):<16} {fm.get('severity', '')}"
         )
         print(f"         {p.relative_to(root)}")
+    return 0
+
+
+def cmd_claims(root: Path, status: str) -> int:
+    rows = [claim_row(root, p, st, fm) for p, st, fm in list_claims(root, status)]
+    if not rows:
+        print("(no claims)")
+        return 0
+    rows = sorted(
+        rows,
+        key=lambda row: (
+            str(row["status"]),
+            bool(row["expired"]),
+            str(row["owner"]),
+            str(row["id"]),
+        ),
+    )
+    for row in rows:
+        expired = " expired" if row["expired"] else ""
+        paths = row["paths"]
+        assert isinstance(paths, list)
+        path_preview = ", ".join(str(path) for path in paths[:3])
+        if len(paths) > 3:
+            path_preview += f", +{len(paths) - 3} more"
+        print(
+            f"[{row['status']}{expired}] {row['id']:<50} "
+            f"{row['owner']:<14} expires={row['expires_utc']}"
+        )
+        print(f"         {path_preview}")
+        print(f"         {row['file']}")
     return 0
 
 
@@ -477,6 +658,11 @@ def build_sync_payload(root: Path) -> dict[str, object]:
                 }
             )
 
+    active_claims = [
+        claim_row(root, p, st, fm)
+        for p, st, fm in list_claims(root, "active")
+    ]
+
     return {
         "generated_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "root": str(root),
@@ -494,6 +680,10 @@ def build_sync_payload(root: Path) -> dict[str, object]:
         "recent_closed": [
             row for _, row in sorted(recent_closed, key=lambda item: item[0], reverse=True)[:5]
         ],
+        "active_claims": sorted(
+            active_claims,
+            key=lambda row: (bool(row["expired"]), str(row["owner"]), str(row["id"])),
+        ),
         "worktrees": worktrees if rc_wt == 0 else [{"error": worktree_err or worktree_text}],
         "dirty_sync_paths": git_status_lines(root, SYNC_STATUS_PATHS),
         "sidecar_artifacts": find_sidecar_artifacts(root),
@@ -538,6 +728,27 @@ def print_sync(payload: dict[str, object]) -> None:
                 f"- [{row['status']}/{row['severity']}] {row['to']} <- {row['from']} "
                 f"{row['id']} ({row['type']})"
             )
+
+    print("\n## Active Claims")
+    active_claims = payload["active_claims"]
+    assert isinstance(active_claims, list)
+    if not active_claims:
+        print("(none)")
+    else:
+        for row in active_claims:
+            status = "expired" if row.get("expired") else "active"
+            paths = row.get("paths", [])
+            assert isinstance(paths, list)
+            print(
+                f"- [{status}] {row['owner']} {row['id']} "
+                f"expires={row.get('expires_utc', '')}"
+            )
+            if row.get("subject"):
+                print(f"    subject: {row['subject']}")
+            for path in paths[:6]:
+                print(f"    path: {path}")
+            if len(paths) > 6:
+                print(f"    ... {len(paths) - 6} more paths")
 
     print("\n## Worktrees")
     worktrees = payload["worktrees"]
@@ -671,10 +882,156 @@ def next_seq(root: Path, from_side: str, to_side: str, day: str) -> str:
     return f"{n + 1:03d}"
 
 
+def next_claim_seq(root: Path, owner: str, day: str) -> str:
+    prefix = f"{owner}-{day}-"
+    n = 0
+    for st in CLAIM_STATUS_DIRS:
+        for p in claims_dir(root, st).glob(f"{prefix}*.md"):
+            m = re.match(rf"{re.escape(prefix)}(\d+)-", p.name)
+            if m:
+                n = max(n, int(m.group(1)))
+    return f"{n + 1:03d}"
+
+
 def slugify(s: str) -> str:
     s = s.strip().lower()
     s = re.sub(r"[^a-z0-9]+", "-", s)
     return s.strip("-")[:48] or "msg"
+
+
+def normalize_claim_paths(root: Path, paths: list[str]) -> list[str]:
+    out: list[str] = []
+    for raw in paths:
+        path = raw.strip()
+        if not path:
+            continue
+        candidate = Path(path)
+        if candidate.is_absolute():
+            try:
+                path = str(candidate.resolve().relative_to(root))
+            except ValueError:
+                path = str(candidate)
+        else:
+            path = path.removeprefix("./")
+        if path not in out:
+            out.append(path)
+    return out
+
+
+def cmd_claim(
+    root: Path,
+    by: str,
+    subject: str,
+    paths: list[str],
+    ttl_hours: int,
+    note: str,
+) -> int:
+    if by not in ACTIVE_SIDES:
+        if by in KNOWN_SIDES:
+            print(f"side is inactive: {by}", file=sys.stderr)
+        else:
+            print(f"unknown side: {by}", file=sys.stderr)
+        return 2
+    if ttl_hours < 1:
+        print("--ttl-hours must be >= 1", file=sys.stderr)
+        return 2
+    clean_paths = normalize_claim_paths(root, paths)
+    if not clean_paths:
+        print("--paths must name at least one repo path", file=sys.stderr)
+        return 2
+
+    now = dt.datetime.now(dt.timezone.utc)
+    day = now.strftime("%Y-%m-%d")
+    seq = next_claim_seq(root, by, day)
+    slug = slugify(subject)
+    claim_id = f"{by}-{day}-{seq}-{slug}"
+    expires = now + dt.timedelta(hours=ttl_hours)
+    rc_branch, branch, _ = run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"])
+    rc_head, head, _ = run_git(root, ["rev-parse", "--short", "HEAD"])
+    branch = branch if rc_branch == 0 else ""
+    head = head if rc_head == 0 else ""
+    path_lines = "\n".join(f"- `{path}`" for path in clean_paths)
+    intent = note.strip() or (
+        "Make this active lane visible before another agent edits the same surface."
+    )
+    paths_value = ", ".join(clean_paths)
+
+    fm = f"""---
+id: {claim_id}
+owner: {by}
+status: active
+created: "{day}"
+created_utc: "{now.strftime("%Y-%m-%dT%H:%M:%SZ")}"
+expires_utc: "{expires.strftime("%Y-%m-%dT%H:%M:%SZ")}"
+subject: "{slug}"
+paths: "{paths_value}"
+branch: "{branch}"
+commit: "{head}"
+---
+
+"""
+    body = f"""# {subject}
+
+## Intent
+{intent}
+
+## Scope
+{path_lines}
+
+## Release
+Run `./kanban/scripts/migx-fed release --id {claim_id} --by {by} --resolution "..."` when the lane is done.
+"""
+    out = claims_dir(root, "active") / f"{claim_id}.md"
+    out.write_text(fm + body.rstrip() + "\n", encoding="utf-8")
+    print(f"wrote {out.relative_to(root)}")
+    print("commit this claim so the peer sees it in migx-fed sync")
+    return 0
+
+
+def cmd_release_claim(root: Path, claim_id: str, by: str, resolution: str | None) -> int:
+    found = find_claim(root, claim_id)
+    if not found:
+        print(f"claim not found: {claim_id}", file=sys.stderr)
+        return 1
+    path, old = found
+    text = path.read_text(encoding="utf-8", errors="replace")
+    fm = parse_frontmatter(text)
+    owner = fm.get("owner", "")
+    if owner and owner != by and by != "gudjon":
+        print(
+            f"refusing: only owner ({owner}) or gudjon may release "
+            f"(you passed --by {by})",
+            file=sys.stderr,
+        )
+        return 2
+    if old == "closed":
+        print(f"already closed: {path.relative_to(root)}")
+        return 0
+
+    now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    text2 = re.sub(
+        r"^status:\s*\S+",
+        "status: closed",
+        text,
+        count=1,
+        flags=re.M,
+    )
+    res = resolution or "Released with no resolution text."
+    if "## Resolution" not in text2:
+        text2 = (
+            text2.rstrip()
+            + f"\n\n## Resolution\nReleased by {by} at {now}.\n\n{res.rstrip()}\n"
+        )
+    else:
+        text2 = (
+            text2.rstrip()
+            + f"\n\n### Update\nReleased by {by} at {now}.\n\n{res.rstrip()}\n"
+        )
+    dest = claims_dir(root, "closed") / path.name
+    dest.write_text(text2, encoding="utf-8")
+    path.unlink()
+    print(f"{old} -> closed: {dest.relative_to(root)}")
+    return 0
 
 
 def cmd_send(
@@ -842,6 +1199,26 @@ def main(argv: list[str] | None = None) -> int:
     p_list.add_argument("--to", default=None)
     p_list.add_argument("--status", default="open", choices=[*STATUS_DIRS, "all"])
 
+    p_claims = sub.add_parser("claims", help="list lane claims")
+    p_claims.add_argument("--status", default="active", choices=[*CLAIM_STATUS_DIRS, "all"])
+
+    p_claim = sub.add_parser("claim", help="write an active lane claim")
+    p_claim.add_argument("--by", required=True, choices=ACTIVE_SIDES)
+    p_claim.add_argument("--subject", required=True)
+    p_claim.add_argument("--paths", nargs="+", required=True)
+    p_claim.add_argument(
+        "--ttl-hours",
+        type=int,
+        default=CLAIM_DEFAULT_TTL_HOURS,
+        help=f"hours before the claim is stale (default: {CLAIM_DEFAULT_TTL_HOURS})",
+    )
+    p_claim.add_argument("--note", default="")
+
+    p_release = sub.add_parser("release", help="move an active lane claim to closed")
+    p_release.add_argument("--id", required=True)
+    p_release.add_argument("--by", required=True, choices=ACTIVE_SIDES)
+    p_release.add_argument("--resolution", default=None)
+
     p_poll = sub.add_parser("poll", help="show open mail for a side (session start)")
     p_poll.add_argument(
         "--to",
@@ -901,6 +1278,19 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_sync(root, args.json)
     if args.cmd == "list":
         return cmd_list(root, args.to, args.status)
+    if args.cmd == "claims":
+        return cmd_claims(root, args.status)
+    if args.cmd == "claim":
+        return cmd_claim(
+            root,
+            args.by,
+            args.subject,
+            args.paths,
+            args.ttl_hours,
+            args.note,
+        )
+    if args.cmd == "release":
+        return cmd_release_claim(root, args.id, args.by, args.resolution)
     if args.cmd == "poll":
         if not args.to:
             print("poll requires --to or MIGX_FED_SIDE", file=sys.stderr)

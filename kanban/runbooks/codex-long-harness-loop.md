@@ -78,11 +78,12 @@ Then execute:
 ```text
 1. Sync federation state, then poll inbox.
 2. If a message is actionable for Codex, ack it.
-3. Map code ownership and dirty files before editing.
-4. Verify the claim with focused commands, tests, lint, or code-path tracing.
-5. Patch only harness/docs/tooling unless explicitly assigned implementation ownership.
-6. Close the message with exact paths, commands, and evidence.
-7. If no mail is present, run one bounded verifier task from the current dossier or stop.
+3. Map code ownership, active lane claims, and dirty files before editing.
+4. If mutating harness/docs/tooling, create a narrow `migx-fed claim` first.
+5. Verify the claim with focused commands, tests, lint, or code-path tracing.
+6. Patch only harness/docs/tooling unless explicitly assigned implementation ownership.
+7. Release any Codex lane claim, then close the message with exact paths, commands, and evidence.
+8. If no mail is present, run one bounded verifier task from the current dossier or stop.
 ```
 
 Ack means "Codex is taking this now." If the message should belong to Claude, Grok, or
