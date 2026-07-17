@@ -14,6 +14,9 @@ pm_overlay:
   validation: "per-dossier benchmark contract (P-03) with EVD-* baselines, scored at 91-LOOP-CLOSURE"
 created: "2026-07-17"
 lastUpdated: "2026-07-17"
+related:
+  - kanban/knowledge/apple-audio-frameworks-os26-wwdc25.md
+  - kanban/knowledge/arcflow-m4-perf-techniques.md
 ---
 
 # Migx blazingly fast on Apple Silicon
