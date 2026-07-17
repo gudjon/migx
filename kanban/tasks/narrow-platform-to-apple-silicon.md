@@ -16,6 +16,10 @@ lastUpdated: "2026-07-17"
 acceptance: |
   Executes ADR-006's simplification. A dossier (prefix PLT or fold into an initiative-apple-silicon
   dossier) that, wave by wave with build+test gates:
+  - Raises the OS floor to macOS 26: CMAKE_OSX_DEPLOYMENT_TARGET 11.0 -> 26.0 in CMakeLists.txt +
+    justfile/runbook; config fails on non-arm64 Darwin (ADR-006 enforcement surfaces). This unblocks the
+    OS-26 audio frameworks (no @available guards) and drops pre-26 back-compat — do it as its own early
+    wave with a full arm64 build+ctest gate (deployment-target changes can surface latent SDK issues).
   - Removes Linux DESKTOP packaging + CI: packaging/debian/, packaging/flatpak/, CPackDebInstall.cmake,
     CPackDebUploadPPA.cmake, .github/workflows/flatpak.yml, and Linux legs of build.yml/checks.yml.
     (NOTE: keep any embedded/appliance door only as a doc note — no code kept for it now.)

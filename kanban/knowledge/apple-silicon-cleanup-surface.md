@@ -25,6 +25,13 @@ macOS/Apple-Silicon stays; **Linux drops** (§4); **Windows goes dormant, not de
 ~93 Windows-guard + ~60 Linux-guard lines mark the branch points; the code *inside* those branches is
 the real removable volume (larger). De-branch opportunistically, wave-gated, build-green each step.
 
+## OS deployment floor (the other big cut) — 11.0 → 26.0
+Current `CMAKE_OSX_DEPLOYMENT_TARGET=11.0` (buildenv triplet `arm64-osx-min1100`). ADR-006 pins the
+floor to **macOS 26.0**. Raising it: (a) lets us **drop pre-26 availability guards / back-compat shims**
+across 15 macOS majors, and (b) **unblocks the OS-26 audio frameworks unconditionally** (FOA / AUAudioMix
+/ MusicUnderstanding — see [[apple-audio-frameworks-os26-wwdc25]]), no `@available` fallbacks. This is
+both a cleanup and a capability unlock — the enabling move for the alignment opportunity.
+
 ## Packaging (delete Linux, dormant Windows)
 | Path | Size | Disposition |
 |---|---|---|
