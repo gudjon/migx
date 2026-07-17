@@ -33,28 +33,36 @@ lower-priority bottleneck than the render path — enter Wave 2 only after confi
 cost (all bands × decks) is worth vectorizing, or deprioritize in favor of MTL. This is exactly the
 "is the problem real?" gate (P-03/MG-1) — and the honest answer here is "real but small per-instance."
 
-## Aggregate EQ chain — the go/no-go answer (`BM_EngineFilterFullEqChain`)
-The default deck EQ (`BiquadFullKillEQEffect`) worst case = **8 IIR filters** per channel (2 Bessel4
-iso crossovers + 3 peaking boosts + low-shelf/mid-peak/high-shelf kills), all engaged. Measured per
-23.22 ms buffer, two runs:
+## Aggregate EQ chain — the go/no-go answer
+Codex verification found the first aggregate benchmark was conservative: `BiquadFullKillEQEffect`
+contains 8 IIR filter members, but its steady-state process path cannot run a boost and kill filter for
+the same band at the same time. The reachable IIR worst case is **5 filters** per channel: 3 biquads
+(one boost/kill choice per low/mid/high band) plus both LVMix Bessel4 low-pass crossovers.
+
+`BM_EngineFilterFullEqChain` is now retained as a synthetic 8-IIR ceiling. `BM_EngineFilterFullEqReachableWorst`
+measures the reachable case (example state: low boost + mid kill + high boost, which also activates
+both LVMix low-passes). Measured per 23.22 ms buffer, two runs:
 
 | | p50 | p90 | p99 | max |
 |---|---|---|---|---|
-| run 1 | 23.79 | 26.33 | **31.79** | 122.5 |
-| run 2 | 25.83 | 26.25 | **31.54** | 171.7 |
+| synthetic 8-IIR ceiling, run 1 | 25.875 | 26.291 | **30.917** | 164.292 |
+| synthetic 8-IIR ceiling, run 2 | 25.875 | 26.458 | **31.750** | 124.334 |
+| reachable 5-IIR worst case, run 1 | 16.541 | 16.625 | **19.916** | 29.084 |
+| reachable 5-IIR worst case, run 2 | 16.750 | 17.000 | **20.334** | 143.750 |
 
 **Scaled to the RT budget:**
-- 1 deck, full EQ engaged: 31.8 µs / 23220 µs = **0.14%** of the buffer.
-- **4 decks, all full EQ engaged: ~127 µs = ~0.55%** of the buffer period.
+- Synthetic ceiling: 31.8 µs / 23220 µs = **0.14%** of one buffer; 4 decks = **~0.55%**.
+- Reachable worst case: 20.3 µs / 23220 µs = **0.09%** of one buffer; 4 decks = **~0.35%**.
 
 ## Verdict — DSP Wave 2 is a NO-GO (halt with evidence, not green-over-red)
-Even the absolute worst case (4 decks × every EQ band) is **~0.5% of the audio budget**. A vDSP/NEON
-rewrite might roughly halve the filter cost → a **~0.3% absolute** saving, bought at the cost of a
-SIMD rewrite on the RT callback (allocation/numerical-drift risk, `P-02`/tolerance gates). The
-cost/benefit does not justify it. **Recommendation: do NOT execute DSP Wave 2 (EQ filters); the render
-path (MTL) is the materially better Apple-Silicon bet** — which matches the initiative hypothesis
-(portable *render* left more on the table than portable *DSP*). If a DSP lane is revisited, profile the
-resampler / analysis paths first, not the EQ IIR filters.
+The original no-go is confirmed and strengthened. Even the synthetic 8-IIR ceiling is **~0.55%** of the
+4-deck audio budget, and the reachable full-kill worst case is **~0.35%**. A vDSP/NEON rewrite might
+roughly halve the reachable filter cost, for only **~0.18% absolute** 4-deck buffer-budget savings,
+bought at the cost of a SIMD rewrite on the RT callback (allocation/numerical-drift risk,
+`P-02`/tolerance gates). The cost/benefit does not justify it. **Recommendation: do NOT execute DSP
+Wave 2 (EQ filters); the render path (MTL) is the materially better Apple-Silicon bet** — which matches
+the initiative hypothesis (portable *render* left more on the table than portable *DSP*). If a DSP lane
+is revisited, profile the resampler / analysis paths first, not the EQ IIR filters.
 
 ## Wave-1 gate status
 - ✅ `BM_EngineFilter{BiquadPeaking,Butterworth8Low}` added, builds, arm64-native, reproducible.

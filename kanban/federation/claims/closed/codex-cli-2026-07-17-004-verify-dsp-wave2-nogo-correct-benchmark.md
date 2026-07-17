@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-07-17-004-verify-dsp-wave2-nogo-correct-benchmark
 owner: codex-cli
-status: active
+status: closed
 created: "2026-07-17"
 created_utc: "2026-07-17T17:14:12Z"
 expires_utc: "2026-07-17T21:14:12Z"
@@ -23,3 +23,8 @@ Codex verification of DSP Wave 2 no-go; tighten aggregate EQ benchmark semantics
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-07-17-004-verify-dsp-wave2-nogo-correct-benchmark --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+Released by codex-cli at 2026-07-17T17:18:16Z.
+
+Verified and tightened DSP Wave 2 no-go benchmark. Added reachable full-kill EQ benchmark, updated EVD-DSP-01, closed Claude request.

@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
@@ -34,6 +35,22 @@ namespace {
 constexpr std::size_t kFrames = 1024;
 constexpr std::size_t kSamples = kFrames * 2;
 constexpr int kSampleRate = 44100;
+
+// BiquadFullKillEQEffect defaults. Duplicated here so this benchmark stays
+// headless and does not need to construct the effect/parameter graph.
+constexpr double kFullKillMinimumFrequency = 10.0;
+constexpr double kFullKillMaximumFrequency =
+        static_cast<double>(kSampleRate) / 2.0;
+constexpr double kFullKillLowFreqCorner = 246.0;
+constexpr double kFullKillHighFreqCorner = 2484.0;
+constexpr double kFullKillQBoost = 0.3;
+constexpr double kFullKillQKill = 0.9;
+constexpr double kFullKillQLowKillShelf = 0.4;
+constexpr double kFullKillQHighKillShelf = 0.4;
+
+double geometricCenter(double low, double high) {
+    return std::sqrt(low * high);
+}
 
 std::vector<CSAMPLE> makeSignal() {
     // Deterministic broadband input so the filter recurrence does real work
@@ -137,24 +154,28 @@ void BM_EngineFilterButterworth8Low(benchmark::State& state) {
     runFilter(state, filter);
 }
 
-// Aggregate: the full BiquadFullKillEQEffect per-channel filter chain (the
-// DEFAULT deck EQ), worst case with every band engaged. Per
-// src/effects/backends/builtin/biquadfullkilleqeffect.h that is 8 IIR filters:
-// the always-on LVMix isolator's 2 Bessel4 low-pass crossovers (the 3-band
-// split) + 3 peaking boosts + (low-shelf + mid-peak + high-shelf) kills. This
-// times ONE deck's whole EQ chain per buffer; EVD-DSP-01 scales it to 4 decks
-// to settle the DSP Wave-2 (vDSP/NEON) go/no-go: if 4 decks of full EQ is still
-// a negligible fraction of the buffer period, the SIMD rewrite is not worth it.
+// Synthetic ceiling: all BiquadFullKillEQEffect IIR members run once. The real
+// steady-state process path cannot run boost and kill filters for the same band
+// at the same time; this benchmark intentionally over-counts as an upper bound.
 void BM_EngineFilterFullEqChain(benchmark::State& state) {
     const mixxx::audio::SampleRate sr(kSampleRate);
-    EngineFilterBessel4Low isoLow(sr, 246.0);
-    EngineFilterBessel4Low isoHigh(sr, 2453.0);
-    EngineFilterBiquad1Peaking lowBoost(sr, 100.0, 0.4);
-    EngineFilterBiquad1Peaking midBoost(sr, 1100.0, 0.4);
-    EngineFilterBiquad1Peaking highBoost(sr, 10000.0, 0.4);
-    EngineFilterBiquad1LowShelving lowKill(sr, 100.0, 0.4);
-    EngineFilterBiquad1Peaking midKill(sr, 1100.0, 0.4);
-    EngineFilterBiquad1HighShelving highKill(sr, 10000.0, 0.4);
+    const double lowCenter =
+            geometricCenter(kFullKillMinimumFrequency, kFullKillLowFreqCorner);
+    const double midCenter =
+            geometricCenter(kFullKillLowFreqCorner, kFullKillHighFreqCorner);
+    const double highCenter =
+            geometricCenter(kFullKillHighFreqCorner, kFullKillMaximumFrequency);
+
+    EngineFilterBessel4Low isoLow(sr, kFullKillLowFreqCorner);
+    EngineFilterBessel4Low isoHigh(sr, kFullKillHighFreqCorner);
+    EngineFilterBiquad1Peaking lowBoost(sr, lowCenter, kFullKillQBoost);
+    EngineFilterBiquad1Peaking midBoost(sr, midCenter, kFullKillQBoost);
+    EngineFilterBiquad1Peaking highBoost(sr, highCenter, kFullKillQBoost);
+    EngineFilterBiquad1LowShelving lowKill(
+            sr, lowCenter * 2, kFullKillQLowKillShelf);
+    EngineFilterBiquad1Peaking midKill(sr, midCenter, kFullKillQKill);
+    EngineFilterBiquad1HighShelving highKill(
+            sr, highCenter / 2, kFullKillQHighKillShelf);
 
     isoLow.assumeSettled();
     isoHigh.assumeSettled();
@@ -195,6 +216,56 @@ void BM_EngineFilterFullEqChain(benchmark::State& state) {
     reportUs(state, bufUs);
 }
 
+// Reachable steady-state worst case for BiquadFullKillEQEffect: one biquad per
+// EQ band (boost OR kill, never both) plus both LVMix Bessel low-pass filters.
+// Example state: low boost, mid kill, high boost. That yields dLow=1, dMid=0,
+// dHigh=1 in LVMix, so both crossover low-passes run.
+void BM_EngineFilterFullEqReachableWorst(benchmark::State& state) {
+    const mixxx::audio::SampleRate sr(kSampleRate);
+    const double lowCenter =
+            geometricCenter(kFullKillMinimumFrequency, kFullKillLowFreqCorner);
+    const double midCenter =
+            geometricCenter(kFullKillLowFreqCorner, kFullKillHighFreqCorner);
+    const double highCenter =
+            geometricCenter(kFullKillHighFreqCorner, kFullKillMaximumFrequency);
+
+    EngineFilterBessel4Low isoLow(sr, kFullKillLowFreqCorner);
+    EngineFilterBessel4Low isoHigh(sr, kFullKillHighFreqCorner);
+    EngineFilterBiquad1Peaking lowBoost(sr, lowCenter, kFullKillQBoost);
+    EngineFilterBiquad1Peaking midKill(sr, midCenter, kFullKillQKill);
+    EngineFilterBiquad1Peaking highBoost(sr, highCenter, kFullKillQBoost);
+
+    isoLow.assumeSettled();
+    isoHigh.assumeSettled();
+    lowBoost.assumeSettled();
+    midKill.assumeSettled();
+    highBoost.assumeSettled();
+
+    const std::vector<CSAMPLE> in = makeSignal();
+    std::vector<CSAMPLE> a(kSamples);
+    std::vector<CSAMPLE> b(kSamples);
+
+    std::vector<double> bufUs;
+    bufUs.reserve(1 << 16);
+
+    for (auto _ : state) {
+        const auto start = std::chrono::steady_clock::now();
+        isoLow.process(in.data(), a.data(), kSamples);
+        isoHigh.process(a.data(), b.data(), kSamples);
+        lowBoost.process(b.data(), a.data(), kSamples);
+        midKill.process(a.data(), b.data(), kSamples);
+        highBoost.process(b.data(), a.data(), kSamples);
+        const auto end = std::chrono::steady_clock::now();
+
+        benchmark::DoNotOptimize(a.data());
+        benchmark::ClobberMemory();
+
+        bufUs.push_back(
+                std::chrono::duration<double, std::micro>(end - start).count());
+    }
+    reportUs(state, bufUs);
+}
+
 } // namespace
 
 // Fixed iteration count so two runs are directly comparable (reproducibility
@@ -208,6 +279,10 @@ BENCHMARK(BM_EngineFilterButterworth8Low)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 BENCHMARK(BM_EngineFilterFullEqChain)
+        ->Iterations(20000)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+BENCHMARK(BM_EngineFilterFullEqReachableWorst)
         ->Iterations(20000)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
