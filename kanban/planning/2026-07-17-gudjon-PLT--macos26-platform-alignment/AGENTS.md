@@ -5,6 +5,8 @@ prefix: PLT
 title: "macOS 26+ AS platform alignment (SoundIO soak · CI prune · waveform parity)"
 status: open
 sealed: false
+slug: 2026-07-17-gudjon-PLT--macos26-platform-alignment
+phase: execution
 owner: gudjon
 facilitator: gudjon
 initiative: initiative-apple-silicon
