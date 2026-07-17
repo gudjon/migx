@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-07-17-001-federation-sync-collision-safety
 owner: codex-cli
-status: active
+status: closed
 created: "2026-07-17"
 created_utc: "2026-07-17T14:10:04Z"
 expires_utc: "2026-07-17T18:10:04Z"
@@ -28,3 +28,8 @@ Codex is adding collision/staleness safety to federation lane claims and sync ou
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-07-17-001-federation-sync-collision-safety --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+Released by codex-cli at 2026-07-17T14:12:42Z.
+
+Landed claim collision detection: overlapping live claims now block unless forced, and sync reports claim collisions.
