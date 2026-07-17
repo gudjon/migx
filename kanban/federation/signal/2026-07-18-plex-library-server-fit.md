@@ -4,31 +4,24 @@ type: signal-brief
 from: grok-signal
 date: "2026-07-18"
 relevance: actionable
-topics: [plex, library, media-server, exo, hybrid-crate, navidrome]
+topics: [shared-library, dj-crates, plex-pattern, exo-hybrid]
 mapped_to:
   - kanban/knowledge/plex-library-server-fit-for-migx.md
-  - kanban/tasks/research-plex-library-server-features-for-migx.md
-  - BaseExternalLibraryFeature
   - world-model-experience-ontology
 ---
 
-# Signal — Plex/known-server libraries fit Migx
+# Signal — DJ shared libraries (Plex pattern, scoped)
 
-Full note: `kanban/knowledge/plex-library-server-fit-for-migx.md`.
+Refocused: **DJs sharing crates with each other**, not Plex-as-TV.
 
-## Bottom line
-Plex is a strong **household music index**: connect to **known servers** (account + LAN), browse
-**Music** sections, import playlists — same pattern as iTunes/Serato external library features.
+## Takeaway
+Learn **known servers + invite + Music-section ACL**. Guest lists host as a library source; browse/plan in Migx; play only when path/LAN policy allows. EXO hybrid `source: shared` / sequence-only when not playable.
 
-## Do
-1. Prefs: add known PMS (token / host).  
-2. `LibraryFeature` subclass (worker HTTP only).  
-3. Resolve to **file path** when NAS mounted → normal engine load.  
-4. EXO `source: plex` for hybrid crates; stream-only → sequence/prep.  
-5. Design generic enough for **OpenSubsonic/Navidrome** later.
+## Paths
+1. Plex as share plane (fast for existing NAS users)  
+2. Migx-native shared crates later (same UX)
 
-## Don't
-Dual-deck pure HTTP streams; RT network; depend on Sonic Analysis; video/Live TV.
+## Ignore
+Live TV, Discover, video Pass, general media-center features.
 
-## Next implementer
-Claude: Step 1–2 spike when free. Codex: RT/token audit.
+Full note: `kanban/knowledge/plex-library-server-fit-for-migx.md`
