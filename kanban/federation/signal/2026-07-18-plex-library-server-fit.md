@@ -1,27 +1,27 @@
 ---
-id: signal-2026-07-18-plex-library-server-fit
+id: signal-2026-07-18-dj-shared-library-capability
 type: signal-brief
 from: grok-signal
 date: "2026-07-18"
 relevance: actionable
-topics: [shared-library, dj-crates, plex-pattern, exo-hybrid]
+topics: [shared-library, dj-crates, capability, exo-hybrid]
 mapped_to:
-  - kanban/knowledge/plex-library-server-fit-for-migx.md
+  - kanban/knowledge/dj-shared-library-capability.md
   - world-model-experience-ontology
+  - ADR-005
 ---
 
-# Signal — DJ shared libraries (Plex pattern, scoped)
+# Signal — Shared libraries as Migx capability (no Plex dependency)
 
-Refocused: **DJs sharing crates with each other**, not Plex-as-TV.
+## Position
+We want **DJ-to-DJ shared crates** as a first-class product capability: host → invite → known shares →
+browse → EXO session union → play only when local/LAN policy allows.
 
-## Takeaway
-Learn **known servers + invite + Music-section ACL**. Guest lists host as a library source; browse/plan in Migx; play only when path/LAN policy allows. EXO hybrid `source: shared` / sequence-only when not playable.
+**Plex is prior art only** (how “known servers + invites” feel). **No Plex account, server, or SDK
+in the architecture.** Optional later: one-shot import adapter from existing media servers — not core.
 
-## Paths
-1. Plex as share plane (fast for existing NAS users)  
-2. Migx-native shared crates later (same UX)
+## SSoT
+`kanban/knowledge/dj-shared-library-capability.md`
 
-## Ignore
-Live TV, Discover, video Pass, general media-center features.
-
-Full note: `kanban/knowledge/plex-library-server-fit-for-migx.md`
+## Next product waves (when scheduled)
+W1 fixture hybrid session (2 DJs, 1 share) → W2 LAN host spike → W3 playability badges → invite/revoke → co-pilot over union.
