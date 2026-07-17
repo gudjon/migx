@@ -78,6 +78,20 @@ cd ../migx-grok && grok
 ```
 Keep compile-heavy work on Claude's tree when disk is tight.
 
+## Merge hygiene (Claude builds from `main`)
+Claude Code expects a **buildable `main`**. Occasionally (every few waves, and before long Claude sessions):
+
+```bash
+git checkout main
+git status -sb                    # no surprise WIP
+# commit any intentional federation/docs/tools work on main
+git push origin main              # remote matches local
+```
+
+- Prefer landing Grok federation + knowledge on **main** (or merge feature branches promptly).  
+- Do not leave long-lived unpushed main commits — Claude’s build box pulls/uses `main`.  
+- Never force-push `main`.
+
 ## Scout session checklist
 1. `migx-fed poll --to grok-signal`  
 2. Drain `research-request` / `question` mail  
