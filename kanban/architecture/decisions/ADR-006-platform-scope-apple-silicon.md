@@ -1,7 +1,7 @@
 ---
 id: ADR-006
 type: decision
-title: "Platform scope — Apple Silicon first: macOS now, iPad next; Windows later, Linux only-if-embedded"
+title: "Platform scope — macOS 26+ on Apple Silicon only"
 status: accepted
 owner: gudjon
 created: "2026-07-17"
@@ -11,43 +11,58 @@ amends: []
 related: [ADR-002, ADR-004, initiative-apple-silicon, strategy-current]
 ---
 
-# ADR-006 — Platform scope: Apple Silicon first
+# ADR-006 — Platform scope: macOS 26+ · Apple Silicon only
 
 ## Context
-DJs run **macOS predominantly**, **some Windows**, and **effectively none on Linux desktop**.
-Supporting three desktop OSes across two architectures multiplies the compatibility surface — audio
-backends, packaging, CI, GUI paths, code-signing — for near-zero audience gain. That is the opposite of
-the Cursor-style focus Migx is built on ([ADR-002](ADR-002-hard-fork-no-upstream-merge.md): free to
-prune).
+DJs who matter for Migx run **macOS on Apple Silicon**. Multi-OS, multi-arch support multiplies
+audio backends, packaging, CI, GUI paths, and code-signing for little audience. Migx’s north-star is
+**M4/M5 performance** (Metal, Accelerate, Core Audio, arm64-native) under house physics (`P-02`,
+`P-24`).
 
-Migx's north-star is already **Apple Silicon performance** (Metal, M4/M5). That investment — native
-arm64, Metal render/DSP, CoreAudio — **transfers directly to other Apple-GPU devices**, most naturally
-**iPad** (A/M-series SoC, Metal, arm64). So the platform bet is *Apple Silicon*, not merely *macOS*.
+Owner decision (2026-07-17, refined): the **supported product** is exclusively:
 
-Gudjon's decision (2026-07-17): narrow hard to Apple Silicon to simplify massively on compatibility.
+> **macOS 26.\* and later, on Apple Silicon (arm64) only.**
+
+No Intel Mac. No Rosetta. No Windows/Linux product surface. Future platforms (e.g. iPad) would be a
+**new decision**, not implied support.
 
 ## Decision
-1. **Sole current target: macOS on Apple Silicon (arm64).** Native arm64 only — no x86_64 / Rosetta
-   (reinforces `P-24`). CoreAudio-first. Single-arch, single-packaging (DMG + notarize), macOS-only CI.
-2. **iPad / iPadOS is the sensible next platform.** Same SoC / Metal / arm64 foundation — the
-   render and DSP optimization work is meant to compound toward it. Keep the `ios/` seam warm; do not
-   invest execution there yet.
-3. **Windows: deferred ("later").** Some DJs run it; it may return as a deliberate future bet. Not
-   maintained now and not a design driver. Don't burn portability where it's cheap, but do no Windows
-   work (the `packaging/wix/` surface goes dormant, not actively removed).
-4. **Linux desktop: dropped.** Not the DJ audience. The *only* conceivable future is an
-   **embedded / appliance** build — e.g. Jetson with integrated DJ hardware — which is **explicitly out
-   of scope now**. Retire Linux desktop build / packaging / CI (flatpak, debian, PPA) as those paths
-   are touched.
-5. **Android: out of scope** — not part of the DJ-device thesis.
+
+1. **Sole supported target:** **macOS ≥ 26.0** on **Apple Silicon arm64**.  
+   - Deployment target: `CMAKE_OSX_DEPLOYMENT_TARGET=26.0`  
+   - Architecture: `CMAKE_OSX_ARCHITECTURES=arm64` only (`P-24`)  
+   - Audio: Core Audio first  
+   - Packaging: single path (DMG + notarize)  
+   - CI: macOS arm64 only when enabled  
+
+2. **Out of support (not maintained, not a design driver):**  
+   - macOS **&lt; 26**  
+   - **Intel** Mac (x86_64 / Rosetta)  
+   - **Windows** desktop  
+   - **Linux** desktop  
+   - **Android**  
+   - **iOS / iPadOS** as a shipping target (research/watch only until a future ADR)  
+
+3. **Build system:** configure **fails** if Darwin + non-arm64. Prefer fatal messages over silent
+   multi-arch universal binaries.
+
+4. **OS 26 audio stack:** product may use OS 26 APIs (see
+   `kanban/knowledge/apple-audio-frameworks-os26-wwdc25.md`); RT engine still obeys house physics.
 
 ## Consequences
-- **Simplification unlocked:** one audio backend (CoreAudio), one arch, one packaging path, macOS-only
-  CI, and opportunistic removal of Windows/Linux `#ifdef` churn as code is touched.
-- **Faster iteration, smaller test/compat surface** — the whole point.
-- **iPad is the growth path** the Apple-Silicon work already compounds toward; the perf dossiers
-  (`initiative-apple-silicon`, MTL-*) double as iPad readiness.
-- **Windows / embedded re-entry later is a deliberate future bet, not free** — accepted.
 
-The execution (pruning Linux desktop build/packaging/CI, quieting Windows CI) is scoped as a task, not
-done in this ADR.
+- **Massive simplification:** one OS major floor, one arch, one packaging story.  
+- **Perf work compounds** on the only machine class we care about (M4/M5).  
+- **Upstream Mixxx portability paths** (Win/Linux/Intel) go dormant; prune when touched (`P-11`).  
+- Re-opening another platform requires a **new ADR**, not a casual `#ifdef`.
+
+## Enforcement surfaces
+
+| Surface | What |
+|---|---|
+| This ADR | Decision SSoT |
+| `CMakeLists.txt` | `CMAKE_OSX_DEPLOYMENT_TARGET=26.0`, arm64-only |
+| `README.md` | Platform table |
+| `kanban/runbooks/build-setup-macos-m4.md` | Build profile |
+| `justfile` `configure` | Passes deployment target + arm64 |
+| `P-24` | arm64-native pattern |

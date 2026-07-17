@@ -21,11 +21,12 @@ default:
     @just --list
 
 # ---- C++ pipeline (heavy; the FAST loop is `just lint-changed`, not this) ----
-# Configure arm64-native + emit compile_commands.json for clangd (P-26) + tests + bench.
+# Configure arm64-native macOS 26+ (ADR-006) + compile_commands.json for clangd (P-26) + tests + bench.
 configure:
     cmake -S . -B {{build_dir}} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DBUILD_BENCH=ON \
-      -DCMAKE_OSX_ARCHITECTURES=arm64
+      -DCMAKE_OSX_ARCHITECTURES=arm64 \
+      -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
     ln -sf {{build_dir}}/compile_commands.json compile_commands.json
 
 build: configure

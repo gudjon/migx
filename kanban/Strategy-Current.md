@@ -99,6 +99,7 @@ EXO + sidecars: structure, energy, Camelot (math already in tree), session graph
 
 ### P4 — Blazingly fast on Apple Silicon
 AI that glitches audio dies. MTL/DSP closed loops are product trust.
+**Supported product:** macOS **26.\*+** · Apple Silicon **only** ([ADR-006](architecture/decisions/ADR-006-platform-scope-apple-silicon.md)).
 
 ### P5 — Phased repo home
 - **Now:** public `gudjon/migx` OK for early phases.  

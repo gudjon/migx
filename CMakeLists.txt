@@ -466,12 +466,12 @@ elseif(APPLE)
     message(STATUS "Targeting macOS (${VCPKG_TARGET_TRIPLET})")
     set(CMAKE_SYSTEM_NAME Darwin CACHE STRING "Target macOS")
     if(VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
-      # Minimum macOS version for arm64 Support
+      # Migx product floor: macOS 26+ Apple Silicon only (ADR-006)
       set(
         CMAKE_OSX_DEPLOYMENT_TARGET
-        11.0
+        26.0
         CACHE STRING
-        "Minimum macOS version the build will be able to run on"
+        "Minimum macOS version the build will be able to run on (Migx: 26+)"
       )
       set(CMAKE_OSX_ARCHITECTURES arm64 CACHE STRING "The target architecture")
       set(
@@ -481,41 +481,45 @@ elseif(APPLE)
         "The target system processor"
       )
     else()
-      if(QT6)
-        # Minimum macOS version supported by Qt 6.5
-        set(
-          CMAKE_OSX_DEPLOYMENT_TARGET
-          11.0
-          CACHE STRING
-          "Minimum macOS version the build will be able to run on"
-        )
-      else()
-        # Minimum macOS version supported by Qt 5.12
-        set(
-          CMAKE_OSX_DEPLOYMENT_TARGET
-          10.12
-          CACHE STRING
-          "Minimum macOS version the build will be able to run on"
-        )
-        # Needed for deployment target < 10.14
-        add_compile_options(-fno-aligned-allocation)
-      endif()
+      message(
+        FATAL_ERROR
+        "Migx supports Apple Silicon (arm64) only — not Intel/x86_64 macOS. See ADR-006."
+      )
     endif()
   elseif(VCPKG_TARGET_TRIPLET MATCHES "^[a-zA-Z0-9]+-ios")
-    message(STATUS "Targeting iOS (${VCPKG_TARGET_TRIPLET})")
-    set(CMAKE_SYSTEM_NAME iOS CACHE STRING "Target iOS")
-    set(
-      CMAKE_OSX_DEPLOYMENT_TARGET
-      14.0
-      CACHE STRING
-      "Minimum iOS version to target"
+    message(
+      FATAL_ERROR
+      "Migx does not ship for iOS/iPadOS yet (ADR-006: macOS 26+ Apple Silicon only)."
     )
   else()
     message(
       WARNING
-      "Targeting an Apple platform, but VCPKG_TARGET_TRIPLET is not set. This is not a supported scenario!"
+      "Targeting an Apple platform, but VCPKG_TARGET_TRIPLET is not set. Migx expects arm64-osx (ADR-006)."
     )
   endif()
+endif()
+
+# Migx product floor without vcpkg triplet path (host Darwin configure)
+if(APPLE AND NOT IOS)
+  if(NOT CMAKE_OSX_ARCHITECTURES)
+    set(CMAKE_OSX_ARCHITECTURES arm64 CACHE STRING "The target architecture" FORCE)
+  endif()
+  if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64|i386")
+    message(
+      FATAL_ERROR
+      "Migx supports Apple Silicon (arm64) only — refuse x86_64/Rosetta. See ADR-006."
+    )
+  endif()
+  if(NOT CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "26.0")
+    set(
+      CMAKE_OSX_DEPLOYMENT_TARGET
+      26.0
+      CACHE STRING
+      "Minimum macOS version (Migx: 26+)"
+      FORCE
+    )
+  endif()
+  message(STATUS "Migx platform floor: macOS ${CMAKE_OSX_DEPLOYMENT_TARGET}+ / ${CMAKE_OSX_ARCHITECTURES} (ADR-006)")
 endif()
 
 project(mixxx VERSION 2.7.0 LANGUAGES C CXX)

@@ -13,6 +13,11 @@ pre-commit setup, Git workflow, and pull request guidelines.
 The three rules above are the **house physics** — the load-bearing invariants a change must never
 break. They are stated once here; the harness below cites them, never restates them.
 
+## Platform (hard floor)
+
+**macOS 26.\*+ on Apple Silicon (arm64) only.** No Intel, no Rosetta, no Windows/Linux shipping
+target. Decision: [`kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md`](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md).
+
 ## Project Layout
 
 ```text

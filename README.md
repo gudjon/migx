@@ -4,11 +4,12 @@
 
 Migx is an **AI-DJing** instrument: decks, library, controllers, and a real-time audio engine that an
 agent can *read and shape*. Same muscle memory DJs expect, built for a different destiny: **Cursor for
-music**. Migx is free software under the GNU GPL v2 (see `LICENSE` and `NOTICE`).
+music**.
 
 | | |
 |---|---|
-| **Platforms** | macOS (Apple Silicon) now · **iPad** next · Windows later · Linux only-if-embedded ([ADR-006](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md)) |
+| **Platform** | **macOS 26.\*+ on Apple Silicon only** (arm64) — [ADR-006](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md) |
+| **Not supported** | Intel Mac · Rosetta · Windows · Linux desktop · iOS/iPadOS (no shipping target) |
 | **North star** | Blazingly fast on M4/M5 — zero underruns while co-pilot is live |
 | **Home** | Early public on this repo → later [agora](https://github.com/orgs/agora) |
 
@@ -97,17 +98,21 @@ initiatives under [`kanban/initiatives/`](kanban/initiatives/).
 
 ---
 
-## Build (Apple Silicon first)
+## Build (macOS 26+ · Apple Silicon only)
 
-Full guide: [CONTRIBUTING.md](CONTRIBUTING.md) · M4 runbook:
-[`kanban/runbooks/build-setup-macos-m4.md`](kanban/runbooks/build-setup-macos-m4.md).
+**Requires:** macOS **26.0 or later**, **Apple Silicon** Mac (M1+; M4/M5 preferred). No Intel, no Rosetta.
+
+Full guide: [CONTRIBUTING.md](CONTRIBUTING.md) · runbook:
+[`kanban/runbooks/build-setup-macos-m4.md`](kanban/runbooks/build-setup-macos-m4.md).  
+Platform decision: [ADR-006](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md).
 
 ```shell
 source tools/macos_buildenv.sh setup
 cmake -S . -B build -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$MIXXX_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -DCMAKE_OSX_ARCHITECTURES=arm64
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
 cmake --build build --parallel
 ```
 

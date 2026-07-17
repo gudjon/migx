@@ -26,6 +26,7 @@ makes deltas between machines incomparable. The flags are part of the measuremen
 pinned.
 
 ## How to apply
+- Product floor is **macOS 26+ Apple Silicon only** (`ADR-006`); set `CMAKE_OSX_DEPLOYMENT_TARGET=26.0`.
 - Configure CMake for `arm64` explicitly (e.g. `CMAKE_OSX_ARCHITECTURES=arm64`); confirm the binary is
   not translated (`arch`/`file` on the artifact, not "running under Rosetta").
 - Enable CPU tuning appropriate to the target (an `-mcpu`/`-mtune` for the Apple core family) in the
