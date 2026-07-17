@@ -215,6 +215,7 @@ Scout mandate: [`roles/grok-signal.md`](roles/grok-signal.md).
 ./kanban/scripts/migx-fed list [--to SIDE] [--status open|ack|closed|all]
 ./kanban/scripts/migx-fed poll --to SIDE          # print open messages for SIDE
 ./kanban/scripts/migx-fed listen --to SIDE        # periodically poll open messages
+./kanban/scripts/migx-fed harness --to SIDE       # periodically sync + audit + poll
 ./kanban/scripts/migx-fed send \
   --from grok-signal --to claude-code \
   --type signal-handoff --subject music-wm-papers \
@@ -267,7 +268,7 @@ you want a nonzero exit for stale-state gates.
 ### Codex CLI (`codex-cli`) — every verification / harness session
 
 ```text
-1. migx-fed sync, then audit, then poll --to codex-cli, or run migx-fed listen --to codex-cli for long harness mode
+1. migx-fed sync, then audit, then poll --to codex-cli, or run migx-fed harness --to codex-cli for long harness mode
 2. Map repo state, active dossiers, dirty files, and ownership before proposing edits
 3. Trace code paths and verify claims with grep, tests, benches, browser/tooling, or local scripts
 4. Claim harness/docs/tooling lanes before mutating them

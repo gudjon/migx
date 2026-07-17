@@ -66,10 +66,11 @@ migx-fed sync
 For long harness mode, use the read-only listener:
 
 ```bash
-./kanban/scripts/migx-fed listen --to codex-cli --interval 900
+./kanban/scripts/migx-fed harness --to codex-cli --interval 900
 ```
 
-Listening is not claiming. Only run `ack` when Codex is taking the message now.
+Harness listening is not claiming. It runs sync, audit, and poll each cycle. Only run `ack` when
+Codex is taking the message now.
 
 ## Identity
 ```bash

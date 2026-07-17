@@ -47,20 +47,29 @@ export MIGX_REPO_ROOT="$(git rev-parse --show-toplevel)"
 ## Mode A - Passive inbox listener
 
 Use this when Codex should keep an eye on peer mail while Claude or Grok are doing
-their primary loops.
+their primary loops. This is the recommended long harness mode because every cycle performs
+`sync`, `audit`, then `poll` without acking or mutating mail.
 
 ```bash
-./kanban/scripts/migx-fed listen --to codex-cli --interval 900
+./kanban/scripts/migx-fed harness --to codex-cli --interval 900
 ```
 
 For a bounded smoke test:
 
 ```bash
-./kanban/scripts/migx-fed listen --to codex-cli --interval 1 --cycles 1
+./kanban/scripts/migx-fed harness --to codex-cli --interval 1 --cycles 1
 ```
 
-`listen` is read-only. It prints open mail and exits only when `--cycles` is reached or the operator
-presses Ctrl-C. It does **not** move messages to `ack`.
+`harness` is read-only. It prints federation sync, audit, and open mail, then exits only when
+`--cycles` is reached or the operator presses Ctrl-C. It does **not** move messages to `ack`.
+Use `--stop-on-audit-issue` for CI-like behavior; omit it for a resilient long-running watch.
+
+`just` shortcuts:
+
+```bash
+just fed-harness SIDE=codex-cli INTERVAL=900
+just fed-harness-smoke SIDE=codex-cli
+```
 
 ---
 

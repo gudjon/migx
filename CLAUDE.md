@@ -72,6 +72,7 @@ worktrees, dirty sync paths, and generated sidecar artifacts. For mutating multi
 write a narrow `migx-fed claim` and release it when done. Then `just fleet` / `just fleet-drain` ranks open mail and runs Codex
 seal drains. Model routing SSoT: `kanban/knowledge/fleet-operating-model.md` (Claude = implement;
 Codex = P-08; Grok = X). Antigravity re-enable path: `AGY.md` + `peers.yaml`.
+Codex long harness: `just fed-harness SIDE=codex-cli INTERVAL=900`.
 
 ## Extending the harness
 Which primitive (subagent / skill / workflow / `/loop` / `/schedule`) → `kanban/playbook/03`. Skill/agent/

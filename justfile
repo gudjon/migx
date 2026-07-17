@@ -90,13 +90,23 @@ fed-sync:
 fed-sync-json:
     ./kanban/scripts/migx-fed sync --json
 
+fed-audit:
+    ./kanban/scripts/migx-fed audit
+
 # Usage: just fed-poll SIDE=codex-cli
 fed-poll SIDE:
-    ./kanban/scripts/migx-fed poll --to {{SIDE}}
+    @side="{{SIDE}}"; side="${side#SIDE=}"; ./kanban/scripts/migx-fed poll --to "$side"
 
 # Codex long listener (Ctrl-C to stop). Usage: just fed-listen SIDE=codex-cli INTERVAL=900
 fed-listen SIDE INTERVAL="900":
-    ./kanban/scripts/migx-fed listen --to {{SIDE}} --interval {{INTERVAL}}
+    @side="{{SIDE}}"; side="${side#SIDE=}"; interval="{{INTERVAL}}"; interval="${interval#INTERVAL=}"; ./kanban/scripts/migx-fed listen --to "$side" --interval "$interval"
+
+# Long federation harness: sync + audit + poll every interval.
+fed-harness SIDE="codex-cli" INTERVAL="900":
+    @side="{{SIDE}}"; side="${side#SIDE=}"; interval="{{INTERVAL}}"; interval="${interval#INTERVAL=}"; ./kanban/scripts/migx-fed harness --to "$side" --interval "$interval"
+
+fed-harness-smoke SIDE="codex-cli":
+    @side="{{SIDE}}"; side="${side#SIDE=}"; ./kanban/scripts/migx-fed harness --to "$side" --interval 1 --cycles 1
 
 # Design-token bridge (DUI)
 theme-check:

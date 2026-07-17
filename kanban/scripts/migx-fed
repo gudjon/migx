@@ -1120,6 +1120,65 @@ def cmd_listen(root: Path, to: str, interval: int, cycles: int) -> int:
         return 0
 
 
+def cmd_harness(
+    root: Path,
+    to: str,
+    interval: int,
+    cycles: int,
+    open_hours: int,
+    ack_hours: int,
+    stop_on_audit_issue: bool,
+) -> int:
+    if to not in ACTIVE_SIDES:
+        if to in KNOWN_SIDES:
+            print(f"side is inactive: {to}", file=sys.stderr)
+        else:
+            print(f"unknown side: {to}", file=sys.stderr)
+        return 2
+    if interval < 1:
+        print("--interval must be >= 1 second", file=sys.stderr)
+        return 2
+    if cycles < 0:
+        print("--cycles must be >= 0 (0 means forever)", file=sys.stderr)
+        return 2
+    if open_hours < 1 or ack_hours < 1:
+        print("--open-hours and --ack-hours must be >= 1", file=sys.stderr)
+        return 2
+
+    limit = "forever" if cycles == 0 else str(cycles)
+    print(
+        f"running federation harness for {to} every {interval}s "
+        f"(cycles={limit}; Ctrl-C to stop)"
+    )
+    n = 0
+    try:
+        while True:
+            n += 1
+            stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            print(f"\n=== {stamp} harness cycle {n} for {to}: sync ===\n", flush=True)
+            cmd_sync(root, False)
+            print(f"\n=== {stamp} harness cycle {n} for {to}: audit ===\n", flush=True)
+            audit_rc = cmd_audit(
+                root,
+                open_hours,
+                ack_hours,
+                False,
+                stop_on_audit_issue,
+            )
+            print(f"\n=== {stamp} harness cycle {n} for {to}: poll ===\n", flush=True)
+            cmd_poll(root, to)
+            if stop_on_audit_issue and audit_rc:
+                print("\nharness stopped: audit issue detected")
+                return audit_rc
+            if cycles and n >= cycles:
+                return 0
+            print(f"\n=== sleeping {interval}s before next harness cycle ===", flush=True)
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nharness stopped")
+        return 0
+
+
 def next_seq(root: Path, from_side: str, to_side: str, day: str) -> str:
     prefix = f"{from_side}-{to_side}-{day}-"
     n = 0
@@ -1533,6 +1592,43 @@ def main(argv: list[str] | None = None) -> int:
         help="number of poll cycles before exiting; 0 means forever",
     )
 
+    p_harness = sub.add_parser("harness", help="periodically run sync, audit, and poll")
+    p_harness.add_argument(
+        "--to",
+        default=os.environ.get("MIGX_FED_SIDE"),
+        choices=ACTIVE_SIDES,
+        help="receiver side (default: MIGX_FED_SIDE)",
+    )
+    p_harness.add_argument(
+        "--interval",
+        type=int,
+        default=900,
+        help="seconds between cycles (default: 900)",
+    )
+    p_harness.add_argument(
+        "--cycles",
+        type=int,
+        default=0,
+        help="number of cycles before exiting; 0 means forever",
+    )
+    p_harness.add_argument(
+        "--open-hours",
+        type=int,
+        default=AUDIT_DEFAULT_OPEN_HOURS,
+        help=f"open message stale threshold (default: {AUDIT_DEFAULT_OPEN_HOURS})",
+    )
+    p_harness.add_argument(
+        "--ack-hours",
+        type=int,
+        default=AUDIT_DEFAULT_ACK_HOURS,
+        help=f"ack message stale threshold (default: {AUDIT_DEFAULT_ACK_HOURS})",
+    )
+    p_harness.add_argument(
+        "--stop-on-audit-issue",
+        action="store_true",
+        help="exit nonzero if audit reports stale federation state",
+    )
+
     p_send = sub.add_parser("send", help="write a new open message")
     p_send.add_argument("--from", dest="from_side", required=True, choices=ACTIVE_SIDES)
     p_send.add_argument("--to", dest="to_side", required=True, choices=ACTIVE_SIDES)
@@ -1591,6 +1687,19 @@ def main(argv: list[str] | None = None) -> int:
             print("listen requires --to or MIGX_FED_SIDE", file=sys.stderr)
             return 2
         return cmd_listen(root, args.to, args.interval, args.cycles)
+    if args.cmd == "harness":
+        if not args.to:
+            print("harness requires --to or MIGX_FED_SIDE", file=sys.stderr)
+            return 2
+        return cmd_harness(
+            root,
+            args.to,
+            args.interval,
+            args.cycles,
+            args.open_hours,
+            args.ack_hours,
+            args.stop_on_audit_issue,
+        )
     if args.cmd == "send":
         return cmd_send(
             root,
