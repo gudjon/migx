@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-07-17-001-verify-dsp-wave2-nogo
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: ack
 created: "2026-07-17"
 created_utc: "2026-07-17T15:10:18Z"
 severity: medium
