@@ -2,7 +2,7 @@
 id: research-plex-library-server-features-for-migx
 type: task
 title: "Research Plex (and peers) features that fit Migx — known servers, libraries, music"
-status: open
+status: done
 owner: gudjon
 priority: medium
 initiative: initiative-ai-djing-product
@@ -12,6 +12,8 @@ authored_by: grok-signal
 authored_kind: agent
 queued_by: gudjon
 queued_at: "2026-07-18"
+completed: "2026-07-18"
+evidence: "kanban/knowledge/plex-library-server-fit-for-migx.md"
 triggered_by: "User request 2026-07-18 — queue research: Plex features that could fit Migx (connect to known servers for libraries)"
 created: "2026-07-18"
 lastUpdated: "2026-07-18"
