@@ -8,8 +8,7 @@ music**. Migx is free software under the GNU GPL v2 (see `LICENSE` and `NOTICE`)
 
 | | |
 |---|---|
-| **Author** | Gudjon Mar Gudjonsson (OZ) |
-| **Platforms** | macOS (Apple Silicon first), Linux, Windows |
+| **Platforms** | macOS (Apple Silicon) now · **iPad** next · Windows later · Linux only-if-embedded ([ADR-006](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md)) |
 | **North star** | Blazingly fast on M4/M5 — zero underruns while co-pilot is live |
 | **Home** | Early public on this repo → later [agora](https://github.com/orgs/agora) |
 
@@ -177,6 +176,7 @@ transport, green for active, red for danger. Tokens are SSoT in
 | [ADR-003](kanban/architecture/decisions/ADR-003-licensing-and-openness.md) | MIT operating model |
 | [ADR-004](kanban/architecture/decisions/ADR-004-ui-stack-qml-vs-rive-vs-react.md) | QML-primary UI |
 | [ADR-005](kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md) | Layers A/B/C |
+| [ADR-006](kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md) | Apple Silicon first |
 | [initiative-apple-silicon](kanban/initiatives/initiative-apple-silicon.md) | Perf trust |
 | [initiative-ai-djing-product](kanban/initiatives/initiative-ai-djing-product.md) | Product umbrella |
 | [world-model / EXO](kanban/knowledge/world-model-experience-ontology.md) | Music as graph |
