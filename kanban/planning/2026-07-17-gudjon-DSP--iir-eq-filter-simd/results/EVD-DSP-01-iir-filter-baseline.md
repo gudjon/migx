@@ -33,6 +33,29 @@ lower-priority bottleneck than the render path — enter Wave 2 only after confi
 cost (all bands × decks) is worth vectorizing, or deprioritize in favor of MTL. This is exactly the
 "is the problem real?" gate (P-03/MG-1) — and the honest answer here is "real but small per-instance."
 
+## Aggregate EQ chain — the go/no-go answer (`BM_EngineFilterFullEqChain`)
+The default deck EQ (`BiquadFullKillEQEffect`) worst case = **8 IIR filters** per channel (2 Bessel4
+iso crossovers + 3 peaking boosts + low-shelf/mid-peak/high-shelf kills), all engaged. Measured per
+23.22 ms buffer, two runs:
+
+| | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| run 1 | 23.79 | 26.33 | **31.79** | 122.5 |
+| run 2 | 25.83 | 26.25 | **31.54** | 171.7 |
+
+**Scaled to the RT budget:**
+- 1 deck, full EQ engaged: 31.8 µs / 23220 µs = **0.14%** of the buffer.
+- **4 decks, all full EQ engaged: ~127 µs = ~0.55%** of the buffer period.
+
+## Verdict — DSP Wave 2 is a NO-GO (halt with evidence, not green-over-red)
+Even the absolute worst case (4 decks × every EQ band) is **~0.5% of the audio budget**. A vDSP/NEON
+rewrite might roughly halve the filter cost → a **~0.3% absolute** saving, bought at the cost of a
+SIMD rewrite on the RT callback (allocation/numerical-drift risk, `P-02`/tolerance gates). The
+cost/benefit does not justify it. **Recommendation: do NOT execute DSP Wave 2 (EQ filters); the render
+path (MTL) is the materially better Apple-Silicon bet** — which matches the initiative hypothesis
+(portable *render* left more on the table than portable *DSP*). If a DSP lane is revisited, profile the
+resampler / analysis paths first, not the EQ IIR filters.
+
 ## Wave-1 gate status
 - ✅ `BM_EngineFilter{BiquadPeaking,Butterworth8Low}` added, builds, arm64-native, reproducible.
 - ✅ `EngineFilterBiquadTest` (+ engine filter tests) green — no correctness regression from the change.
