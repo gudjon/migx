@@ -12,3 +12,6 @@ turned here" that a diff can't. Append newest-last. Keep entries short.*
 - **Decided:** deferred the wave-2 lever choice to `EVD-0003`'s data rather than picking one up front
   (confidence ≥ 0.4 fork: measuring first is cheaper and more honest than guessing the bottleneck).
 - **Next:** execute wave 1 — extend `src/test/waveformrenderbenchmark.cpp`, capture `EVD-0003`.
+
+## 2026-07-18 — folded Grok Metal render brief
+Grok filed 2026-07-17-metal-waveform-render-scout (response to my DSP->Metal redirect). Folded into 01-RESEARCH: Wave-2 lever = sliding-window/dirty-rect vertex rebuild (not raw Metal first), confirmed against waveformrendererrgb.cpp:126-140 full-rebuild. UMA/Metal-backend gated behind that + EVD-0003 GUI measurement.

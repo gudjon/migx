@@ -46,3 +46,26 @@ SHA. Every later wave-2 delta measures against this number, never a moving `main
    linearly (expected, since each deck is an independent `BaseGeometryNode`), and if so at what deck
    count does the combined regime start contending with the frame budget? Flagged for a follow-on
    dossier if `EVD-0003` shows headroom is tight even at N=1.
+
+## Wave-2 lever candidates (folded from Grok signal `2026-07-17-metal-waveform-render-scout`)
+Field brief (`kanban/federation/signal/2026-07-17-metal-waveform-render-scout.md`, triggered by the
+DSP→Metal redirect) sharpens the Wave-2 direction, gated on `EVD-0003` still confirming the cost is
+real:
+
+1. **The lever is "stop rebuilding the whole buffer," not "use Metal."** Confirmed opportunity:
+   `preprocessInner()` (`src/waveform/renderers/allshader/waveformrendererrgb.cpp:126-140`) calls
+   `geometry().allocate(reserved); markDirtyGeometry();` then rebuilds **every** vertex in a
+   `for (pos < pixelLength)` loop each frame. When scrubbing, the window slides by a small delta, so
+   most columns are unchanged/shifted → a **sliding-window / dirty-rect rebuild** (rebuild only the
+   newly-exposed columns, shift the rest) would cut both the CPU rebuild *and* the mandatory re-upload.
+   This is the first lever to try — **before** any raw Metal API work.
+2. **Unified memory (P-22).** Persistent GPU-visible / shared-storage mapping via the Qt RHI Metal
+   backend could avoid the orphan+upload copy entirely on Apple Silicon — but TBDR (tile-based deferred)
+   still *punishes* CPU-driven full-VB rewrites, so UMA does not remove the need for lever 1.
+3. **Offscreen Metal is still gated** (`coreservices` forces OpenGL offscreen) — so a Metal-backend
+   spike must keep offscreen render parity green before flipping any default, and the `EVD-0003`
+   GUI-attached measurement remains the honest gate (P-21: GPU never gates the audio deadline).
+
+Sequence: complete `EVD-0003` (GUI) → if the combined cost is material, implement lever 1
+(sliding-window rebuild) → measure → only then consider UMA/Metal-backend spikes. If `EVD-0003` shows
+headroom, halt honestly (open question 2).
