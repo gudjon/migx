@@ -22,6 +22,10 @@ The load-bearing axis is the **real-time boundary**, not deployment — every ca
 because the two ways a change silently breaks Migx are (1) violating the audio deadline and (2)
 botching Qt ownership.
 
+**Platform floor:** macOS **26.\*+** · Apple Silicon only ([ADR-006](decisions/ADR-006-platform-scope-apple-silicon.md)).  
+**Refactor map (feature-preserving Apple-native waves):**  
+[`kanban/knowledge/architecture-apple-silicon-macos26-refactor-map.md`](../knowledge/architecture-apple-silicon-macos26-refactor-map.md).
+
 - Cards: `ddd/bounded-contexts/<id>.md` (template: `_TEMPLATE.md`)
 - Seam docs: `ddd/boundaries/<slug>.md`
 - Context-relationship narrative: `ddd/context-map.md`
