@@ -28,9 +28,9 @@ it starves the cross-dossier learning loop.
 | | |
 |---|---|
 | **Definition-of-Done met?** | partial |
-| **Criteria green** | PS-FSL-01 additive export recorded green; Wave 2 hardening remains open |
+| **Criteria green** | PS-FSL-01 additive export recorded green; Wave 2 source hardening present but verification remains open |
 | **Headline number** | Prior verifier note: arm64 build plus 95/95 library/track/dao tests |
-| **One next action** | Gate sidecar export to only-on-change and add classified logging |
+| **One next action** | Run focused library/dao verification for the current sidecar hardening pass |
 | **Do NOT trust** | The folder owner name; Antigravity is paused and current DRI is `claude-code` |
 
 ## Retrospective — five passes
@@ -83,7 +83,7 @@ Each durable learning re-homes into the living layer *now*:
 
 ## Next bet + follow-on tasks
 
-- `kanban/tasks/fsl-sidecar-export-hardening.md`
+- `kanban/tasks/fsl-sidecar-export-hardening.md` — source hardening present; verification gate still open.
 
 ## Closure metrics (auto-derived where possible)
 

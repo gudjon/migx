@@ -7,7 +7,7 @@ title: "Filesystem sidecar spike — additive DB→Song.migx/ export"
 classification: A
 phase: execution
 sealed: false
-status_note: "Wave-1 slice landed + verified: TrackDAO::saveTrack() exports <track>.migx/track.json (bpm/key/replaygain). Builds, 95 library tests pass. Follow-on: gate export to only-on-change."
+status_note: "Wave-1 slice landed; current tree includes Codex source hardening for only-on-change sidecar writes + classified logging. Claude Code owns focused verification before seal."
 completion-criteria:
   - "TrackDAO writes an additive per-track sidecar (Song.migx/track.json) on save, without removing the DB."
   - "Builds arm64 + library/track/dao tests pass (no regression)."
@@ -46,9 +46,8 @@ mixxx-lib+mixxx-test build arm64, **95/95 library/track/dao tests pass**.
 | Score / seal | `91-LOOP-CLOSURE/00-LOOP-CLOSURE.md` |
 
 ## Follow-on (before seal)
-- Export currently fires on **every** `saveTrack()` — gate it to only-on-change (avoid redundant file I/O).
+- Focused library/dao build/test verification for the current source-hardening pass.
 - Extend the sidecar with the EXO `ontology.json` (sections/energy/graph) once the analyzers exist.
-- Error handling: `exportToSidecar` silently returns on open failure — add a classified log (`P-34`).
 
 ## The closed loop (MG-1)
 Trigger: a track save. Capture: `<track>.migx/track.json`. Intelligence: the sidecar is the agent-legible

@@ -14,3 +14,13 @@
 - **Decided:** Preserve historical `antigravity-cli` folder name and `authored_by`; current DRI is
   `claude-code`.
 - **Next:** Execute `kanban/tasks/fsl-sidecar-export-hardening.md`.
+
+## 2026-07-17 — Codex source hardening pass
+- **Did:** Hardened `TrackDAO::exportToSidecar()` to skip unchanged `track.json` content, classify
+  directory/read/open/write/commit failures through `kLogger.warning()`, and use `QSaveFile` for atomic
+  sidecar writes.
+- **Measured:** Source inspection in the current tree confirms the hardening path. Compile/test is
+  intentionally left to the active Claude Code build lane.
+- **Decided:** Do not seal FSL from Codex alone; Claude owns the focused library/dao verification gate.
+- **Next:** Claude runs focused build/tests, records exact commands here, then seals or names the
+  successor honestly.

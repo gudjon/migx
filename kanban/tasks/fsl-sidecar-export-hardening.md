@@ -22,15 +22,18 @@ acceptance: |
 # Harden FSL Sidecar Export
 
 Current state: FSL Wave 1 records an additive `<track-location>.migx/track.json` export from
-`TrackDAO::saveTrack()`. The remaining work is hardening, not initial design.
+`TrackDAO::saveTrack()`. A Codex source pass is present in the current tree: `exportToSidecar()`
+skips unchanged sidecars, logs directory/read/open/write/commit failures, and writes through
+`QSaveFile`. The remaining gate is focused verification and closure, not re-implementing the
+source hardening.
 
 ## Required
 
-1. Gate export to only-on-change or content-diff so repeated `saveTrack()` calls do not cause redundant
+1. [x] Gate export to only-on-change or content-diff so repeated `saveTrack()` calls do not cause redundant
    file I/O.
-2. Add classified logging for sidecar directory/open/write failure (`P-34`).
-3. Run focused library/dao checks and record commands in the FSL JOURNAL.
-4. Update `91-LOOP-CLOSURE` honestly: seal only if the hardening gate is green, otherwise name the
+2. [x] Add classified logging for sidecar directory/open/write failure (`P-34`).
+3. [ ] Run focused library/dao checks and record commands in the FSL JOURNAL.
+4. [ ] Update `91-LOOP-CLOSURE` honestly: seal only if the hardening gate is green, otherwise name the
    successor.
 
 ## Boundaries
