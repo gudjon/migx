@@ -207,6 +207,7 @@ Scout mandate: [`roles/grok-signal.md`](roles/grok-signal.md).
 ```bash
 # from repo root (or any worktree of this repo)
 ./kanban/scripts/migx-fed doctor
+./kanban/scripts/migx-fed audit [--open-hours N] [--ack-hours N] [--strict] [--json]
 ./kanban/scripts/migx-fed sync                         # shared peer/mail/worktree snapshot
 ./kanban/scripts/migx-fed claims [--status active|closed|all]
 ./kanban/scripts/migx-fed claim --by SIDE --subject short-lane --paths path [path ...] [--force]
@@ -232,35 +233,41 @@ export MIGX_REPO_ROOT=/Users/gudjon/code/migx
 
 `fed --help` equivalent: `./kanban/scripts/migx-fed --help`.
 
+`doctor` checks structure/schema. `audit` checks operational drift: expired active claims, live claim
+collisions, old open/ack messages, and open/ack messages with missing timestamps. Use `--strict` when
+you want a nonzero exit for stale-state gates.
+
 ## Session loop (each peer)
 
 ### Grok (`grok-signal`) — every scout session
 
 ```text
 0. migx-fed sync                           # shared queue/worktree/dirty snapshot
-1. migx-fed poll --to grok-signal          # research-requests from Claude
-2. Scout X/web on mandate topics (role charter)
-3. Write signal/YYYY-MM-DD-*.md for durable intel
-4. If actionable → migx-fed send signal-handoff → claude-code
-5. Commit federation paths; push/merge so Claude can pull
+1. migx-fed audit                          # stale handoffs/claims
+2. migx-fed poll --to grok-signal          # research-requests from Claude
+3. Scout X/web on mandate topics (role charter)
+4. Write signal/YYYY-MM-DD-*.md for durable intel
+5. If actionable → migx-fed send signal-handoff → claude-code
+6. Commit federation paths; push/merge so Claude can pull
 ```
 
 ### Claude Code (`claude-code`) — every coding session start
 
 ```text
 0. migx-fed sync                           # shared queue/worktree/dirty snapshot
-1. migx-fed poll --to claude-code          # open handoffs
-2. For each open: triage → ack OR close-as-wontfix with reason
-3. Claim any mutating dossier/source lane before heavy coding
-4. Do heavy coding on owned dossiers (MTL, engine, ...)
-5. When stuck on "what's out there?": send research-request → grok-signal
-6. On handoff done: release claim and close with Resolution (paths/SHAs/tasks)
+1. migx-fed audit                          # stale handoffs/claims
+2. migx-fed poll --to claude-code          # open handoffs
+3. For each open: triage → ack OR close-as-wontfix with reason
+4. Claim any mutating dossier/source lane before heavy coding
+5. Do heavy coding on owned dossiers (MTL, engine, ...)
+6. When stuck on "what's out there?": send research-request → grok-signal
+7. On handoff done: release claim and close with Resolution (paths/SHAs/tasks)
 ```
 
 ### Codex CLI (`codex-cli`) — every verification / harness session
 
 ```text
-1. migx-fed sync, then poll --to codex-cli, or run migx-fed listen --to codex-cli for long harness mode
+1. migx-fed sync, then audit, then poll --to codex-cli, or run migx-fed listen --to codex-cli for long harness mode
 2. Map repo state, active dossiers, dirty files, and ownership before proposing edits
 3. Trace code paths and verify claims with grep, tests, benches, browser/tooling, or local scripts
 4. Claim harness/docs/tooling lanes before mutating them

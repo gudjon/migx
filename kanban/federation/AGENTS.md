@@ -57,6 +57,7 @@ open mail there. Protocol SSoT: [`FEDERATION.md`](FEDERATION.md). Do not invent 
 ```bash
 ./kanban/scripts/migx-fed doctor
 ./kanban/scripts/migx-fed sync
+./kanban/scripts/migx-fed audit
 ./kanban/scripts/migx-fed claims
 ./kanban/scripts/migx-fed claim --by "$MIGX_FED_SIDE" --subject short-lane --paths path
 ./kanban/scripts/migx-fed poll --to "$MIGX_FED_SIDE"

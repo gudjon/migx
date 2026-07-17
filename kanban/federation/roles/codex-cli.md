@@ -52,6 +52,7 @@ leave a precise artifact: a map, finding, patch, verifier, or coordination messa
 ## Session loop
 ```text
 migx-fed sync
+-> migx-fed audit
 -> migx-fed poll --to codex-cli
 -> inspect git status and active dossiers
 -> claim a narrow lane before mutating harness/docs/tooling

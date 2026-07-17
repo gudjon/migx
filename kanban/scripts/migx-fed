@@ -36,6 +36,8 @@ VALID_SEVERITY = ("low", "medium", "high", "blocker")
 STATUS_DIRS = ("open", "ack", "closed")
 CLAIM_STATUS_DIRS = ("active", "closed")
 CLAIM_DEFAULT_TTL_HOURS = 12
+AUDIT_DEFAULT_OPEN_HOURS = 24
+AUDIT_DEFAULT_ACK_HOURS = 4
 REQUIRED_BODY_SECTIONS = ("## Intent", "## Context", "## Evidence", "## Requested Action", "## Blockers")
 SYNC_STATUS_PATHS = (
     ".gitignore",
@@ -301,6 +303,28 @@ def claim_expired(fm: dict[str, str], now: dt.datetime | None = None) -> bool:
         return False
     now = now or dt.datetime.now(dt.timezone.utc)
     return expires < now
+
+
+def hours_since(stamp: str, now: dt.datetime | None = None) -> float | None:
+    parsed = parse_utc(stamp)
+    if not parsed:
+        return None
+    now = now or dt.datetime.now(dt.timezone.utc)
+    return max(0.0, (now - parsed).total_seconds() / 3600)
+
+
+def message_row(root: Path, p: Path, st: str, fm: dict[str, str]) -> dict[str, object]:
+    return {
+        "id": fm.get("id", p.stem),
+        "from": fm.get("from", "?"),
+        "to": fm.get("to", "?"),
+        "type": fm.get("type", "?"),
+        "severity": fm.get("severity", "?"),
+        "status": st,
+        "subject": fm.get("subject", ""),
+        "created_utc": fm.get("created_utc", ""),
+        "path": str(p.relative_to(root)),
+    }
 
 
 def claim_row(root: Path, p: Path, st: str, fm: dict[str, str]) -> dict[str, object]:
@@ -636,6 +660,134 @@ def cmd_claims(root: Path, status: str) -> int:
         print(f"         {path_preview}")
         print(f"         {row['file']}")
     return 0
+
+
+def build_audit_payload(
+    root: Path,
+    open_hours: int,
+    ack_hours: int,
+) -> dict[str, object]:
+    now = dt.datetime.now(dt.timezone.utc)
+    active_claims = [
+        claim_row(root, p, st, fm)
+        for p, st, fm in list_claims(root, "active")
+    ]
+    expired_claims = [row for row in active_claims if row.get("expired")]
+    stale_messages: list[dict[str, object]] = []
+    undated_messages: list[dict[str, object]] = []
+
+    for p, st, fm in list_messages(root, None, "all"):
+        if st not in ("open", "ack"):
+            continue
+        row = message_row(root, p, st, fm)
+        age = hours_since(str(row.get("created_utc", "")), now)
+        threshold = open_hours if st == "open" else ack_hours
+        row["age_hours"] = round(age, 2) if age is not None else None
+        row["threshold_hours"] = threshold
+        if age is None:
+            undated_messages.append(row)
+        elif age >= threshold:
+            stale_messages.append(row)
+
+    claim_collisions = find_claim_collisions(active_claims)
+    issue_count = len(expired_claims) + len(stale_messages) + len(undated_messages) + len(claim_collisions)
+    return {
+        "generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "root": str(root),
+        "thresholds": {
+            "open_hours": open_hours,
+            "ack_hours": ack_hours,
+        },
+        "issue_count": issue_count,
+        "expired_claims": expired_claims,
+        "stale_messages": stale_messages,
+        "undated_messages": undated_messages,
+        "claim_collisions": claim_collisions,
+    }
+
+
+def print_audit(payload: dict[str, object]) -> None:
+    print(f"# Migx federation audit @ {payload['generated_utc']}")
+    print(f"root: {payload['root']}")
+    thresholds = payload["thresholds"]
+    assert isinstance(thresholds, dict)
+    print(
+        "thresholds: "
+        f"open>={thresholds.get('open_hours')}h "
+        f"ack>={thresholds.get('ack_hours')}h"
+    )
+
+    expired_claims = payload["expired_claims"]
+    assert isinstance(expired_claims, list)
+    print("\n## Expired Claims")
+    if not expired_claims:
+        print("(none)")
+    else:
+        for row in expired_claims:
+            print(f"- {row['owner']} {row['id']} expired={row.get('expires_utc', '')}")
+            print(f"  {row['file']}")
+
+    stale_messages = payload["stale_messages"]
+    assert isinstance(stale_messages, list)
+    print("\n## Stale Open/Ack Messages")
+    if not stale_messages:
+        print("(none)")
+    else:
+        for row in stale_messages:
+            print(
+                f"- [{row['status']}] {row['to']} <- {row['from']} {row['id']} "
+                f"age={row.get('age_hours')}h threshold={row.get('threshold_hours')}h"
+            )
+            print(f"  {row['path']}")
+
+    undated_messages = payload["undated_messages"]
+    assert isinstance(undated_messages, list)
+    print("\n## Undated Open/Ack Messages")
+    if not undated_messages:
+        print("(none)")
+    else:
+        for row in undated_messages:
+            print(f"- [{row['status']}] {row['id']} missing/invalid created_utc")
+            print(f"  {row['path']}")
+
+    claim_collisions = payload["claim_collisions"]
+    assert isinstance(claim_collisions, list)
+    print("\n## Claim Collisions")
+    if not claim_collisions:
+        print("(none)")
+    else:
+        for row in claim_collisions:
+            print(
+                f"- {row['left_owner']}:{row['left']} overlaps "
+                f"{row['right_owner']}:{row['right']}"
+            )
+            overlaps = row.get("overlaps", [])
+            assert isinstance(overlaps, list)
+            for overlap in overlaps[:6]:
+                print(f"  {overlap}")
+            if len(overlaps) > 6:
+                print(f"  ... {len(overlaps) - 6} more overlaps")
+
+    issue_count = payload["issue_count"]
+    print(f"\nissues: {issue_count}")
+
+
+def cmd_audit(
+    root: Path,
+    open_hours: int,
+    ack_hours: int,
+    json_mode: bool,
+    strict: bool,
+) -> int:
+    if open_hours < 1 or ack_hours < 1:
+        print("--open-hours and --ack-hours must be >= 1", file=sys.stderr)
+        return 2
+    payload = build_audit_payload(root, open_hours, ack_hours)
+    if json_mode:
+        print(json.dumps(payload, indent=2))
+    else:
+        print_audit(payload)
+    return 1 if strict and int(payload["issue_count"]) else 0
 
 
 def parse_worktree_porcelain(text: str) -> list[dict[str, str]]:
@@ -1306,6 +1458,22 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("doctor", help="check federation layout")
 
+    p_audit = sub.add_parser("audit", help="report stale federation state")
+    p_audit.add_argument(
+        "--open-hours",
+        type=int,
+        default=AUDIT_DEFAULT_OPEN_HOURS,
+        help=f"open message stale threshold (default: {AUDIT_DEFAULT_OPEN_HOURS})",
+    )
+    p_audit.add_argument(
+        "--ack-hours",
+        type=int,
+        default=AUDIT_DEFAULT_ACK_HOURS,
+        help=f"ack message stale threshold (default: {AUDIT_DEFAULT_ACK_HOURS})",
+    )
+    p_audit.add_argument("--json", action="store_true", help="machine-readable audit")
+    p_audit.add_argument("--strict", action="store_true", help="exit nonzero when issues exist")
+
     p_sync = sub.add_parser("sync", help="show shared peer/mail/worktree state")
     p_sync.add_argument("--json", action="store_true", help="machine-readable sync snapshot")
 
@@ -1393,6 +1561,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "doctor":
         return cmd_doctor(root)
+    if args.cmd == "audit":
+        return cmd_audit(root, args.open_hours, args.ack_hours, args.json, args.strict)
     if args.cmd == "sync":
         return cmd_sync(root, args.json)
     if args.cmd == "list":

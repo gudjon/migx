@@ -15,6 +15,7 @@ Claude Code loads `CLAUDE.md`; you load **this** + repo-root `AGENTS.md`.
 export MIGX_FED_SIDE=grok-signal
 export MIGX_REPO_ROOT="$(git rev-parse --show-toplevel)"
 ./kanban/scripts/migx-fed sync
+./kanban/scripts/migx-fed audit
 ./kanban/scripts/migx-fed poll --to grok-signal
 ```
 

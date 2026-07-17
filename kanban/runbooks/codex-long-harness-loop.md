@@ -29,6 +29,7 @@ export MIGX_FED_SIDE=codex-cli
 export MIGX_REPO_ROOT="$(git rev-parse --show-toplevel)"
 ./kanban/scripts/migx-fed doctor
 ./kanban/scripts/migx-fed sync
+./kanban/scripts/migx-fed audit
 ```
 
 Prefer the dedicated worktree for any mutation:
@@ -70,13 +71,14 @@ At the start of each wave, load only:
 1. `AGENTS.md`
 2. `kanban/federation/roles/codex-cli.md`
 3. `kanban/federation/FEDERATION.md`
-4. `./kanban/scripts/migx-fed sync` output, then `./kanban/scripts/migx-fed poll --to codex-cli` output
+4. `./kanban/scripts/migx-fed sync` output, `./kanban/scripts/migx-fed audit` output, then
+   `./kanban/scripts/migx-fed poll --to codex-cli` output
 5. The active dossier or files named by the message
 
 Then execute:
 
 ```text
-1. Sync federation state, then poll inbox.
+1. Sync federation state, audit stale claims/messages, then poll inbox.
 2. If a message is actionable for Codex, ack it.
 3. Map code ownership, active lane claims, and dirty files before editing.
 4. If mutating harness/docs/tooling, create a narrow `migx-fed claim` first.

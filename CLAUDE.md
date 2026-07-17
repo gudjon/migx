@@ -55,6 +55,7 @@ volume while Antigravity is paused. Grok CLI is the **signal scout** (`grok-sign
 ```bash
 export MIGX_FED_SIDE=claude-code
 ./kanban/scripts/migx-fed sync                  # shared peer/mail/worktree snapshot
+./kanban/scripts/migx-fed audit                 # stale claims/messages
 ./kanban/scripts/migx-fed poll --to claude-code   # every session start
 ```
 
