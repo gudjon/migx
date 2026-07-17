@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-07-17-002-verify-evd0003-headless-cgl
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: ack
 created: "2026-07-17"
 created_utc: "2026-07-17T17:22:42Z"
 severity: low
