@@ -1,0 +1,58 @@
+{
+  "schema": "migx.song-ontology/1",
+  "id": "song-04-spotify-uri-only",
+  "ref": "",
+  "source": "spotify",
+  "external_ids": {
+    "spotify_uri": "spotify:track:EXO00000000000000000004",
+    "spotify_id": "EXO00000000000000000004",
+    "isrc": "XX-EXO-00-00004"
+  },
+  "playback": {
+    "mode": "prep_only",
+    "multi_deck_allowed": false
+  },
+  "duration_beats": 496,
+  "bpm": 125.0,
+  "key": { "chromatic": "Bm", "camelot": "10A", "open_key": "3m" },
+  "phrases": { "beats_per_bar": 4, "bars_per_phrase": 8 },
+  "sections": [
+    {
+      "id": "sec-intro",
+      "type": "intro",
+      "start_beat": 0,
+      "end_beat": 64,
+      "energy": 0.4,
+      "mixable": true,
+      "_llm_guidance": "hand-authored stub — no local file; agent may only sequence after local peak"
+    },
+    {
+      "id": "sec-build",
+      "type": "build",
+      "start_beat": 64,
+      "end_beat": 128,
+      "energy": 0.55
+    },
+    {
+      "id": "sec-drop",
+      "type": "drop",
+      "start_beat": 128,
+      "end_beat": 320,
+      "energy": 0.85,
+      "_llm_guidance": "catalog peak energy; do not claim dual-deck mix with another Spotify row"
+    },
+    {
+      "id": "sec-outro",
+      "type": "outro",
+      "start_beat": 400,
+      "end_beat": 496,
+      "energy": 0.35,
+      "mixable": true
+    }
+  ],
+  "energy_curve": {
+    "unit": "phrase",
+    "method": "hand-authored-stub-spotify-id",
+    "samples": [0.38, 0.45, 0.55, 0.7, 0.85, 0.8, 0.55, 0.4, 0.32]
+  }
+}

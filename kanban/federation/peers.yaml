@@ -1,0 +1,111 @@
+# Migx federation peers — who can send/receive durable handoffs.
+# SSoT for side ids used in message frontmatter and migx-fed CLI.
+# Same-machine federation (2026-07-17). Add peers here before addressing them.
+#
+# status: active | paused
+#   paused = not in the agent mix (no tokens / not running). Keep id for historical
+#   mail + re-enable; do not address new open mail to paused peers.
+version: 1
+lastUpdated: "2026-07-17"
+
+# Default sides for this box
+peers:
+  grok-signal:
+    id: grok-signal
+    status: active
+    display_name: "Grok signal scout"
+    tool: grok-cli
+    role_charter: roles/grok-signal.md
+    default_worktree: "../migx-grok"   # relative to main checkout; create via git worktree
+    default_branch_prefix: "grok/"
+    capabilities:
+      - x_semantic_search
+      - x_keyword_search
+      - web_search
+      - architecture_briefs
+      - signal_handoff
+    does_not:
+      - heavy_cpp_engine_edits      # prefer Claude for compile-heavy paths
+      - seal_dossiers               # implementer owns execution closure
+    env:
+      MIGX_FED_SIDE: grok-signal
+
+  claude-code:
+    id: claude-code
+    status: active
+    display_name: "Claude Code implementer"
+    tool: claude-code
+    role_charter: roles/claude-code.md
+    default_worktree: "."            # main checkout
+    default_branch_prefix: "claude/" # or feature/dossier branches (mtl/, etc.)
+    capabilities:
+      - cpp_qt_implementation
+      - dossier_execution
+      - benchmarks_tests
+      - pr_lifecycle
+      - research_request           # may ask Grok to scout
+      - non_rt_product_when_agy_paused  # absorbs UI/ontology volume while AGY paused
+    does_not:
+      - pretend_x_scout_coverage   # use Grok for field signal when needed
+    env:
+      MIGX_FED_SIDE: claude-code
+
+  codex-cli:
+    id: codex-cli
+    status: active
+    display_name: "Codex CLI verifier-cartographer"
+    tool: codex-cli
+    role_charter: roles/codex-cli.md
+    default_worktree: "../migx-codex"   # optional; main checkout is okay for read-only orientation
+    default_branch_prefix: "codex/"
+    capabilities:
+      - repo_cartography
+      - code_path_tracing
+      - harness_tooling
+      - tests_benchmarks_verification
+      - federation_stewardship
+      - dossier_and_adr_tightening
+    does_not:
+      - own_latest_x_signal       # Grok owns outside-world freshness
+      - compete_for_same_source_files_as_claude
+      - self_certify_perf_claims_without_evidence
+    env:
+      MIGX_FED_SIDE: codex-cli
+
+  # --- paused: no subscription tokens on this box (2026-07-17) ---
+  antigravity-cli:
+    id: antigravity-cli
+    status: paused
+    paused_reason: "No Antigravity/Google Ultra tokens available; removed from active agent mix"
+    paused_at: "2026-07-17"
+    display_name: "Antigravity CLI autonomous co-implementer (PAUSED)"
+    tool: antigravity-cli   # binary: agy — do not schedule sessions until re-enabled
+    role_charter: roles/antigravity-cli.md
+    default_worktree: "../migx-agy"
+    default_branch_prefix: "agy/"
+    capabilities:
+      - goal_driven_implementation
+      - parallel_subagents
+      - qml_ui_product_slices
+      - ontology_sidecar_files
+      - non_rt_product_code
+      - tests_precommit
+    does_not:
+      - own_rt_engine_critical_path_by_default
+      - own_latest_x_signal
+      - self_certify_perf_without_evd
+      - receive_new_open_mail_while_paused
+    env:
+      MIGX_FED_SIDE: antigravity-cli
+
+  # Human owner — may send/ack as either side when driving manually
+  gudjon:
+    id: gudjon
+    status: active
+    display_name: "Gudjon (owner)"
+    tool: human
+    role_charter: null
+    capabilities:
+      - accept_adrs
+      - value_judgments
+      - override_either_side

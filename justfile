@@ -1,0 +1,135 @@
+# justfile — Migx task orchestrator.
+#
+# A THIN command layer over the existing build (CMake) + quality gates (pre-commit) — NOT a build
+# system and NOT a restructure. Migx is an upstream-tracking fork of Mixxx; this file is additive and
+# touches no upstream-owned file (see kanban/architecture/decisions/ADR-001-task-orchestrator.md).
+#
+# The Turborepo-transferable idea is the *explicit task graph*, not the JS tooling:
+#   configure ─▶ build ─┬─▶ test ─▶ bench
+#                       └─▶ bench
+#   lint / lint-frontend / kanban-lint  (independent, fast)
+#   ci = lint + test + kanban-lint
+#
+# Requires: `just` (brew install just). First build needs the toolchain — see
+# kanban/runbooks/build-setup-macos-m4.md (run `tools/macos_buildenv.sh setup` first).
+
+build_dir := "build"
+jobs := `/usr/sbin/sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 8`
+
+# List recipes
+default:
+    @just --list
+
+# ---- C++ pipeline (heavy; the FAST loop is `just lint-changed`, not this) ----
+# Configure arm64-native + emit compile_commands.json for clangd (P-26) + tests + bench.
+configure:
+    cmake -S . -B {{build_dir}} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DBUILD_BENCH=ON \
+      -DCMAKE_OSX_ARCHITECTURES=arm64
+    ln -sf {{build_dir}}/compile_commands.json compile_commands.json
+
+build: configure
+    cmake --build {{build_dir}} --parallel {{jobs}}
+
+test: build
+    ctest --test-dir {{build_dir}} --output-on-failure
+
+# Google-benchmark suite (BUILD_BENCH → the mixxx-benchmark target = mixxx-test --benchmark).
+# Pin baselines per P-03 / P-25; gate on p99/max not mean (P-18).
+bench: build
+    cmake --build {{build_dir}} --target mixxx-benchmark --parallel {{jobs}}
+    {{build_dir}}/mixxx-test --benchmark {{bench_filter}}
+bench_filter := ""
+
+# ---- Fast quality gate (CLAUDE.md mandates this before commit) ----
+lint:
+    pre-commit run --all-files
+lint-changed:
+    pre-commit run --files `git diff --name-only HEAD`
+
+# ---- Frontend as a first-class workspace (qmllint/qmlformat are stages:[manual] — hidden today) ----
+lint-frontend: lint-qml lint-js lint-qss
+lint-qml:
+    pre-commit run qmllint --all-files --hook-stage manual
+fmt-qml:
+    pre-commit run qmlformat --all-files --hook-stage manual
+lint-js:
+    pre-commit run eslint --all-files
+lint-qss:
+    pre-commit run qsscheck --all-files
+
+# ---- Agent-harness discipline (mirrors .github/workflows/kanban-discipline.yml) ----
+kanban-lint:
+    python3 kanban/scripts/lint-dossier-frontmatter.py
+    python3 kanban/scripts/verify-prefix-registry.py
+    python3 kanban/scripts/lint-naming-conventions.py
+    python3 kanban/scripts/verify-ps-citations.py
+    python3 kanban/scripts/verify-sealed-dossier-has-closure.py
+    python3 kanban/architecture/lint/verify-owns-paths-exist.py
+    python3 kanban/architecture/lint/verify-agents-md-present.py
+    python3 .claude/architecture/lint/verify-skill-grounding.py
+    python3 kanban/scripts/gen-pattern-index.py --check
+    python3 kanban/architecture/ddd/gen-index.py --check
+
+# ---- Fleet federation (multi-peer Claude/Codex/Grok; AGY paused) ----
+# Rank open+ack mail; write scratchpad nudge (gitignored).
+fleet:
+    python3 kanban/scripts/migx-fleet-conductor.py --nudge-file
+
+# Conductor + Codex seal-class drains (EXO P-08 evaluate & close).
+fleet-drain:
+    python3 kanban/scripts/migx-fleet-conductor.py --nudge-file --drain-codex
+
+fed-list:
+    ./kanban/scripts/migx-fed list --status all
+
+fed-sync:
+    ./kanban/scripts/migx-fed sync
+
+fed-sync-json:
+    ./kanban/scripts/migx-fed sync --json
+
+# Usage: just fed-poll SIDE=codex-cli
+fed-poll SIDE:
+    ./kanban/scripts/migx-fed poll --to {{SIDE}}
+
+# Codex long listener (Ctrl-C to stop). Usage: just fed-listen SIDE=codex-cli INTERVAL=900
+fed-listen SIDE INTERVAL="900":
+    ./kanban/scripts/migx-fed listen --to {{SIDE}} --interval {{INTERVAL}}
+
+# Design-token bridge (DUI)
+theme-check:
+    python3 tools/design/gen_theme_from_design.py --check
+
+# EXO: paste Spotify URIs → prep-only ontology stubs (no network / no playback)
+exo_paste := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/import/sample-paste.txt"
+exo_import_songs := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/songs/imported"
+exo_import_session := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sessions/session-paste-import-demo.json"
+
+exo-spotify-import:
+    python3 tools/exo/spotify_uri_import.py \
+      --paste {{exo_paste}} \
+      --out-dir {{exo_import_songs}} \
+      --session-out {{exo_import_session}} \
+      --session-id session-paste-import-demo
+    python3 tools/exo/spotify_uri_import.py \
+      --paste {{exo_paste}} \
+      --out-dir {{exo_import_songs}} \
+      --check
+
+# Structural check of EXO song/session fixtures (incl. hybrid + paste-import)
+exo-fixtures-check:
+    python3 tools/exo/check_fixtures.py
+# Night tick (log-only; safe for cron)
+night-loop:
+    bash kanban/scripts/migx-night-loop.sh
+    @echo "log: /tmp/migx-night-loop.log"
+
+# ---- Meta ----
+ci: lint test kanban-lint
+doctor:
+    @for t in just cmake ninja ccache pre-commit clang-format qmllint; do \
+      printf "%-14s %s\n" "$t" "$(command -v $t || echo MISSING)"; done
+    @echo "Qt: `brew list --versions qt qt@6 2>/dev/null || echo 'MISSING — run tools/macos_buildenv.sh setup'`"
+clean:
+    rm -rf {{build_dir}}

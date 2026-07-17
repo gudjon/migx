@@ -1,0 +1,36 @@
+# Federation channels — what surfaces carry messages, who may write.
+# Sibling to peers.yaml (who) — this file is how/what-shape.
+version: 1
+lastUpdated: "2026-07-17"
+
+channels:
+  signal:
+    path: signal/
+    message_shape: signal/_TEMPLATE.md
+    writer: grok-signal
+    # antigravity-cli paused (no tokens) — still listed for historical mail only
+    consumers: [claude-code, codex-cli, gudjon, grok-signal]
+    lifecycle: append-only-brief
+    notes: >
+      Field intel from X/web. Not a work order. Promote to messages/ via
+      type: signal-handoff when actionable.
+
+  messages:
+    path: messages/
+    message_shape: MSG-TEMPLATE.md
+    writer: any-peer
+    consumers: [addressed-peer]
+    lifecycle: location-as-state   # open → ack → closed
+    states:
+      open: messages/open/
+      ack: messages/ack/
+      closed: messages/closed/
+    notes: >
+      Durable handoffs. Receiver owns ack and closed. Sender never self-closes.
+
+  # Reserved for later (multi-peer broadcast) — UNWIRED
+  # broadcast:
+  #   path: broadcast/
+  #   writer: any-peer
+  #   consumers: [all-peers]
+  #   lifecycle: append-only

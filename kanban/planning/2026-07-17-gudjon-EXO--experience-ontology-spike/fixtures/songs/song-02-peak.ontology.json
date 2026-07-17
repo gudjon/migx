@@ -1,0 +1,25 @@
+{
+  "schema": "migx.song-ontology/1",
+  "id": "song-02-peak",
+  "ref": "fixtures/synthetic/song-02",
+  "source": "local",
+  "playback": {
+    "mode": "engine_multi_deck",
+    "multi_deck_allowed": true
+  },
+  "duration_beats": 480,
+  "bpm": 126.0,
+  "key": { "chromatic": "Em", "camelot": "9A", "open_key": "2m" },
+  "phrases": { "beats_per_bar": 4, "bars_per_phrase": 8 },
+  "sections": [
+    { "id": "sec-intro", "type": "intro", "start_beat": 0, "end_beat": 48, "energy": 0.35, "mixable": true },
+    { "id": "sec-build", "type": "build", "start_beat": 48, "end_beat": 96, "energy": 0.65 },
+    { "id": "sec-drop", "type": "drop", "start_beat": 96, "end_beat": 288, "energy": 0.95 },
+    { "id": "sec-outro", "type": "outro", "start_beat": 400, "end_beat": 480, "energy": 0.3, "mixable": true }
+  ],
+  "energy_curve": {
+    "unit": "phrase",
+    "method": "hand-authored-stub",
+    "samples": [0.3, 0.4, 0.6, 0.75, 0.95, 0.92, 0.7, 0.4, 0.28]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "schema": "migx.session-ontology/1",
+  "id": "session-hybrid-prep-demo",
+  "kind": "hybrid_prep",
+  "policy": {
+    "spotify_multi_deck": false,
+    "spotify_playback": "none"
+  },
+  "tracks": [
+    {
+      "song_id": "song-01-deep-intro",
+      "ontology_ref": "../songs/song-01-deep-intro.ontology.json",
+      "source": "local",
+      "prep": {
+        "role": "opener",
+        "notes": "Local file — full multi-deck OK. Open on deck A.",
+        "cue_points": [
+          { "id": "cue-mix-in", "label": "mix-in", "beat": 0 },
+          { "id": "cue-phrase2", "label": "phrase-2", "beat": 64 }
+        ]
+      }
+    },
+    {
+      "song_id": "song-02-peak",
+      "ontology_ref": "../songs/song-02-peak.ontology.json",
+      "source": "local",
+      "prep": {
+        "role": "peak",
+        "notes": "Local peak — true dual-deck with song-01 if desired.",
+        "cue_points": [
+          { "id": "cue-drop", "label": "drop", "beat": 96 }
+        ]
+      }
+    },
+    {
+      "song_id": "song-04-spotify-uri-only",
+      "ontology_ref": "../songs/song-04-spotify-uri-only.ontology.json",
+      "source": "spotify",
+      "prep": {
+        "role": "bridge",
+        "notes": "Spotify URI only — prep/sequence, not dual-deck with another SP row. multi_deck_allowed=false.",
+        "cue_points": [
+          { "id": "cue-intro-end", "label": "intro-end", "beat": 64 },
+          { "id": "cue-drop", "label": "drop", "beat": 128 }
+        ]
+      }
+    },
+    {
+      "song_id": "song-03-cool-down",
+      "ontology_ref": "../songs/song-03-cool-down.ontology.json",
+      "source": "local",
+      "prep": {
+        "role": "closer",
+        "notes": "Local cool-down after sequenced Spotify bridge.",
+        "cue_points": [
+          { "id": "cue-mix-in", "label": "mix-in", "beat": 0 }
+        ]
+      }
+    }
+  ],
+  "order": [
+    "song-01-deep-intro",
+    "song-02-peak",
+    "song-04-spotify-uri-only",
+    "song-03-cool-down"
+  ],
+  "edges": [
+    {
+      "from": "song-01-deep-intro",
+      "to": "song-02-peak",
+      "relation": "harmonically-compatible",
+      "notes": "8A → 9A local multi-deck OK"
+    },
+    {
+      "from": "song-01-deep-intro",
+      "to": "song-02-peak",
+      "relation": "next-energy",
+      "notes": "energy lift into peak"
+    },
+    {
+      "from": "song-02-peak",
+      "to": "song-04-spotify-uri-only",
+      "relation": "harmonically-compatible",
+      "notes": "9A → 10A Camelot +1; agent ranking only — sequence if SP playback later"
+    },
+    {
+      "from": "song-02-peak",
+      "to": "song-04-spotify-uri-only",
+      "relation": "sequence-only",
+      "notes": "Local→Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro"
+    },
+    {
+      "from": "song-04-spotify-uri-only",
+      "to": "song-03-cool-down",
+      "relation": "sequence-only",
+      "notes": "Spotify→local: after SP sequential play, resume engine on cool-down (10A→7A not strict neighbor; energy cool)"
+    },
+    {
+      "from": "song-04-spotify-uri-only",
+      "to": "song-03-cool-down",
+      "relation": "next-energy",
+      "notes": "energy cool after SP bridge drop"
+    }
+  ]
+}

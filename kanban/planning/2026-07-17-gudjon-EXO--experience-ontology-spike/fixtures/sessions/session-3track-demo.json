@@ -1,0 +1,40 @@
+{
+  "schema": "migx.session-ontology/1",
+  "id": "session-3track-demo",
+  "kind": "demo",
+  "tracks": [
+    {
+      "song_id": "song-01-deep-intro",
+      "ontology_ref": "../songs/song-01-deep-intro.ontology.json"
+    },
+    {
+      "song_id": "song-02-peak",
+      "ontology_ref": "../songs/song-02-peak.ontology.json"
+    },
+    {
+      "song_id": "song-03-cool-down",
+      "ontology_ref": "../songs/song-03-cool-down.ontology.json"
+    }
+  ],
+  "order": ["song-01-deep-intro", "song-02-peak", "song-03-cool-down"],
+  "edges": [
+    {
+      "from": "song-01-deep-intro",
+      "to": "song-02-peak",
+      "relation": "harmonically-compatible",
+      "notes": "8A → 9A (+1 Camelot energy-up neighbor)"
+    },
+    {
+      "from": "song-01-deep-intro",
+      "to": "song-02-peak",
+      "relation": "next-energy",
+      "notes": "phrase energy ~0.25–0.5 → peak 0.95"
+    },
+    {
+      "from": "song-02-peak",
+      "to": "song-03-cool-down",
+      "relation": "next-energy",
+      "notes": "energy cool-down after peak (9A→7A is not strict Camelot-adjacent; harmonic edge omitted intentionally)"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "migx.session-mirror/1",
+  "captured_utc": "2026-07-17T12:00:00Z",
+  "note": "Offline dogfood mirror — NOT live engine state. Layer B prototype for co-pilot read path.",
+  "decks": [
+    {
+      "group": "[Channel1]",
+      "play": true,
+      "position_beats": 200,
+      "loaded_song_id": "song-01-deep-intro",
+      "bpm": 124.0,
+      "key_camelot": "8A"
+    },
+    {
+      "group": "[Channel2]",
+      "play": false,
+      "position_beats": 0,
+      "loaded_song_id": "song-02-peak",
+      "bpm": 126.0,
+      "key_camelot": "9A"
+    }
+  ],
+  "crate_upcoming": ["song-02-peak", "song-03-cool-down"],
+  "ontology_session_ref": "../sessions/session-3track-demo.json"
+}

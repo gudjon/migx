@@ -1,0 +1,78 @@
+{
+  "schema": "migx.session-ontology/1",
+  "id": "session-paste-import-demo",
+  "kind": "hybrid_prep",
+  "policy": {
+    "spotify_multi_deck": false,
+    "spotify_playback": "none"
+  },
+  "tracks": [
+    {
+      "song_id": "song-sp-4ulu6hmcjmi7",
+      "ontology_ref": "../songs/imported/song-sp-4ulu6hmcjmi7.ontology.json",
+      "source": "spotify",
+      "prep": {
+        "role": "wildcard",
+        "notes": "Spotify paste-import \u2014 prep/sequence only; Midnight Run",
+        "cue_points": [
+          {
+            "id": "cue-mix-in",
+            "label": "mix-in",
+            "beat": 0
+          }
+        ]
+      }
+    },
+    {
+      "song_id": "song-sp-0vjijw4gluza",
+      "ontology_ref": "../songs/imported/song-sp-0vjijw4gluza.ontology.json",
+      "source": "spotify",
+      "prep": {
+        "role": "wildcard",
+        "notes": "Spotify paste-import \u2014 prep/sequence only; Peak Hour",
+        "cue_points": [
+          {
+            "id": "cue-mix-in",
+            "label": "mix-in",
+            "beat": 0
+          }
+        ]
+      }
+    },
+    {
+      "song_id": "song-sp-7qizfu4dy1lw",
+      "ontology_ref": "../songs/imported/song-sp-7qizfu4dy1lw.ontology.json",
+      "source": "spotify",
+      "prep": {
+        "role": "wildcard",
+        "notes": "Spotify paste-import \u2014 prep/sequence only; Cool Bridge",
+        "cue_points": [
+          {
+            "id": "cue-mix-in",
+            "label": "mix-in",
+            "beat": 0
+          }
+        ]
+      }
+    }
+  ],
+  "order": [
+    "song-sp-4ulu6hmcjmi7",
+    "song-sp-0vjijw4gluza",
+    "song-sp-7qizfu4dy1lw"
+  ],
+  "edges": [
+    {
+      "from": "song-sp-4ulu6hmcjmi7",
+      "to": "song-sp-0vjijw4gluza",
+      "relation": "sequence-only",
+      "notes": "paste-import order; dual Spotify multi-deck forbidden"
+    },
+    {
+      "from": "song-sp-0vjijw4gluza",
+      "to": "song-sp-7qizfu4dy1lw",
+      "relation": "sequence-only",
+      "notes": "paste-import order; dual Spotify multi-deck forbidden"
+    }
+  ]
+}

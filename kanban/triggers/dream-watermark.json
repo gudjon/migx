@@ -1,0 +1,5 @@
+{
+  "watermark": null,
+  "last_run": null,
+  "note": "The git commit the last nightly-dream run processed up to. The Dream reads only commits since this SHA (delta-only). Advanced to HEAD by the REPORT phase after a successful run. null = never run."
+}

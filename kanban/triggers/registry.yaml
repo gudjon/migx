@@ -1,0 +1,101 @@
+# Trigger registry — the ONE typed catalog of every agent-run firing condition (playbook ch.04).
+#
+# This file DECLARES what fires; it does not fire anything. The actual firing mechanism is Claude
+# Code's primitives — cloud Routines (/schedule, cron), Monitor, hooks, GitHub Actions. A `schedule`
+# row carries a `calendar_ref` (a pointer to the Routine/cron that owns the clock) and must NOT
+# restate the clock time (MG-3 / single-source-of-truth).
+#
+# `wiring` is the anti-"looks-done" field: a row can be catalogued (declared) but not actually wired
+# to a firing mechanism yet. WIRED = it really fires; UNVERIFIED = wired but not confirmed firing;
+# UNWIRED = declared only. The weekly review shames UNWIRED rows until wired or killed.
+#
+# Row schema: id · type(schedule|event|manual) · condition · action · produces · wiring · calendar_ref?
+
+version: 1
+lastUpdated: "2026-07-17"
+
+triggers:
+  - id: TR-nightly-dream
+    type: schedule
+    condition: "nightly"
+    calendar_ref: "TODO — a /schedule cloud Routine (not yet stood up)"
+    action: "run the nightly-dream workflow (.claude/workflows/nightly-dream.js)"
+    produces: "mechanical/prune PRs + kanban/tasks/ cards for judgment calls + a heartbeat entry; advances dream-watermark.json"
+    wiring: UNWIRED   # declared; the /schedule Routine is not created yet
+
+  - id: TR-kanban-discipline-ci
+    type: event
+    condition: "pull_request touching kanban/** or .claude/**"
+    calendar_ref: null
+    action: "run the kanban discipline lint suite (.github/workflows/kanban-discipline.yml)"
+    produces: "a pass/fail check on the PR"
+    wiring: UNVERIFIED   # workflow authored; confirm it runs green on the first PR
+
+  - id: TR-pat-skill-autoload
+    type: event
+    condition: "editing a src/ path matched by a pat-* skill description"
+    calendar_ref: null
+    action: "Claude Code auto-loads the matching pat-* skill, surfacing the pattern card"
+    produces: "the relevant P-NN/AP-NN in context at edit time"
+    wiring: WIRED   # native Claude Code skill mechanism; the skills exist under .claude/skills/
+
+  - id: TR-federation-session-poll
+    type: event
+    condition: "SessionStart for Claude Code, Grok CLI, or Codex CLI on this box"
+    calendar_ref: null
+    action: >
+      export MIGX_FED_SIDE={claude-code|grok-signal|codex-cli};  # antigravity-cli paused
+      ./kanban/scripts/migx-fed poll --to $MIGX_FED_SIDE;
+      triage open mail per kanban/federation/FEDERATION.md
+    produces: "acked/closed messages; optional tasks or dossier folds; signal briefs (Grok); verifier notes (Codex)"
+    wiring: WIRED   # manual session checklist in CLAUDE.md / GROK.md / Codex runbook; AGY paused
+
+  - id: TR-codex-inbox-listener
+    type: manual
+    condition: "operator wants Codex to occasionally listen for federation inbox work"
+    calendar_ref: null
+    action: >
+      export MIGX_FED_SIDE=codex-cli;
+      ./kanban/scripts/migx-fed listen --to codex-cli --interval 900;
+      run bounded verifier waves per kanban/runbooks/codex-long-harness-loop.md
+    produces: "codex-cli inbox awareness; acked/closed verifier messages when explicitly claimed"
+    wiring: WIRED   # migx-fed listen is implemented; operator starts/stops the long listener
+
+  - id: TR-grok-signal-scout
+    type: schedule
+    condition: "owner-driven or recurring Grok scout session (suggest: daily or when Claude blocks on research)"
+    calendar_ref: "TODO — optional /schedule, tmux, or Grok Build schedule; not auto-wired"
+    action: >
+      Grok peer long loop (Mode A): disk contract+progress per
+      kanban/runbooks/grok-long-harness-loop.md; drain research-request mail;
+      scout X/web; write kanban/federation/signal/*.md; promote 0–2 signal-handoffs; commit
+    produces: "signal briefs + optional messages/open handoffs for claude-code + scratchpad progress"
+    wiring: UNWIRED   # process declared; clock not automated
+
+  - id: TR-grok-long-harness-wave
+    type: manual
+    condition: "operator starts a multi-wave Grok 4.5 run (scout or bounded generator)"
+    calendar_ref: null
+    action: >
+      Create scratchpad run-id contract; execute waves until NEXT=stop;
+      federation peers: Claude implements (including AGY's paused non-RT lane), Grok scouts, Codex verifies
+    produces: "committed signal/mail/docs; progress.md for clean restart"
+    wiring: WIRED   # runbook is the firing mechanism when operator invokes it
+
+  - id: TR-fleet-conductor
+    type: schedule
+    condition: "every 30m while machine awake (launchd/cron) or just fleet / just fleet-drain"
+    calendar_ref: "kanban/runbooks/fleet-conductor.plist.example (optional LaunchAgent)"
+    action: >
+      python3 kanban/scripts/migx-fleet-conductor.py --nudge-file [--drain-codex];
+      peers read scratchpad/conductor/LATEST.md or stdout NEXT DRI
+    produces: "priority queue + LATEST.md nudge; optional EXO P-08 close via migx-codex-drain"
+    wiring: WIRED   # scripts + just recipes; LaunchAgent example is optional opt-in
+
+  - id: TR-codex-seal-drain
+    type: event
+    condition: "open/ack federation mail to codex-cli matching exo-p08 / evaluate-transition"
+    calendar_ref: null
+    action: "python3 kanban/scripts/migx-codex-drain.py (or just fleet-drain)"
+    produces: "results/P08-EVAL-codex.md + mail closed as codex-cli"
+    wiring: WIRED

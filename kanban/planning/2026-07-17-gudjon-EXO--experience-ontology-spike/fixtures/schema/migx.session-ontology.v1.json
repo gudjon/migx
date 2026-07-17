@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "migx.session-ontology/1",
+  "title": "Migx session experience ontology",
+  "type": "object",
+  "required": ["schema", "id", "tracks", "order"],
+  "properties": {
+    "schema": { "const": "migx.session-ontology/1" },
+    "id": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": ["demo", "hybrid_prep", "live_mirror"],
+      "description": "demo=proof fixtures; hybrid_prep=local+stream ids; live_mirror=dogfood"
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["song_id", "ontology_ref"],
+        "properties": {
+          "song_id": { "type": "string" },
+          "ontology_ref": { "type": "string" },
+          "source": {
+            "type": "string",
+            "enum": ["local", "spotify", "hybrid", "unknown"]
+          },
+          "prep": {
+            "type": "object",
+            "description": "Session-local prep (cues/notes) — never requires stream decode",
+            "properties": {
+              "notes": { "type": "string" },
+              "cue_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "label"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "label": { "type": "string" },
+                    "beat": { "type": "number" },
+                    "ms": {
+                      "type": "number",
+                      "description": "optional wall-clock cue when beat grid unknown"
+                    }
+                  }
+                }
+              },
+              "role": {
+                "type": "string",
+                "enum": ["opener", "peak", "bridge", "closer", "wildcard", "other"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "order": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "song ids in planned play order"
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "relation"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "harmonically-compatible",
+              "next-energy",
+              "planned-transition",
+              "sequence-only"
+            ]
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "description": "Product constraints for this session",
+      "properties": {
+        "spotify_multi_deck": {
+          "type": "boolean",
+          "const": false,
+          "description": "Always false until partner path; dual Spotify stream forbidden in core"
+        },
+        "spotify_playback": {
+          "type": "string",
+          "enum": ["none", "sequential_official", "partner"],
+          "description": "none=prep only; sequential_official=Connect/Web Playback; partner=BD"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Heartbeats — one row per ambient routine that legitimately no-ops.
+# Each run commits last_run + outcome. A STALE row (last_run far in the past) means the routine is
+# DOWN — that's the signal. An ambient agent that "converged" (found no delta) still updates its row.
+version: 1
+routines:
+  - id: nightly-dream
+    workflow: .claude/workflows/nightly-dream.js
+    trigger: TR-nightly-dream
+    last_run: null        # set by the Dream's REPORT phase each run
+    outcome: null         # converged | acted:<n> | error
+    watermark_file: kanban/triggers/dream-watermark.json

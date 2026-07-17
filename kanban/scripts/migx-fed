@@ -1,0 +1,934 @@
+#!/usr/bin/env python3
+"""migx-fed — durable peer mail for Migx agent federation (same-repo, same-box).
+
+Coordination is a commit. State is folder location under kanban/federation/messages/.
+See kanban/federation/FEDERATION.md.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ACTIVE_SIDES = (
+    "grok-signal",
+    "claude-code",
+    "codex-cli",
+    "gudjon",
+)
+HISTORICAL_SIDES = ("antigravity-cli",)
+KNOWN_SIDES = ACTIVE_SIDES[:3] + HISTORICAL_SIDES + ACTIVE_SIDES[3:]
+VALID_TYPES = (
+    "signal-handoff",
+    "research-request",
+    "status",
+    "blocker",
+    "question",
+    "coord",
+)
+VALID_SEVERITY = ("low", "medium", "high", "blocker")
+STATUS_DIRS = ("open", "ack", "closed")
+REQUIRED_BODY_SECTIONS = ("## Intent", "## Context", "## Evidence", "## Requested Action", "## Blockers")
+SYNC_STATUS_PATHS = (
+    ".gitignore",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GROK.md",
+    "AGY.md",
+    "README.md",
+    "NOTICE",
+    "justfile",
+    "kanban/federation",
+    "kanban/planning",
+    "kanban/tasks",
+    "kanban/initiatives",
+    "kanban/Strategy-Current.md",
+)
+SIDECAR_SKIP_DIRS = {".git", "build", "buildenv", "dist", "install", "node_modules"}
+
+
+def repo_root() -> Path:
+    env = os.environ.get("MIGX_REPO_ROOT")
+    if env:
+        return Path(env).resolve()
+    # kanban/scripts/migx-fed → repo root
+    return Path(__file__).resolve().parents[2]
+
+
+def fed_root(root: Path) -> Path:
+    return root / "kanban" / "federation"
+
+
+def messages_dir(root: Path, status: str) -> Path:
+    return fed_root(root) / "messages" / status
+
+
+def run_git(cwd: Path, args: list[str]) -> tuple[int, str, str]:
+    proc = subprocess.run(
+        ["git", "-C", str(cwd), *args],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+
+
+def find_message(root: Path, msg_id: str) -> tuple[Path, str] | None:
+    """Return (path, status) if found."""
+    for status in STATUS_DIRS:
+        # exact filename match (with or without .md)
+        base = msg_id if msg_id.endswith(".md") else f"{msg_id}.md"
+        p = messages_dir(root, status) / base
+        if p.is_file():
+            return p, status
+        # also allow id without matching filename stem search
+        for candidate in messages_dir(root, status).glob("*.md"):
+            if candidate.name == base or candidate.stem == msg_id:
+                return candidate, status
+            # frontmatter id:
+            text = candidate.read_text(encoding="utf-8", errors="replace")
+            if re.search(rf"^id:\s*[\"']?{re.escape(msg_id.removesuffix('.md'))}[\"']?\s*$", text, re.M):
+                return candidate, status
+    return None
+
+
+def parse_frontmatter(text: str) -> dict[str, str]:
+    if not text.startswith("---"):
+        return {}
+    end = text.find("\n---", 3)
+    if end < 0:
+        return {}
+    block = text[3:end].strip()
+    out: dict[str, str] = {}
+    for line in block.splitlines():
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        out[k.strip()] = v.strip().strip("\"'")
+    return out
+
+
+def message_body(text: str) -> str:
+    if not text.startswith("---"):
+        return text
+    end = text.find("\n---", 3)
+    if end < 0:
+        return text
+    return text[end + 4 :].lstrip("\n")
+
+
+def peer_statuses_from_registry(root: Path) -> dict[str, str]:
+    peers = fed_root(root) / "peers.yaml"
+    if not peers.is_file():
+        return {}
+    statuses: dict[str, str] = {}
+    in_peers = False
+    current: str | None = None
+    for line in peers.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.strip() == "peers:":
+            in_peers = True
+            continue
+        if not in_peers:
+            continue
+        m = re.match(r"^  ([a-z0-9-]+):\s*$", line)
+        if m:
+            current = m.group(1)
+            statuses.setdefault(current, "active")
+            continue
+        if current:
+            status_match = re.match(r"^    status:\s*([a-z0-9_-]+)", line)
+            if status_match:
+                statuses[current] = status_match.group(1)
+    return statuses
+
+
+def active_peer_ids_from_registry(root: Path) -> set[str]:
+    return {
+        side
+        for side, status in peer_statuses_from_registry(root).items()
+        if status == "active"
+    }
+
+
+def parse_inline_list(value: str) -> list[str]:
+    # Accept the simple YAML inline-list style used in channels.yaml: [a, b, c]
+    value = value.split("#", 1)[0].strip()
+    if not (value.startswith("[") and value.endswith("]")):
+        return []
+    inner = value[1:-1].strip()
+    if not inner:
+        return []
+    return [item.strip().strip("\"'") for item in inner.split(",") if item.strip()]
+
+
+def validate_channels(root: Path, peer_ids: set[str]) -> list[str]:
+    path = fed_root(root) / "channels.yaml"
+    if not path.is_file():
+        return []
+    issues: list[str] = []
+    current: str | None = None
+    channels: dict[str, dict[str, object]] = {}
+
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        channel_match = re.match(r"^  ([a-z0-9_-]+):\s*$", line)
+        if channel_match:
+            current = channel_match.group(1)
+            channels.setdefault(current, {})
+            continue
+        if not current:
+            continue
+        writer_match = re.match(r"^    writer:\s*([^#]+)", line)
+        if writer_match:
+            channels[current]["writer"] = writer_match.group(1).strip()
+            continue
+        consumer_match = re.match(r"^    consumers:\s*(.+)", line)
+        if consumer_match:
+            channels[current]["consumers"] = parse_inline_list(consumer_match.group(1))
+
+    for required in ("signal", "messages"):
+        if required not in channels:
+            issues.append(f"channels.yaml: missing channel {required!r}")
+
+    for channel, fields in sorted(channels.items()):
+        writer = str(fields.get("writer", ""))
+        if writer and writer != "any-peer" and writer not in peer_ids:
+            issues.append(f"channels.yaml:{channel}: unknown writer {writer!r}")
+        consumers = fields.get("consumers", [])
+        if isinstance(consumers, list):
+            for consumer in consumers:
+                if consumer in ("addressed-peer", "all-peers"):
+                    continue
+                if consumer not in peer_ids:
+                    issues.append(f"channels.yaml:{channel}: unknown consumer {consumer!r}")
+
+    signal_consumers = channels.get("signal", {}).get("consumers", [])
+    if isinstance(signal_consumers, list):
+        missing_signal = sorted(peer_ids - set(signal_consumers))
+        if missing_signal:
+            issues.append(
+                "channels.yaml:signal missing consumers: " + ", ".join(missing_signal)
+            )
+
+    return issues
+
+
+def list_messages(root: Path, to: str | None, status: str) -> list[tuple[Path, str, dict[str, str]]]:
+    statuses = STATUS_DIRS if status == "all" else (status,)
+    rows: list[tuple[Path, str, dict[str, str]]] = []
+    for st in statuses:
+        d = messages_dir(root, st)
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("_"):
+                continue
+            fm = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+            if to and fm.get("to") != to:
+                continue
+            rows.append((p, st, fm))
+    return rows
+
+
+def validate_message(root: Path, p: Path, folder_status: str) -> list[str]:
+    text = p.read_text(encoding="utf-8", errors="replace")
+    fm = parse_frontmatter(text)
+    rel = p.relative_to(root)
+    issues: list[str] = []
+    if not fm:
+        return [f"{rel}: missing frontmatter"]
+
+    msg_id = fm.get("id", "")
+    if not msg_id:
+        issues.append(f"{rel}: missing id")
+    elif msg_id != p.stem:
+        issues.append(f"{rel}: id does not match filename stem ({msg_id} != {p.stem})")
+
+    for key in ("from", "to"):
+        side = fm.get(key, "")
+        if not side:
+            issues.append(f"{rel}: missing {key}")
+        elif side not in KNOWN_SIDES:
+            issues.append(f"{rel}: unknown {key} side {side!r}")
+
+    msg_type = fm.get("type", "")
+    if msg_type not in VALID_TYPES:
+        issues.append(f"{rel}: invalid type {msg_type!r}")
+
+    severity = fm.get("severity", "")
+    if severity not in VALID_SEVERITY:
+        issues.append(f"{rel}: invalid severity {severity!r}")
+
+    status = fm.get("status", "")
+    if status != folder_status:
+        issues.append(f"{rel}: status {status!r} does not match folder {folder_status!r}")
+    to_side = fm.get("to", "")
+    if folder_status in ("open", "ack") and to_side and to_side not in ACTIVE_SIDES:
+        issues.append(f"{rel}: open/ack mail addressed to inactive side {to_side!r}")
+
+    body = message_body(text)
+    missing = [section for section in REQUIRED_BODY_SECTIONS if section not in body]
+    if missing:
+        issues.append(f"{rel}: missing body sections: {', '.join(missing)}")
+
+    return issues
+
+
+def cmd_doctor(root: Path) -> int:
+    fr = fed_root(root)
+    ok = True
+    required = [
+        fr / "FEDERATION.md",
+        fr / "peers.yaml",
+        fr / "channels.yaml",
+        fr / "MSG-TEMPLATE.md",
+        fr / "roles" / "grok-signal.md",
+        fr / "roles" / "claude-code.md",
+        fr / "roles" / "codex-cli.md",
+    ]
+    for p in required:
+        if p.is_file():
+            print(f"OK  {p.relative_to(root)}")
+        else:
+            print(f"MISSING  {p.relative_to(root)}", file=sys.stderr)
+            ok = False
+
+    peer_statuses = peer_statuses_from_registry(root)
+    active_peer_ids = active_peer_ids_from_registry(root)
+    if peer_statuses:
+        known_peer_ids = set(peer_statuses)
+        unknown = sorted(known_peer_ids - set(KNOWN_SIDES))
+        missing = sorted(set(ACTIVE_SIDES) - active_peer_ids)
+        if unknown:
+            print(f"BAD peers.yaml unknown side ids: {', '.join(unknown)}", file=sys.stderr)
+            ok = False
+        if missing:
+            print(f"BAD peers.yaml missing active side ids: {', '.join(missing)}", file=sys.stderr)
+            ok = False
+        if not unknown and not missing:
+            print(f"OK  peers.yaml active side ids ({len(active_peer_ids)})")
+        inactive = sorted(known_peer_ids - active_peer_ids)
+        if inactive:
+            print("NOTE peers.yaml inactive side ids: " + ", ".join(inactive))
+
+        channel_issues = validate_channels(root, active_peer_ids)
+        for issue in channel_issues:
+            print(f"BAD {issue}", file=sys.stderr)
+        if channel_issues:
+            ok = False
+        else:
+            print("OK  channels.yaml side refs")
+
+    for st in STATUS_DIRS:
+        d = messages_dir(root, st)
+        if d.is_dir():
+            n = len(list(d.glob("*.md")))
+            print(f"OK  messages/{st}/ ({n} messages)")
+        else:
+            print(f"MISSING  messages/{st}/", file=sys.stderr)
+            ok = False
+
+    message_count = 0
+    for st in STATUS_DIRS:
+        d = messages_dir(root, st)
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("_"):
+                continue
+            message_count += 1
+            issues = validate_message(root, p, st)
+            for issue in issues:
+                print(f"BAD {issue}", file=sys.stderr)
+            if issues:
+                ok = False
+    if message_count:
+        print(f"OK  message schema checked ({message_count} messages)")
+
+    side = os.environ.get("MIGX_FED_SIDE", "")
+    if side:
+        if side in ACTIVE_SIDES:
+            print(f"OK  MIGX_FED_SIDE={side}")
+        elif side in KNOWN_SIDES:
+            print(f"WARN MIGX_FED_SIDE={side} is inactive", file=sys.stderr)
+        else:
+            print(f"WARN MIGX_FED_SIDE={side} not in {KNOWN_SIDES}", file=sys.stderr)
+    else:
+        print("NOTE MIGX_FED_SIDE unset (pass --to / --from explicitly)")
+    print(f"ROOT {root}")
+    return 0 if ok else 1
+
+
+def cmd_list(root: Path, to: str | None, status: str) -> int:
+    rows = list_messages(root, to, status)
+    if not rows:
+        print("(no messages)")
+        return 0
+    for p, st, fm in rows:
+        print(
+            f"[{st:6}] {fm.get('id', p.stem):<55} "
+            f"{fm.get('from', '?'):<14} → {fm.get('to', '?'):<14} "
+            f"{fm.get('type', '?'):<16} {fm.get('severity', '')}"
+        )
+        print(f"         {p.relative_to(root)}")
+    return 0
+
+
+def parse_worktree_porcelain(text: str) -> list[dict[str, str]]:
+    worktrees: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.strip():
+            if current:
+                worktrees.append(current)
+                current = {}
+            continue
+        key, _, value = line.partition(" ")
+        if key == "worktree":
+            if current:
+                worktrees.append(current)
+            current = {"path": value}
+        elif key == "branch":
+            current["branch"] = value.removeprefix("refs/heads/")
+        elif key == "HEAD":
+            current["head"] = value[:12]
+        elif key == "detached":
+            current["branch"] = "(detached)"
+    if current:
+        worktrees.append(current)
+    return worktrees
+
+
+def git_status_lines(root: Path, pathspecs: tuple[str, ...] | None = None) -> list[str]:
+    args = ["status", "--short"]
+    if pathspecs:
+        args.extend(["--", *pathspecs])
+    rc, out, err = run_git(root, args)
+    if rc != 0:
+        return [f"git status failed: {err or out}"]
+    return [line for line in out.splitlines() if line.strip()]
+
+
+def find_sidecar_artifacts(root: Path, limit: int = 20) -> list[str]:
+    out: list[str] = []
+    for path in root.rglob("*.migx"):
+        rel_parts = path.relative_to(root).parts
+        if any(part in SIDECAR_SKIP_DIRS for part in rel_parts):
+            continue
+        if (path / "track.json").is_file():
+            out.append(str((path / "track.json").relative_to(root)))
+            if len(out) >= limit:
+                break
+    return sorted(out)
+
+
+def build_sync_payload(root: Path) -> dict[str, object]:
+    peer_statuses = peer_statuses_from_registry(root)
+    active = sorted(side for side, status in peer_statuses.items() if status == "active")
+    inactive = sorted(side for side, status in peer_statuses.items() if status != "active")
+
+    rc_branch, branch, _ = run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"])
+    rc_head, head, _ = run_git(root, ["rev-parse", "--short", "HEAD"])
+    rc_status, status, status_err = run_git(root, ["status", "--short", "--branch"])
+    rc_wt, worktree_text, worktree_err = run_git(root, ["worktree", "list", "--porcelain"])
+
+    mail_counts: dict[str, dict[str, int]] = {
+        side: {st: 0 for st in STATUS_DIRS} for side in sorted(peer_statuses)
+    }
+    queue: list[dict[str, str]] = []
+    recent_closed: list[tuple[float, dict[str, str]]] = []
+
+    for p, st, fm in list_messages(root, None, "all"):
+        to_side = fm.get("to", "?")
+        mail_counts.setdefault(to_side, {status_dir: 0 for status_dir in STATUS_DIRS})
+        mail_counts[to_side][st] += 1
+        row = {
+            "id": fm.get("id", p.stem),
+            "from": fm.get("from", "?"),
+            "to": to_side,
+            "type": fm.get("type", "?"),
+            "severity": fm.get("severity", "?"),
+            "status": st,
+            "subject": fm.get("subject", ""),
+            "path": str(p.relative_to(root)),
+        }
+        if st in ("open", "ack"):
+            queue.append(row)
+        elif st == "closed":
+            recent_closed.append((p.stat().st_mtime, row))
+
+    worktrees: list[dict[str, object]] = []
+    if rc_wt == 0:
+        for wt in parse_worktree_porcelain(worktree_text):
+            wt_path = Path(wt["path"])
+            lines = git_status_lines(wt_path)
+            worktrees.append(
+                {
+                    "path": wt["path"],
+                    "branch": wt.get("branch", ""),
+                    "head": wt.get("head", ""),
+                    "dirty_count": len(lines),
+                    "dirty": lines[:12],
+                }
+            )
+
+    return {
+        "generated_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "root": str(root),
+        "git": {
+            "branch": branch if rc_branch == 0 else "",
+            "head": head if rc_head == 0 else "",
+            "status": status.splitlines() if rc_status == 0 else [status_err],
+        },
+        "peers": {
+            "active": active,
+            "inactive": inactive,
+        },
+        "mail_counts": mail_counts,
+        "queue": sorted(queue, key=lambda row: (row["status"], row["to"], row["id"])),
+        "recent_closed": [
+            row for _, row in sorted(recent_closed, key=lambda item: item[0], reverse=True)[:5]
+        ],
+        "worktrees": worktrees if rc_wt == 0 else [{"error": worktree_err or worktree_text}],
+        "dirty_sync_paths": git_status_lines(root, SYNC_STATUS_PATHS),
+        "sidecar_artifacts": find_sidecar_artifacts(root),
+    }
+
+
+def print_sync(payload: dict[str, object]) -> None:
+    print(f"# Migx federation sync @ {payload['generated_utc']}")
+    print(f"root: {payload['root']}")
+    git = payload["git"]
+    assert isinstance(git, dict)
+    print(f"git: {git.get('branch', '')} @ {git.get('head', '')}")
+    for line in git.get("status", []):
+        print(f"  {line}")
+
+    peers = payload["peers"]
+    assert isinstance(peers, dict)
+    print("\n## Peers")
+    print("active:   " + ", ".join(peers.get("active", [])))
+    inactive = peers.get("inactive", [])
+    if inactive:
+        print("inactive: " + ", ".join(inactive))
+
+    print("\n## Mail Counts")
+    mail_counts = payload["mail_counts"]
+    assert isinstance(mail_counts, dict)
+    for side, counts in sorted(mail_counts.items()):
+        assert isinstance(counts, dict)
+        print(
+            f"- {side}: open={counts.get('open', 0)} "
+            f"ack={counts.get('ack', 0)} closed={counts.get('closed', 0)}"
+        )
+
+    queue = payload["queue"]
+    assert isinstance(queue, list)
+    print("\n## Queue (open + ack)")
+    if not queue:
+        print("(empty)")
+    else:
+        for row in queue:
+            print(
+                f"- [{row['status']}/{row['severity']}] {row['to']} <- {row['from']} "
+                f"{row['id']} ({row['type']})"
+            )
+
+    print("\n## Worktrees")
+    worktrees = payload["worktrees"]
+    assert isinstance(worktrees, list)
+    for wt in worktrees:
+        if "error" in wt:
+            print(f"- ERROR {wt['error']}")
+            continue
+        print(f"- {wt['path']} [{wt.get('branch', '')}] dirty={wt.get('dirty_count', 0)}")
+        for line in wt.get("dirty", []):
+            print(f"    {line}")
+
+    print("\n## Sync-Sensitive Dirt")
+    dirty = payload["dirty_sync_paths"]
+    assert isinstance(dirty, list)
+    if not dirty:
+        print("(none)")
+    else:
+        for line in dirty[:25]:
+            print(f"- {line}")
+        if len(dirty) > 25:
+            print(f"- ... {len(dirty) - 25} more")
+
+    print("\n## Generated Sidecars")
+    sidecars = payload["sidecar_artifacts"]
+    assert isinstance(sidecars, list)
+    if not sidecars:
+        print("(none)")
+    else:
+        for path in sidecars:
+            print(f"- {path}")
+
+    recent_closed = payload["recent_closed"]
+    assert isinstance(recent_closed, list)
+    print("\n## Recent Closed")
+    if not recent_closed:
+        print("(none)")
+    else:
+        for row in recent_closed:
+            print(f"- {row['id']} -> {row['to']} ({row['type']})")
+
+
+def cmd_sync(root: Path, json_mode: bool) -> int:
+    payload = build_sync_payload(root)
+    if json_mode:
+        print(json.dumps(payload, indent=2))
+    else:
+        print_sync(payload)
+    return 0
+
+
+def cmd_poll(root: Path, to: str) -> int:
+    if to not in ACTIVE_SIDES:
+        if to in KNOWN_SIDES:
+            print(f"side is inactive: {to}", file=sys.stderr)
+        else:
+            print(f"unknown side: {to}", file=sys.stderr)
+        return 2
+    rows = list_messages(root, to, "open")
+    if not rows:
+        print(f"(no open messages for {to})")
+        return 0
+    print(f"# Open federation mail for `{to}` ({len(rows)})\n")
+    for p, st, fm in rows:
+        print(f"## {fm.get('id', p.stem)}")
+        print(f"- path: `{p.relative_to(root)}`")
+        print(f"- type: {fm.get('type', '?')} · severity: {fm.get('severity', '?')}")
+        print(f"- from: {fm.get('from', '?')}")
+        print(f"- acceptance: {fm.get('acceptance', '')}")
+        print(f"- subject: {fm.get('subject', '')}")
+        print()
+        body = p.read_text(encoding="utf-8", errors="replace")
+        # strip frontmatter for preview
+        if body.startswith("---"):
+            end = body.find("\n---", 3)
+            if end >= 0:
+                body = body[end + 4 :].lstrip("\n")
+        # cap preview
+        lines = body.splitlines()
+        preview = "\n".join(lines[:40])
+        print(preview)
+        if len(lines) > 40:
+            print("\n… (truncated; read full file) …")
+        print("\n---\n")
+    print("Next: `migx-fed ack --id <id> --by " + to + "` then act; close when done.")
+    return 0
+
+
+def cmd_listen(root: Path, to: str, interval: int, cycles: int) -> int:
+    if to not in ACTIVE_SIDES:
+        if to in KNOWN_SIDES:
+            print(f"side is inactive: {to}", file=sys.stderr)
+        else:
+            print(f"unknown side: {to}", file=sys.stderr)
+        return 2
+    if interval < 1:
+        print("--interval must be >= 1 second", file=sys.stderr)
+        return 2
+    if cycles < 0:
+        print("--cycles must be >= 0 (0 means forever)", file=sys.stderr)
+        return 2
+
+    limit = "forever" if cycles == 0 else str(cycles)
+    print(
+        f"listening for open federation mail for {to} every {interval}s "
+        f"(cycles={limit}; Ctrl-C to stop)"
+    )
+    n = 0
+    try:
+        while True:
+            n += 1
+            stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            print(f"\n=== {stamp} poll {n} for {to} ===\n", flush=True)
+            cmd_poll(root, to)
+            if cycles and n >= cycles:
+                return 0
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nlisten stopped")
+        return 0
+
+
+def next_seq(root: Path, from_side: str, to_side: str, day: str) -> str:
+    prefix = f"{from_side}-{to_side}-{day}-"
+    n = 0
+    for st in STATUS_DIRS:
+        for p in messages_dir(root, st).glob(f"{prefix}*.md"):
+            m = re.match(rf"{re.escape(prefix)}(\d+)-", p.name)
+            if m:
+                n = max(n, int(m.group(1)))
+    return f"{n + 1:03d}"
+
+
+def slugify(s: str) -> str:
+    s = s.strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    return s.strip("-")[:48] or "msg"
+
+
+def cmd_send(
+    root: Path,
+    from_side: str,
+    to_side: str,
+    msg_type: str,
+    subject: str,
+    severity: str,
+    acceptance: str,
+    body_path: str | None,
+    stdin: bool,
+) -> int:
+    if from_side not in ACTIVE_SIDES or to_side not in ACTIVE_SIDES:
+        print(f"sides must be active: {ACTIVE_SIDES}", file=sys.stderr)
+        return 2
+    if msg_type not in VALID_TYPES:
+        print(f"type must be in {VALID_TYPES}", file=sys.stderr)
+        return 2
+    if severity not in VALID_SEVERITY:
+        print(f"severity must be in {VALID_SEVERITY}", file=sys.stderr)
+        return 2
+
+    if stdin:
+        body = sys.stdin.read()
+    elif body_path:
+        body = Path(body_path).read_text(encoding="utf-8")
+    else:
+        print("provide --body FILE or --stdin", file=sys.stderr)
+        return 2
+
+    # If body includes full frontmatter document, still wrap with our envelope
+    # unless it already looks like a federation message with required sections.
+    now = dt.datetime.now(dt.timezone.utc)
+    day = now.strftime("%Y-%m-%d")
+    seq = next_seq(root, from_side, to_side, day)
+    slug = slugify(subject)
+    msg_id = f"{from_side}-{to_side}-{day}-{seq}-{slug}"
+    # strip accidental outer frontmatter from body file
+    body_core = body
+    if body_core.lstrip().startswith("---"):
+        end = body_core.find("\n---", 3)
+        if end >= 0:
+            body_core = body_core[end + 4 :].lstrip("\n")
+
+    required = ("## Intent", "## Context", "## Evidence", "## Requested Action", "## Blockers")
+    missing = [h for h in required if h not in body_core]
+    if missing:
+        print(
+            "body missing required sections: " + ", ".join(missing) + "\n"
+            "See kanban/federation/MSG-TEMPLATE.md",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        import subprocess
+
+        branch = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "--abbrev-ref", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        commit = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        branch, commit = "", ""
+
+    fm = f"""---
+id: {msg_id}
+from: {from_side}
+to: {to_side}
+type: {msg_type}
+status: open
+created: "{day}"
+created_utc: "{now.strftime("%Y-%m-%dT%H:%M:%SZ")}"
+severity: {severity}
+subject: "{slug}"
+relates_to: []
+acceptance: "{acceptance.replace(chr(34), "'")}"
+branch: "{branch}"
+commit: "{commit}"
+---
+
+"""
+    out = messages_dir(root, "open") / f"{msg_id}.md"
+    out.write_text(fm + body_core.rstrip() + "\n", encoding="utf-8")
+    print(f"wrote {out.relative_to(root)}")
+    print("commit this path so the peer can pull, then they: migx-fed poll --to", to_side)
+    return 0
+
+
+def move_status(root: Path, msg_id: str, by: str, new_status: str, resolution: str | None) -> int:
+    found = find_message(root, msg_id)
+    if not found:
+        print(f"message not found: {msg_id}", file=sys.stderr)
+        return 1
+    path, old = found
+    text = path.read_text(encoding="utf-8", errors="replace")
+    fm = parse_frontmatter(text)
+    if fm.get("to") and fm["to"] != by and by != "gudjon":
+        print(
+            f"refusing: only receiver ({fm.get('to')}) or gudjon may {new_status} "
+            f"(you passed --by {by})",
+            file=sys.stderr,
+        )
+        return 2
+    # update status field in frontmatter
+    text2 = re.sub(
+        r"^status:\s*\S+",
+        f"status: {new_status}",
+        text,
+        count=1,
+        flags=re.M,
+    )
+    if new_status == "closed" and resolution:
+        if "## Resolution" not in text2:
+            text2 = text2.rstrip() + "\n\n## Resolution\n" + resolution.rstrip() + "\n"
+        else:
+            text2 = text2.rstrip() + "\n\n### Update\n" + resolution.rstrip() + "\n"
+    dest = messages_dir(root, new_status) / path.name
+    if path.resolve() != dest.resolve():
+        dest.write_text(text2, encoding="utf-8")
+        path.unlink()
+    else:
+        dest.write_text(text2, encoding="utf-8")
+    print(f"{old} → {new_status}: {dest.relative_to(root)}")
+    return 0
+
+
+def cmd_ack(root: Path, msg_id: str, by: str) -> int:
+    return move_status(root, msg_id, by, "ack", None)
+
+
+def cmd_close(root: Path, msg_id: str, by: str, resolution: str | None, resolution_file: str | None) -> int:
+    res = resolution
+    if resolution_file:
+        res = Path(resolution_file).read_text(encoding="utf-8")
+    if not res:
+        res = f"Closed by {by} (no resolution text provided)."
+    return move_status(root, msg_id, by, "closed", res)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="migx-fed",
+        description="Migx agent federation CLI (git-mediated peer mail)",
+    )
+    parser.add_argument(
+        "--root",
+        default=None,
+        help="repo root (default: MIGX_REPO_ROOT or auto-detect)",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("doctor", help="check federation layout")
+
+    p_sync = sub.add_parser("sync", help="show shared peer/mail/worktree state")
+    p_sync.add_argument("--json", action="store_true", help="machine-readable sync snapshot")
+
+    p_list = sub.add_parser("list", help="list messages")
+    p_list.add_argument("--to", default=None)
+    p_list.add_argument("--status", default="open", choices=[*STATUS_DIRS, "all"])
+
+    p_poll = sub.add_parser("poll", help="show open mail for a side (session start)")
+    p_poll.add_argument(
+        "--to",
+        default=os.environ.get("MIGX_FED_SIDE"),
+        help="receiver side (default: MIGX_FED_SIDE)",
+    )
+
+    p_listen = sub.add_parser("listen", help="periodically poll open mail for a side")
+    p_listen.add_argument(
+        "--to",
+        default=os.environ.get("MIGX_FED_SIDE"),
+        choices=ACTIVE_SIDES,
+        help="receiver side (default: MIGX_FED_SIDE)",
+    )
+    p_listen.add_argument(
+        "--interval",
+        type=int,
+        default=900,
+        help="seconds between polls (default: 900)",
+    )
+    p_listen.add_argument(
+        "--cycles",
+        type=int,
+        default=0,
+        help="number of poll cycles before exiting; 0 means forever",
+    )
+
+    p_send = sub.add_parser("send", help="write a new open message")
+    p_send.add_argument("--from", dest="from_side", required=True, choices=ACTIVE_SIDES)
+    p_send.add_argument("--to", dest="to_side", required=True, choices=ACTIVE_SIDES)
+    p_send.add_argument("--type", dest="msg_type", required=True, choices=VALID_TYPES)
+    p_send.add_argument("--subject", required=True)
+    p_send.add_argument("--severity", default="medium", choices=VALID_SEVERITY)
+    p_send.add_argument(
+        "--acceptance",
+        default="Receiver triages and either acts, files a task, or closes with reason.",
+    )
+    p_send.add_argument("--body", default=None, help="path to body markdown (required sections)")
+    p_send.add_argument("--stdin", action="store_true", help="read body from stdin")
+
+    p_ack = sub.add_parser("ack", help="receiver moves open → ack")
+    p_ack.add_argument("--id", required=True)
+    p_ack.add_argument("--by", required=True, choices=ACTIVE_SIDES)
+
+    p_close = sub.add_parser("close", help="receiver moves → closed")
+    p_close.add_argument("--id", required=True)
+    p_close.add_argument("--by", required=True, choices=ACTIVE_SIDES)
+    p_close.add_argument("--resolution", default=None)
+    p_close.add_argument("--resolution-file", default=None)
+
+    args = parser.parse_args(argv)
+    root = Path(args.root).resolve() if args.root else repo_root()
+
+    if args.cmd == "doctor":
+        return cmd_doctor(root)
+    if args.cmd == "sync":
+        return cmd_sync(root, args.json)
+    if args.cmd == "list":
+        return cmd_list(root, args.to, args.status)
+    if args.cmd == "poll":
+        if not args.to:
+            print("poll requires --to or MIGX_FED_SIDE", file=sys.stderr)
+            return 2
+        return cmd_poll(root, args.to)
+    if args.cmd == "listen":
+        if not args.to:
+            print("listen requires --to or MIGX_FED_SIDE", file=sys.stderr)
+            return 2
+        return cmd_listen(root, args.to, args.interval, args.cycles)
+    if args.cmd == "send":
+        return cmd_send(
+            root,
+            args.from_side,
+            args.to_side,
+            args.msg_type,
+            args.subject,
+            args.severity,
+            args.acceptance,
+            args.body,
+            args.stdin,
+        )
+    if args.cmd == "ack":
+        return cmd_ack(root, args.id, args.by)
+    if args.cmd == "close":
+        return cmd_close(root, args.id, args.by, args.resolution, args.resolution_file)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

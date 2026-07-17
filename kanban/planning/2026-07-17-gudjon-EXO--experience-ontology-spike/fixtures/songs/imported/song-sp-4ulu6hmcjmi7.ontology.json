@@ -1,0 +1,80 @@
+{
+  "schema": "migx.song-ontology/1",
+  "id": "song-sp-4ulu6hmcjmi7",
+  "ref": "",
+  "source": "spotify",
+  "external_ids": {
+    "spotify_uri": "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
+    "spotify_id": "4uLU6hMCjMI75M1A2tKUQC"
+  },
+  "playback": {
+    "mode": "prep_only",
+    "multi_deck_allowed": false
+  },
+  "duration_beats": 512,
+  "bpm": 124.0,
+  "key": {
+    "chromatic": "?",
+    "camelot": "8A",
+    "open_key": ""
+  },
+  "phrases": {
+    "beats_per_bar": 4,
+    "bars_per_phrase": 8
+  },
+  "sections": [
+    {
+      "id": "sec-intro",
+      "type": "intro",
+      "start_beat": 0,
+      "end_beat": 64,
+      "energy": 0.35,
+      "mixable": true,
+      "_llm_guidance": "Demo Artist A \u2014 Midnight Run; paste-import stub \u2014 no local file; prep/sequence only; multi_deck forbidden"
+    },
+    {
+      "id": "sec-build",
+      "type": "build",
+      "start_beat": 64,
+      "end_beat": 128,
+      "energy": 0.5
+    },
+    {
+      "id": "sec-drop",
+      "type": "drop",
+      "start_beat": 128,
+      "end_beat": 320,
+      "energy": 0.75,
+      "_llm_guidance": "stub energy \u2014 replace when analyzed or user-edited"
+    },
+    {
+      "id": "sec-outro",
+      "type": "outro",
+      "start_beat": 400,
+      "end_beat": 512,
+      "energy": 0.3,
+      "mixable": true
+    }
+  ],
+  "energy_curve": {
+    "unit": "phrase",
+    "method": "paste-import-stub",
+    "samples": [
+      0.3,
+      0.4,
+      0.5,
+      0.65,
+      0.75,
+      0.7,
+      0.5,
+      0.35,
+      0.28
+    ]
+  },
+  "_import": {
+    "tool": "tools/exo/spotify_uri_import.py",
+    "title": "Midnight Run",
+    "artist": "Demo Artist A",
+    "note": "metadata optional; Spotify URI is SSoT identity for this row"
+  }
+}

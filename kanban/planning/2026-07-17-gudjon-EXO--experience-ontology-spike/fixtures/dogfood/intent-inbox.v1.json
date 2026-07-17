@@ -1,0 +1,18 @@
+{
+  "schema": "migx.intent-inbox/1",
+  "note": "Offline dogfood intents — production path must marshal via ControlObject single-writer (P-06), never RT thread.",
+  "intents": [
+    {
+      "id": "intent-001",
+      "type": "suggest_next_track",
+      "status": "proposed",
+      "from_song_id": "song-01-deep-intro",
+      "to_song_id": "song-02-peak",
+      "reason": "Camelot 8A→9A adjacent; energy lift; see TRANSITION-PROOF.md + P08-EVAL-codex.md",
+      "co_writes": [
+        { "group": "[Channel2]", "key": "LoadTrack", "value_note": "load song-02 — illustrative only" }
+      ],
+      "requires_human_ack": true
+    }
+  ]
+}

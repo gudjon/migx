@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "migx.song-ontology/1",
+  "title": "Migx song experience ontology",
+  "type": "object",
+  "required": ["schema", "id", "bpm", "key", "sections", "energy_curve"],
+  "properties": {
+    "schema": { "const": "migx.song-ontology/1" },
+    "id": { "type": "string" },
+    "ref": {
+      "type": "string",
+      "description": "path to local track / track.toml / DB id; omit or empty when source is stream-id only"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["local", "spotify", "hybrid", "unknown"],
+      "description": "Primary media source for playback routing (not for agent key/energy math)"
+    },
+    "external_ids": {
+      "type": "object",
+      "description": "Cross-service identifiers; optional; never imply decode rights",
+      "properties": {
+        "spotify_uri": {
+          "type": "string",
+          "pattern": "^spotify:track:[A-Za-z0-9]+$",
+          "description": "Spotify track URI (identity only)"
+        },
+        "spotify_id": {
+          "type": "string",
+          "description": "Bare Spotify track id if preferred over URI"
+        },
+        "isrc": {
+          "type": "string",
+          "description": "ISRC when known (dedupe across sources)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "playback": {
+      "type": "object",
+      "description": "How Migx may play this row — policy for product, not RT",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["engine_multi_deck", "sequential_spotify", "prep_only", "unknown"]
+        },
+        "multi_deck_allowed": {
+          "type": "boolean",
+          "description": "false for pure Spotify-id rows until partner path exists"
+        }
+      }
+    },
+    "duration_beats": { "type": "number" },
+    "bpm": { "type": "number" },
+    "key": {
+      "type": "object",
+      "required": ["chromatic", "camelot"],
+      "properties": {
+        "chromatic": { "type": "string" },
+        "camelot": { "type": "string", "pattern": "^[0-9]{1,2}[AB]$" },
+        "open_key": { "type": "string" }
+      }
+    },
+    "phrases": {
+      "type": "object",
+      "properties": {
+        "beats_per_bar": { "type": "integer" },
+        "bars_per_phrase": { "type": "integer" }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "start_beat", "end_beat", "energy"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["intro", "build", "drop", "breakdown", "outro", "verse", "other"]
+          },
+          "start_beat": { "type": "number" },
+          "end_beat": { "type": "number" },
+          "energy": { "type": "number", "minimum": 0, "maximum": 1 },
+          "mixable": { "type": "boolean" },
+          "_llm_guidance": { "type": "string" }
+        }
+      }
+    },
+    "energy_curve": {
+      "type": "object",
+      "required": ["unit", "samples"],
+      "properties": {
+        "unit": { "type": "string" },
+        "method": { "type": "string" },
+        "samples": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    }
+  }
+}

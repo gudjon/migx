@@ -1,0 +1,7 @@
+# Paste-import sample for tools/exo/spotify_uri_import.py
+# Format: uri_or_url | title | artist | bpm | camelot
+# IDs are synthetic fixture tokens (not live catalog claims).
+
+spotify:track:4uLU6hMCjMI75M1A2tKUQC | Midnight Run | Demo Artist A | 124 | 8A
+https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b?si=example | Peak Hour | Demo Artist B | 126 | 9A
+spotify:track:7qiZfU4dY1lWllzX7mPBI3 | Cool Bridge | Demo Artist C | 122 | 7A

@@ -1,0 +1,45 @@
+name: kanban-discipline
+
+# Runs the Migx harness discipline lints on PRs touching the harness. Everything-is-code (MG-2):
+# the kanban tree is enforced like source. See kanban/triggers/registry.yaml (TR-kanban-discipline-ci).
+
+on:
+  pull_request:
+    paths:
+      - 'kanban/**'
+      - '.claude/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Dossier frontmatter
+        run: python3 kanban/scripts/lint-dossier-frontmatter.py
+      - name: Prefix registry coherence
+        run: python3 kanban/scripts/verify-prefix-registry.py
+      - name: Naming conventions
+        run: python3 kanban/scripts/lint-naming-conventions.py
+      - name: PS citations resolve
+        run: python3 kanban/scripts/verify-ps-citations.py
+      - name: Sealed dossiers honestly closed
+        run: python3 kanban/scripts/verify-sealed-dossier-has-closure.py
+      - name: DDD owns/exclude paths exist
+        run: python3 kanban/architecture/lint/verify-owns-paths-exist.py
+      - name: DDD agents_md charters present
+        run: python3 kanban/architecture/lint/verify-agents-md-present.py
+      - name: Skill grounding contract
+        run: python3 .claude/architecture/lint/verify-skill-grounding.py
+      - name: Pattern index fresh
+        run: python3 kanban/scripts/gen-pattern-index.py --check
+      - name: DDD roster fresh
+        run: python3 kanban/architecture/ddd/gen-index.py --check

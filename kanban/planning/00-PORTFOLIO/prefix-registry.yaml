@@ -1,0 +1,96 @@
+# Prefix registry — the ONE canonical home for registered typed-ID prefixes (MG-3).
+# A dossier or initiative prefix MUST appear here before any file uses it.
+# Immutable: once registered, a prefix's meaning never changes and its letters are never reused.
+# Enforced by kanban/scripts/verify-prefix-registry.py (Phase 3).
+#
+# Rules for the 3-letter dossier prefixes: UPPERCASE, exactly 3 letters, unique.
+
+version: 1
+lastUpdated: "2026-07-17"
+
+# --- Fixed prefix families (rules live in kanban/GLOSSARY.md) ---
+families:
+  - prefix: "P-"
+    kind: pattern
+    home: kanban/patterns/
+  - prefix: "AP-"
+    kind: antipattern
+    home: kanban/patterns/
+  - prefix: "ADR-"
+    kind: decision
+    home: kanban/architecture/decisions/
+  - prefix: "PS-"
+    kind: problem-statement
+    home: "<dossier>/00-FOUNDATION/"
+  - prefix: "EVD-"
+    kind: evidence
+    home: "<dossier>/results/"
+  - prefix: "TR-"
+    kind: trigger
+    home: kanban/triggers/registry.yaml
+
+# --- Registered dossier prefixes (3-letter) ---
+dossiers:
+  - prefix: HNS
+    slug: migx-harness-buildout
+    title: "Stand up the Migx agent harness"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: ASI
+    slug: apple-silicon-optimization
+    title: "Migx blazingly fast on Apple Silicon (M4/M5) — umbrella"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: MTL
+    slug: metal-gpu-offload
+    title: "Metal GPU offload for waveform / rendergraph / shaders"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: DSP
+    slug: accelerate-audio-dsp
+    title: "M4 audio-engine DSP via NEON/SIMD + Accelerate/vDSP"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: FSL
+    slug: filesystem-sidecar-spike
+    title: "Song.migx/ filesystem sidecar SSoT spike (additive export)"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: EXO
+    slug: experience-ontology-spike
+    title: "Experience ontology — song/session graph + agent transition proof"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: DUI
+    slug: design-md-theme-qml-spike
+    title: "DESIGN.md → Theme.qml design-token bridge spike"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - prefix: UIX
+    slug: ui-legacy-retirement
+    title: "UI legacy retirement (dead renderers/widgets → QML-first)"
+    facilitator: gudjon
+    registered: "2026-07-17"
+
+# --- Registered initiatives (id = initiative-<slug>; no typed anchor — see GLOSSARY) ---
+initiatives:
+  - id: initiative-apple-silicon
+    slug: apple-silicon-optimization
+    title: "Migx runs blazingly fast on Apple Silicon (M4/M5 SoC)"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - id: initiative-ai-djing-product
+    slug: ai-djing-product
+    title: "AI-DJing product — Cursor-for-music strategy execution"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - id: initiative-experience-ontology
+    slug: experience-ontology
+    title: "Migx experience ontology + AI-DJing co-pilot"
+    facilitator: gudjon
+    registered: "2026-07-17"
+  - id: initiative-ui-modernization
+    slug: ui-modernization
+    title: "UI modernization + legacy retirement — QML-first, Metal render"
+    facilitator: gudjon
+    registered: "2026-07-17"
