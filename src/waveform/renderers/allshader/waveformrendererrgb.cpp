@@ -27,6 +27,9 @@ void WaveformRendererRGB::onSetup(const QDomNode&) {
 
 void WaveformRendererRGB::preprocess() {
     if (!preprocessInner()) {
+        // Geometry is about to be cleared / is invalid: drop the skip cache so
+        // the next successful frame always rebuilds.
+        m_haveCachedInputs = false;
         if (geometry().vertexCount() != 0) {
             geometry().allocate(0);
             markDirtyGeometry();
@@ -115,6 +118,44 @@ bool WaveformRendererRGB::preprocessInner() {
     // Effective visual frame for x
     double xVisualFrame = qRound(firstVisualFrame / visualIncrementPerPixel) *
             visualIncrementPerPixel;
+
+    // Wave-2 (MTL, EVD-0003): if every input that shapes the geometry is
+    // unchanged since the last successful frame, the vertices already in the
+    // persistent buffer are identical -- skip the whole rebuild AND leave the
+    // geometry non-dirty so the VBO re-upload is skipped too. A static/paused
+    // deck redrawing every vsync then costs ~0 instead of the full per-frame
+    // rebuild (~80% of the scrub-frame cost, EVD-0003). During playback/scrub an
+    // input changes every frame -> cache miss -> identical behaviour to before.
+    const PreprocessInputs inputs{
+            pTrack.get(),
+            data,
+            waveform->getCompletion(),
+            dataSize,
+            length,
+            pixelLength,
+            devicePixelRatio,
+            xVisualFrame,
+            visualIncrementPerPixel,
+            allGain,
+            lowGain,
+            midGain,
+            highGain,
+            breadth,
+            splitLeftRight,
+            m_rgbLowColor_r,
+            m_rgbLowColor_g,
+            m_rgbLowColor_b,
+            m_rgbMidColor_r,
+            m_rgbMidColor_g,
+            m_rgbMidColor_b,
+            m_rgbHighColor_r,
+            m_rgbHighColor_g,
+            m_rgbHighColor_b};
+    if (m_haveCachedInputs && m_cachedInputs == inputs) {
+        return true;
+    }
+    m_cachedInputs = inputs;
+    m_haveCachedInputs = true;
 
     const int numVerticesPerLine = 6; // 2 triangles
 

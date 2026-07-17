@@ -223,6 +223,62 @@ void BM_WaveformFilteredPreprocess(benchmark::State& state) {
     runScrub(state, wwr, renderer, displayWindow(pWaveform->getDataSize()));
 }
 
+// Static / paused-deck frame: the display window does NOT move between frames,
+// so the Wave-2 skip cache in waveformrendererrgb.cpp should short-circuit every
+// frame after the first (identical inputs -> no rebuild, geometry not dirtied).
+// This measures the idle redraw cost the skip eliminates. Contrast with
+// BM_WaveformRGBPreprocess, which scrubs every frame -> always rebuilds (that
+// bench's number must NOT regress -- the cache always misses while scrubbing).
+void BM_WaveformRGBStatic(benchmark::State& state) {
+    WaveformPointer pWaveform = makeSyntheticWaveform();
+    TrackPointer pTrack = makeSyntheticTrack(pWaveform);
+
+    BenchWaveformWidgetRenderer wwr;
+    wwr.setTrack(pTrack);
+    wwr.resizeRenderer(kWidth, kHeight, kDevicePixelRatio);
+
+    allshader::WaveformRendererRGB renderer(&wwr,
+            ::WaveformRendererAbstract::Play,
+            ::WaveformRendererSignalBase::Option::None);
+
+    const double window = displayWindow(pWaveform->getDataSize());
+    // A fixed window at mid-track -- never changes between iterations.
+    wwr.setDisplayWindow(0.5 - window / 2.0, 0.5 + window / 2.0);
+
+    std::vector<double> frameUs;
+    frameUs.reserve(1 << 16);
+    for (auto _ : state) {
+        const auto start = std::chrono::steady_clock::now();
+        renderer.preprocess();
+        const auto end = std::chrono::steady_clock::now();
+        benchmark::DoNotOptimize(renderer.geometry().vertexCount());
+        frameUs.push_back(
+                std::chrono::duration<double, std::micro>(end - start).count());
+    }
+    if (frameUs.empty()) {
+        return;
+    }
+    std::sort(frameUs.begin(), frameUs.end());
+    const auto pct = [&](double q) {
+        return frameUs[static_cast<std::size_t>(
+                q * static_cast<double>(frameUs.size() - 1) + 0.5)];
+    };
+    state.counters["p50_us"] = pct(0.50);
+    state.counters["p90_us"] = pct(0.90);
+    state.counters["p99_us"] = pct(0.99);
+    state.counters["max_us"] = frameUs.back();
+    char label[128];
+    std::snprintf(label,
+            sizeof(label),
+            "p50=%.3fus p90=%.3fus p99=%.3fus max=%.1fus n=%zu",
+            pct(0.50),
+            pct(0.90),
+            pct(0.99),
+            frameUs.back(),
+            frameUs.size());
+    state.SetLabel(label);
+}
+
 #ifdef __APPLE__
 // A headless OpenGL context via CGL (Core OpenGL). Qt's offscreen QPA yields no
 // GL context in the CLI test binary (that is why the GL benches historically
@@ -553,6 +609,10 @@ BENCHMARK(BM_WaveformRGBPreprocess)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 BENCHMARK(BM_WaveformFilteredPreprocess)
+        ->Iterations(4000)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+BENCHMARK(BM_WaveformRGBStatic)
         ->Iterations(4000)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
