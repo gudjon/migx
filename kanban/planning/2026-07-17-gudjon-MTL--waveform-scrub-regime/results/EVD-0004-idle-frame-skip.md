@@ -28,6 +28,11 @@ channels. A static deck could therefore skip after an axes-color change and keep
 colors. `PreprocessInputs` now includes `axesR/axesG/axesB` alongside the signal colors; the defaulted
 `operator==` covers them automatically.
 
+Post-fix validation: `WaveformRendererRGBIdleSkipTest.SkipIsBitSafeAndKeyInvalidates` now asserts axes
+color invalidation; `build/mixxx-test '--gtest_filter=Waveform*'` passed; static benchmark remains
+`BM_WaveformRGBStatic` p50 **0.041µs** / p99 **0.042µs**, and scrub remains a full rebuild
+(`BM_WaveformRGBPreprocess` p50 **27.8µs** / p99 **32.2µs**).
+
 ## What this is / is not (honest scope)
 - **Is:** the *idle-frame skip*. A paused/static deck redrawing every vsync (decks sitting at a cue
   point — ubiquitous in a set) now costs ~0 CPU + 0 upload instead of the full per-frame rebuild. This

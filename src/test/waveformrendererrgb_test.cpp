@@ -8,12 +8,14 @@
 //   - identical frame  -> identical output (skip is bit-safe);
 //   - position changed -> output changes (position is in the key);
 //   - back to the first position -> output matches the original;
-//   - size changed     -> vertex count changes (size is in the key).
+//   - axes color changed -> output changes (axes color is in the key);
+//   - size changed       -> vertex count changes (size is in the key).
 // The BM_WaveformRGBStatic benchmark separately proves the skip actually fires
 // (~31us -> ~0.04us); these tests prove it stays correct.
 
 #include <gtest/gtest.h>
 
+#include <QColor>
 #include <QString>
 #include <cstdint>
 #include <vector>
@@ -107,6 +109,18 @@ TEST(WaveformRendererRGBIdleSkipTest, SkipIsBitSafeAndKeyInvalidates) {
     renderer.preprocess();
     EXPECT_EQ(a1, snapshot(renderer.geometry()))
             << "returning to a prior frame must reproduce its geometry";
+
+    // Axes color changed: the center axis rectangle color differs -> must rebuild.
+    renderer.setAxesColor(QColor(255, 0, 0));
+    renderer.preprocess();
+    const std::vector<char> axesChanged = snapshot(renderer.geometry());
+    EXPECT_NE(a1, axesChanged)
+            << "an axes color change must rebuild (axes color is in the cache key)";
+
+    // Identical colored frame remains bit-safe.
+    renderer.preprocess();
+    EXPECT_EQ(axesChanged, snapshot(renderer.geometry()))
+            << "an unchanged colored frame must not change the geometry";
 
     // Widget resized: pixel count changes -> vertex count must change.
     wwr.resizeRenderer(kWidth / 2, kHeight, kDevicePixelRatio);
