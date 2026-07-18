@@ -1,9 +1,8 @@
-# EVD-0003 — active-scrubbing waveform frame baseline (partial)
+# EVD-0003 — active-scrubbing waveform frame baseline (complete)
 
-Pinned baseline for PS-MTL-03 (the active-scrubbing/seek re-upload regime). **Partial**: the CPU
-rebuild half is measured; the combined CPU+GPU-upload frame skips honestly in this CLI environment
-(no window-server GL) and needs a one-off GUI/hardware run — the same limitation as the persistent-VBO
-upload delta.
+Pinned baseline for PS-MTL-03 (the active-scrubbing/seek re-upload regime). **Complete**: the CPU
+vertex-rebuild half, isolated VBO re-upload, and combined CPU+GPU-upload scrub frame now all run in the
+CLI test binary. The former GUI blocker was removed by binding a headless CGL context on macOS.
 
 ## Pin (P-25)
 - **Commit:** `18a1909` (bench code added on top; see the MTL Wave-1 commit)
@@ -40,6 +39,25 @@ M4 GPU), not a software fallback. Three runs:
 
 ¹ p99/max are inflated by GL-driver async jitter (no per-iteration `glFinish` — measures render-thread
 occupancy, not GPU completion). p50/p90 are the robust figures (EVD-0001 quiescent-host lesson).
+
+## Codex verification rerun — 2026-07-18
+Codex reran `build/mixxx-test --benchmark '--benchmark_filter=BM_Waveform(ScrubFrame|VboUpload)'`.
+The sandboxed run skipped because CGL could not create a context under sandbox graphics restrictions;
+the same command with hardware access bound the real GPU twice:
+`renderer=Apple M4 version=2.1 Metal - 90.5`.
+
+| Bench | run | p50 | p90 | p99 | note |
+|---|---|---|---|---|---|
+| `BM_WaveformVboUpload` | 1 | 8.041µs | 29.250µs | 70.667µs | p90/p99 driver jitter |
+| `BM_WaveformVboUpload` | 2 | 8.000µs | 10.583µs | 59.250µs | p50 stable |
+| `BM_WaveformScrubFrame` | 1 | **36.583µs** | 42.959µs | 129.834µs | combined frame |
+| `BM_WaveformScrubFrame` | 2 | **36.917µs** | 39.875µs | 88.708µs | combined frame |
+
+Read: the independent rerun confirms the CGL context is hardware-backed and confirms the decomposition.
+Using the CPU-only RGB rebuild p50 (~31.6µs) plus isolated upload p50 (~8.0µs), the CPU rebuild is still
+the dominant half of the combined scrub frame. Percentiles from separate distributions are not strictly
+additive, but the p50 signal is stable: combined scrub is ~36.8µs, or ~0.44% of an 8333µs 120Hz frame
+budget for one deck (~1.8% for 4 decks).
 
 ## What the number answers (Wave-2 lever confirmed)
 Combined scrub frame **p50 ≈ 39.4µs** decomposes as **CPU rebuild ~32µs (≈80%) + upload ~7µs (≈18%)**
