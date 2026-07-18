@@ -2,7 +2,7 @@
 id: research-headless-sim-ground-truth-agentic-cli
 type: task
 title: "Research: simulation ground truth + headless agentic CLI for Migx (WAV fixtures, mix measure)"
-status: open
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-ai-djing-product
@@ -12,6 +12,8 @@ authored_by: grok-signal
 authored_kind: agent
 queued_by: gudjon
 queued_at: "2026-07-18"
+completed: "2026-07-18"
+evidence: "kanban/knowledge/headless-sim-ground-truth-agentic-cli.md"
 triggered_by: "User 2026-07-18 — queue thinking: sim ground truth (.wav) so agents can measure/mix headless; full CLI agentic mode?"
 created: "2026-07-18"
 lastUpdated: "2026-07-18"

@@ -2,7 +2,7 @@
 id: research-output-verification-formats-naming
 type: task
 title: "Output verification — formats & naming at each stage for agent/downstream consumers"
-status: open
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-ai-djing-product
@@ -13,6 +13,8 @@ authored_by: grok-signal
 authored_kind: agent
 queued_by: gudjon
 queued_at: "2026-07-18"
+completed: "2026-07-18"
+evidence: "kanban/knowledge/output-verification-formats-naming.md"
 triggered_by: "User 2026-07-18 — from headless sim queue: Output Verification — formats/naming at each stage; downstream services must handle correctly"
 created: "2026-07-18"
 lastUpdated: "2026-07-18"
