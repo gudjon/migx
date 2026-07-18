@@ -2998,6 +2998,7 @@ if(BUILD_TESTING)
       src/test/waveform_upgrade_test.cpp
       src/test/waveformrenderbenchmark.cpp
       src/test/waveformrendererrgb_test.cpp
+      src/test/waveformrenderpixel_test.cpp
       src/test/enginefilterbenchmark.cpp
     )
   endif()
