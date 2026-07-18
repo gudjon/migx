@@ -11,10 +11,10 @@ resolves: [P-07, P-34]
 risks: [AP-16]
 related: []
 acceptance:
-  - "On TrackDAO::saveTrack(), an additive <track>.migx/track.json sidecar is written with bpm/key/replaygain, without removing the SQLite DB; mixxx-lib+mixxx-test build arm64 and library/track/dao tests pass (95/95 confirmed)."
-verified_against_code: "2026-07-17 (commit 66ed81d) — src/library/dao/trackdao.cpp exportToSidecar()"
+  - "On TrackDAO::saveTrack(), an additive <track>.migx/track.json sidecar is written with bpm/key/replaygain/peak plus optional cues and waveform energy when available, without removing the SQLite DB; mixxx-lib+mixxx-test build arm64 and focused TrackDAO/EXO bridge tests pass."
+verified_against_code: "2026-07-18 — src/library/dao/trackdao.cpp exportToSidecar()"
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-07-18"
 ---
 
 # PS-FSL-01 — no per-track agent-legible metadata home
@@ -31,8 +31,9 @@ rebuildable index during migration.
 
 ## Acceptance contract
 Implemented at `src/library/dao/trackdao.cpp` (`exportToSidecar()`), called from `saveTrack()`. Writes
-`<location>.migx/track.json` (bpm/key/replaygain/peak). Verified: builds arm64, 95/95 library tests pass.
+`<location>.migx/track.json` (bpm/key/replaygain/peak, plus `cues[]` and waveform `energy_curve` when
+available). Verified: builds arm64, focused TrackDAO tests pass, and EXO sidecar bridge tests pass.
 
 ## Out of scope
-The full EXO `ontology.json` (sections/energy/graph); only-on-change gating; DB→sidecar back-fill of the
-existing library. Those are follow-ons (see the dossier card).
+The full EXO `ontology.json` (sections/phrases/graph); DB→sidecar back-fill of the existing library.
+Those are follow-ons (see the dossier card and EXO/analyzer tasks).

@@ -9,15 +9,15 @@
 **Gate:** arm64 build green and 95/95 library/track/dao tests green.
 
 ## Wave 2 — harden file I/O before seal
-- [ ] Gate export to only-on-change; avoid redundant write work on every `saveTrack()`.
-- [ ] Add classified logging for open/write failures (`P-34`).
-- [ ] Add or update focused unit coverage if a stable hook exists.
+- [x] Gate export to only-on-change; avoid redundant write work on every `saveTrack()`.
+- [x] Add classified logging for open/write failures (`P-34`).
+- [x] Add focused unit coverage for sidecar cue + waveform energy export.
 
 **Gate:** focused library/dao tests pass; no RT-thread path touched.
 
 ## Wave 3 — EXO handoff boundary
-- [ ] Decide whether `ontology.json` extension stays in FSL or moves to an EXO successor.
-- [ ] Update `kanban/knowledge/filesystem-driven-architecture.md` only if code reality changes.
-- [ ] Draft 91-LOOP-CLOSURE with follow-on owner.
+- [x] Decide whether `ontology.json` extension stays in FSL or moves to an EXO successor.
+- [x] Update dossier docs for code reality: raw Track sidecar facts stay in FSL; interpretation stays in EXO.
+- [x] Draft 91-LOOP-CLOSURE with follow-on owner.
 
 **Gate:** every open end has a task or successor dossier.

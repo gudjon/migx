@@ -33,3 +33,17 @@ Verified Codex's source hardening against the built mixxx-test (arm64, macOS 26.
 Test gate: `build/mixxx-test --gtest_filter='*TrackDAO*:*TrackDao*:*Sidecar*:*DirectoryDAO*'`
 → 6 tests / 2 suites PASSED (TrackDAOTest.detectMovedTracks, bpmLockPreservedForTrackWithoutBeats).
 Hardening gate GREEN. Closed codex→claude fed message 001.
+
+## 2026-07-18 — sidecar cue + waveform energy enrichment (codex-cli)
+- **Did:** Extended `TrackDAO::exportToSidecar()` with optional `cues[]` and `energy_curve` fields.
+  Cue objects export type/hotcue/label/color plus frame/ms/beat positions when sample-rate and beatgrid
+  support them. Energy exports a 32-sample track-fraction curve and all/low/mid/high bands from the
+  existing Waveform filtered data.
+- **Did:** Updated `tools/exo/ontology_from_sidecar.py` so sidecar energy maps into song ontology
+  `energy_curve`, and sidecar cues map into session-local `prep.cue_points`. The bridge still does not
+  invent sections, phrases, cues, or energy when absent.
+- **Measured:** `cmake --build build --target mixxx-test --parallel 8`; `build/mixxx-test
+  --gtest_filter='TrackDAOTest.*'` (3 tests passed); `just exo-tool-tests`; `just exo-sidecar-ontology`;
+  `git diff --check`; `./kanban/scripts/migx-fed audit --strict`.
+- **Decided:** Raw Track facts belong in FSL `track.json`; product interpretation belongs in EXO.
+  Production sections/structure and richer analyzer energy remain successor work.

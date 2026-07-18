@@ -58,3 +58,18 @@
 
 ## 2026-07-18 — co-pilot runs on REAL sidecar data + tempo demotes un-mixable
 Added tools/exo/ontology_from_sidecar.py (FSL track.json -> song-ontology, robust key->Camelot for Camelot/OpenKey/Traditional). Ran real sidecar->ontology->co-pilot end-to-end on 4 realistic tracks: from 8A/126 house, prog-house Em/128 (9A) wins (81), and dnb Em/174 (9A, SAME harmonic compat) is demoted to last (37) by the tempo clash. Honest gap: sidecar has no cues/energy yet -> analyzer (spike-musicunderstanding-local-to-exo). Fixtures under fixtures/sidecars/.
+
+## 2026-07-18 — FSL sidecar cues + waveform energy bridge (codex-cli)
+TrackDAO::exportToSidecar now emits optional real-data fields when the Track has them:
+`cues[]` with type/hotcue/label/color/position_frames/position_ms/position_beats, and
+`energy_curve` downsampled from Waveform filtered all/low/mid/high bands. The EXO bridge maps
+sidecar energy into song ontology `energy_curve` and maps sidecar cues into session-local
+`prep.cue_points`; it still does not invent sections, phrases, cues, or energy when absent.
+
+Verified:
+- `cmake --build build --target mixxx-test --parallel 8`
+- `build/mixxx-test --gtest_filter='TrackDAOTest.*'`
+- `just exo-tool-tests`
+- `just exo-sidecar-ontology`
+- `git diff --check`
+- `./kanban/scripts/migx-fed audit --strict`

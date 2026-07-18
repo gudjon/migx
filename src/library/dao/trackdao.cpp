@@ -1,6 +1,7 @@
 #include "library/dao/trackdao.h"
 
 #include <QChar>
+#include <QJsonArray>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -9,6 +10,10 @@
 #include <QSaveFile>
 #include <QThread>
 #include <QtDebug>
+
+#include <algorithm>
+#include <iterator>
+#include <optional>
 
 #ifdef __SQLITE3__
 #include <sqlite3.h>
@@ -48,6 +53,205 @@ namespace {
 mixxx::Logger kLogger("TrackDAO");
 
 enum { UndefinedRecordIndex = -2 };
+
+constexpr int kSidecarEnergySamples = 32;
+
+QString cueTypeToString(mixxx::CueType cueType) {
+    switch (cueType) {
+    case mixxx::CueType::HotCue:
+        return QStringLiteral("hotcue");
+    case mixxx::CueType::MainCue:
+        return QStringLiteral("main");
+    case mixxx::CueType::Loop:
+        return QStringLiteral("loop");
+    case mixxx::CueType::Jump:
+        return QStringLiteral("jump");
+    case mixxx::CueType::Intro:
+        return QStringLiteral("intro");
+    case mixxx::CueType::Outro:
+        return QStringLiteral("outro");
+    case mixxx::CueType::N60dBSound:
+        return QStringLiteral("audible-range");
+    case mixxx::CueType::Beat:
+        return QStringLiteral("beat");
+    case mixxx::CueType::Invalid:
+        return QStringLiteral("invalid");
+    }
+    DEBUG_ASSERT(!"unhandled cue type");
+    return QStringLiteral("unknown");
+}
+
+std::optional<double> beatPositionFromFrames(
+        const mixxx::BeatsPointer& pBeats,
+        mixxx::audio::FramePos position) {
+    if (!pBeats || !position.isValid()) {
+        return std::nullopt;
+    }
+    const auto firstBeat = pBeats->firstBeat();
+    if (!firstBeat.isValid()) {
+        return std::nullopt;
+    }
+
+    const auto firstBeatIt = pBeats->iteratorFrom(firstBeat);
+    const auto nextBeatIt = pBeats->iteratorFrom(position);
+    const auto nextBeat = *nextBeatIt;
+    if (!nextBeat.isValid()) {
+        return std::nullopt;
+    }
+    if (nextBeat == position) {
+        return static_cast<double>(nextBeatIt - firstBeatIt);
+    }
+
+    const auto prevBeatIt = std::prev(nextBeatIt);
+    const auto prevBeat = *prevBeatIt;
+    if (!prevBeat.isValid()) {
+        return std::nullopt;
+    }
+    const auto beatLengthFrames = nextBeat - prevBeat;
+    if (beatLengthFrames <= 0) {
+        return std::nullopt;
+    }
+
+    const double beatFraction = (position - prevBeat) / beatLengthFrames;
+    return static_cast<double>(prevBeatIt - firstBeatIt) + beatFraction;
+}
+
+void writeFramePosition(
+        QJsonObject* pObject,
+        const QString& prefix,
+        mixxx::audio::FramePos position,
+        mixxx::audio::SampleRate sampleRate,
+        const mixxx::BeatsPointer& pBeats) {
+    if (!position.isValid()) {
+        return;
+    }
+    (*pObject)[prefix + QStringLiteral("_frames")] = position.value();
+    if (sampleRate.isValid()) {
+        (*pObject)[prefix + QStringLiteral("_ms")] =
+                (position.value() * 1000.0) / sampleRate.toDouble();
+    }
+    const auto beatPosition = beatPositionFromFrames(pBeats, position);
+    if (beatPosition) {
+        (*pObject)[prefix + QStringLiteral("_beats")] = *beatPosition;
+    }
+}
+
+QJsonArray cuesToJson(const Track& track) {
+    QList<CuePointer> cues = track.getCuePoints();
+    std::sort(cues.begin(),
+            cues.end(),
+            [](const CuePointer& lhs, const CuePointer& rhs) {
+                const auto lhsPosition = lhs->getPosition();
+                const auto rhsPosition = rhs->getPosition();
+                if (lhsPosition.isValid() != rhsPosition.isValid()) {
+                    return lhsPosition.isValid();
+                }
+                if (lhsPosition.isValid() && lhsPosition != rhsPosition) {
+                    return lhsPosition < rhsPosition;
+                }
+                if (lhs->getHotCue() != rhs->getHotCue()) {
+                    return lhs->getHotCue() < rhs->getHotCue();
+                }
+                return static_cast<int>(lhs->getType()) <
+                        static_cast<int>(rhs->getType());
+            });
+
+    const auto sampleRate = track.getSampleRate();
+    const auto pBeats = track.getBeats();
+    QJsonArray cueArray;
+    for (const CuePointer& pCue : std::as_const(cues)) {
+        QJsonObject cueObj;
+        cueObj[QStringLiteral("type")] = cueTypeToString(pCue->getType());
+
+        const int hotCue = pCue->getHotCue();
+        if (hotCue != Cue::kNoHotCue) {
+            cueObj[QStringLiteral("hotcue")] = hotCue;
+        }
+
+        const QString label = pCue->getLabel();
+        if (!label.isEmpty()) {
+            cueObj[QStringLiteral("label")] = label;
+        }
+        cueObj[QStringLiteral("color")] = mixxx::RgbColor::toQString(pCue->getColor());
+
+        writeFramePosition(&cueObj,
+                QStringLiteral("position"),
+                pCue->getPosition(),
+                sampleRate,
+                pBeats);
+        writeFramePosition(&cueObj,
+                QStringLiteral("end_position"),
+                pCue->getEndPosition(),
+                sampleRate,
+                pBeats);
+
+        cueArray.append(cueObj);
+    }
+    return cueArray;
+}
+
+double normalizedWaveformValue(double sum, int count) {
+    VERIFY_OR_DEBUG_ASSERT(count > 0) {
+        return 0;
+    }
+    return std::clamp(sum / (count * 255.0), 0.0, 1.0);
+}
+
+QJsonObject energyCurveToJson(const ConstWaveformPointer& pWaveform) {
+    if (!pWaveform) {
+        return {};
+    }
+    const int dataSize = pWaveform->getDataSize();
+    if (dataSize <= 0) {
+        return {};
+    }
+
+    const int completion = pWaveform->getCompletion();
+    const int dataLimit = completion > 0 ? std::min(completion, dataSize) : dataSize;
+    if (dataLimit <= 0) {
+        return {};
+    }
+
+    const int sampleCount = std::min(kSidecarEnergySamples, dataLimit);
+    QJsonArray all;
+    QJsonArray low;
+    QJsonArray mid;
+    QJsonArray high;
+    for (int sample = 0; sample < sampleCount; ++sample) {
+        const int start = (sample * dataLimit) / sampleCount;
+        const int end = ((sample + 1) * dataLimit) / sampleCount;
+        double sumAll = 0;
+        double sumLow = 0;
+        double sumMid = 0;
+        double sumHigh = 0;
+        for (int i = start; i < end; ++i) {
+            const WaveformData& data = pWaveform->get(i);
+            sumAll += data.filtered.all;
+            sumLow += data.filtered.low;
+            sumMid += data.filtered.mid;
+            sumHigh += data.filtered.high;
+        }
+        const int bucketSize = end - start;
+        all.append(normalizedWaveformValue(sumAll, bucketSize));
+        low.append(normalizedWaveformValue(sumLow, bucketSize));
+        mid.append(normalizedWaveformValue(sumMid, bucketSize));
+        high.append(normalizedWaveformValue(sumHigh, bucketSize));
+    }
+
+    QJsonObject bands;
+    bands[QStringLiteral("low")] = low;
+    bands[QStringLiteral("mid")] = mid;
+    bands[QStringLiteral("high")] = high;
+    bands[QStringLiteral("all")] = all;
+
+    QJsonObject energyCurve;
+    energyCurve[QStringLiteral("unit")] = QStringLiteral("track_fraction");
+    energyCurve[QStringLiteral("method")] =
+            QStringLiteral("waveform-filtered-downsample-v1");
+    energyCurve[QStringLiteral("samples")] = all;
+    energyCurve[QStringLiteral("bands")] = bands;
+    return energyCurve;
+}
 
 void markTrackLocationsAsDeleted(const QSqlDatabase& database, const QString& directory) {
     // kLogger.debug()<< "markTrackLocationsAsDeleted" <<
@@ -403,6 +607,14 @@ void TrackDAO::exportToSidecar(const Track& track) const {
     trackObj["key"] = track.getKeyText();
     trackObj["replaygain"] = track.getReplayGain().getRatio();
     trackObj["peak"] = track.getReplayGain().getPeak();
+    const QJsonArray cueArray = cuesToJson(track);
+    if (!cueArray.isEmpty()) {
+        trackObj[QStringLiteral("cues")] = cueArray;
+    }
+    const QJsonObject energyCurve = energyCurveToJson(track.getWaveform());
+    if (!energyCurve.isEmpty()) {
+        trackObj[QStringLiteral("energy_curve")] = energyCurve;
+    }
 
     QJsonDocument doc(trackObj);
     const QByteArray sidecarJson = doc.toJson(QJsonDocument::Indented);

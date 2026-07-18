@@ -2,16 +2,18 @@
 """Bridge: real Migx FSL track sidecars -> co-pilot song ontologies + a session.
 
 Turns the per-track `<track>.migx/track.json` sidecars that TrackDAO::saveTrack()
-writes (bpm / key / replaygain / peak) into the `migx.song-ontology` JSON that
+writes (bpm / key / replaygain / peak, with optional cues / energy) into the
+`migx.song-ontology` JSON that
 copilot_why_next.py reasons over -- so the co-pilot runs on a REAL library's
 key/bpm, not fixtures. This is the smallest end-to-end learning vehicle
 (DC-PDCL-5.3): prove harmonic + tempo reasoning works on real track metadata,
 and expose exactly what data is still missing.
 
-Honest gaps (DC-PDCL-4.6 / 1.11): the FSL sidecar has no cue points and no real
-energy curve, so this bridge omits `energy_curve` (the co-pilot falls back to a
-neutral 0.5) and emits no sections/phrases. Those need the on-device analyzer
-(see spike-musicunderstanding-local-to-exo). bpm + key are real.
+Honest gaps (DC-PDCL-4.6 / 1.11): this bridge never invents energy, cue points,
+sections, or phrases. If the FSL sidecar has a TrackDAO waveform energy curve,
+it maps it through. If cues exist, it maps them into session-local prep cue
+points. If they are absent, the co-pilot keeps its neutral energy fallback and
+empty prep.
 
 Usage:
   python3 tools/exo/ontology_from_sidecar.py \\
@@ -22,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -69,6 +72,106 @@ def to_camelot(text: str | None) -> str | None:
     return _CAMELOT.get(norm)
 
 
+def _bounded_number(value: Any, lower: float = 0.0, upper: float = 1.0) -> float | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    number = float(value)
+    if not math.isfinite(number):
+        return None
+    return max(lower, min(upper, number))
+
+
+def sidecar_energy_curve(sidecar: dict[str, Any]) -> dict[str, Any] | None:
+    """Return schema-compatible energy data when the sidecar has real samples."""
+    raw = sidecar.get("energy_curve")
+    if not isinstance(raw, dict):
+        return None
+    raw_samples = raw.get("samples")
+    if not isinstance(raw_samples, list):
+        return None
+    samples = [_bounded_number(value) for value in raw_samples]
+    samples = [value for value in samples if value is not None]
+    if not samples:
+        return None
+
+    energy_curve: dict[str, Any] = {
+        "unit": str(raw.get("unit") or "track_fraction"),
+        "method": str(raw.get("method") or "sidecar"),
+        "samples": samples,
+    }
+    bands = raw.get("bands")
+    if isinstance(bands, dict):
+        clean_bands: dict[str, list[float]] = {}
+        for band in ("low", "mid", "high", "all"):
+            raw_values = bands.get(band, [])
+            if not isinstance(raw_values, list):
+                continue
+            values = [_bounded_number(value) for value in raw_values]
+            clean = [value for value in values if value is not None]
+            if clean:
+                clean_bands[band] = clean
+        if clean_bands:
+            energy_curve["bands"] = clean_bands
+    return energy_curve
+
+
+def sidecar_cues_to_session_prep(sidecar: dict[str, Any]) -> dict[str, Any] | None:
+    """Map FSL cue facts into session-local prep cues.
+
+    The sidecar remains the richer source of truth. Session prep keeps only the
+    fields the EXO session schema already supports: id, label, beat, and ms.
+    """
+    raw_cues = sidecar.get("cues")
+    if not isinstance(raw_cues, list):
+        return None
+
+    cue_points: list[dict[str, Any]] = []
+    for index, cue in enumerate(raw_cues):
+        if not isinstance(cue, dict):
+            continue
+        beat = cue.get("position_beats")
+        ms = cue.get("position_ms")
+        beat_value = (
+            float(beat)
+            if isinstance(beat, (int, float)) and not isinstance(beat, bool)
+            else None
+        )
+        ms_value = (
+            float(ms)
+            if isinstance(ms, (int, float)) and not isinstance(ms, bool)
+            else None
+        )
+        if beat_value is None and ms_value is None:
+            continue
+
+        cue_type = str(cue.get("type") or "cue")
+        hotcue = cue.get("hotcue")
+        if isinstance(hotcue, int) and not isinstance(hotcue, bool) and hotcue >= 0:
+            cue_id = f"cue-hotcue-{hotcue + 1}"
+            default_label = f"Hotcue {hotcue + 1}"
+        else:
+            cue_id = re.sub(
+                r"[^a-z0-9]+",
+                "-",
+                f"cue-{cue_type}-{index + 1}".lower(),
+            ).strip("-")
+            default_label = cue_type.replace("-", " ").title()
+
+        point: dict[str, Any] = {
+            "id": cue_id,
+            "label": str(cue.get("label") or default_label),
+        }
+        if beat_value is not None and math.isfinite(beat_value):
+            point["beat"] = beat_value
+        if ms_value is not None and math.isfinite(ms_value):
+            point["ms"] = ms_value
+        cue_points.append(point)
+
+    if not cue_points:
+        return None
+    return {"cue_points": cue_points}
+
+
 def sidecar_to_ontology(sidecar: dict[str, Any], song_id: str) -> dict[str, Any]:
     camelot = to_camelot(sidecar.get("key"))
     key_obj: dict[str, Any] = {"chromatic": sidecar.get("key")}
@@ -84,8 +187,10 @@ def sidecar_to_ontology(sidecar: dict[str, Any], song_id: str) -> dict[str, Any]
     bpm = sidecar.get("bpm")
     if bpm:
         ont["bpm"] = float(bpm)
-    # NOTE: no energy_curve / sections / cues — the FSL sidecar has none yet.
-    # The co-pilot defaults energy to neutral; analyzer work fills this later.
+    energy_curve = sidecar_energy_curve(sidecar)
+    if energy_curve:
+        ont["energy_curve"] = energy_curve
+    # NOTE: no invented sections/phrases. Cues are session-local prep data.
     return ont
 
 
@@ -108,7 +213,15 @@ def main() -> int:
         ont = sidecar_to_ontology(sidecar, song_id)
         (out / f"{song_id}.ontology.json").write_text(
             json.dumps(ont, indent=2) + "\n", encoding="utf-8")
-        tracks.append({"song_id": song_id, "ontology_ref": f"{song_id}.ontology.json"})
+        track_entry = {
+            "song_id": song_id,
+            "ontology_ref": f"{song_id}.ontology.json",
+            "source": "local",
+        }
+        prep = sidecar_cues_to_session_prep(sidecar)
+        if prep:
+            track_entry["prep"] = prep
+        tracks.append(track_entry)
         order.append(song_id)
         if "camelot" not in ont["key"]:
             unresolved.append((song_id, sidecar.get("key")))

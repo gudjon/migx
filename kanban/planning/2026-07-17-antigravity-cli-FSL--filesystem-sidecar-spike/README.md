@@ -1,8 +1,8 @@
 # FSL — filesystem sidecar spike
 
-**Prefix:** `FSL` · **Owner/facilitator:** gudjon · **Current DRI agent:** `claude-code`  
+**Prefix:** `FSL` · **Owner/facilitator:** gudjon · **DRI at seal:** `codex-cli`
 **Historical note:** This dossier was scaffolded under `antigravity-cli`; Antigravity is now paused.  
-**Initiative:** `initiative-experience-ontology` · **Status:** execution / hardening before seal
+**Initiative:** `initiative-experience-ontology` · **Status:** sealed / successor work named
 
 ## Scope
 
@@ -13,14 +13,14 @@ SQLite or flip full SSoT authority yet.
 ## Landed slice
 
 - `TrackDAO::saveTrack()` exports a JSON sidecar with bpm / key / replaygain / peak.
+- When available, the same sidecar carries `cues[]` and a coarse waveform-derived `energy_curve`.
 - The DB remains canonical for current runtime paths.
-- Prior verifier note records arm64 build plus 95/95 library/track/dao tests green.
+- Verification records arm64 build, focused TrackDAO tests, EXO bridge tests, and sidecar smoke green.
 
-## Before seal
+## Successors
 
-- Gate sidecar export to only-on-change; avoid redundant file I/O on every save.
-- Add classified logging for export/open failures (`P-34`).
-- Decide whether EXO `ontology.json` belongs in this dossier or a successor once analyzers exist.
+- EXO owns interpretation of sidecar facts into ontology/session prep.
+- Analyzer/EXO successor work owns production section detection, richer structure, and graph derivation.
 
 ## Entry
 
