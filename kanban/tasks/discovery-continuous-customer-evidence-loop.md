@@ -17,16 +17,18 @@ related:
   - product-discovery-customer-leadership-migx
   - initiative-ai-djing-product
 status_note: >
-  2026-07-18: X-discussion ethnography completed as interview substitute (user-directed).
-  Evidence files under kanban/discovery/2026-07-18-x-interview-round-*.md + signal
-  2026-07-18-x-trending-dj-behavior-interviews.md. Still open for direct macOS-AS interviews.
+  2026-07-18: Two X ethnography “interview” rounds as user-directed substitute.
+  Round 1: prep/crates (E1–E15). Round 2: live reliability/firmware/gear (E16–E26).
+  ~26 captures, medium confidence. Still open for direct macOS-AS interviews.
 acceptance: |
   1. At least 3 CustomerEvidenceCaptured records (kanban/discovery/ or federation signal)
      from past-behavior interviews (prep, failed transitions, crate share, paid tools).
-     PARTIAL: public X ethnography (15 captures) — confidence medium; direct interviews still needed.
+     PARTIAL: public X ethnography (~26 captures, 3 round files) — confidence medium;
+     direct interviews still needed for high confidence / target segment.
   2. Opportunity map Opp-A–E re-ranked with evidence links in product-discovery note or successor.
-     PARTIAL: re-rank in 2026-07-18 X interview signal.
+     PARTIAL: re-rank in 2026-07-18 X interview signals (rounds 1–2).
   3. Co-pilot product bet either: instrumented Ack plan + dogfood date, OR explicit halt with open assumptions.
+     PARTIAL: X evidence strengthens “prep assist first; live Ack still assumption + cultural headwind.”
   4. Monthly revisit trigger documented (Domain 7 learning memory).
 loop_queue: true
 ---
@@ -37,4 +39,7 @@ See `kanban/knowledge/product-discovery-customer-leadership-migx.md` for full Ru
 
 **Do not** close co-pilot product success with EXO fixtures alone.
 
-**2026-07-18 progress:** X trending/discussion “interviews” filed; prep reliability and USB culture dominate over live AI Ack.
+**2026-07-18 progress:**
+- Round 1: prep/USB culture + crates/sharing (E1–E15).
+- Round 2: empty-USB nightmares, CDJ firmware blank sticks, dual-USB norms, PCDJ→CDJ migration, AI setlist rejection (E16–E26).
+- Dominant story: **reliability + dual media + export integrity**, not live AI Ack.

@@ -20,6 +20,8 @@ method: "X discussion ethnography as interview substitute (user-directed); not l
 Full capture files:
 - `kanban/discovery/2026-07-18-x-interview-round-prep-failures.md` (E1–E7)
 - `kanban/discovery/2026-07-18-x-interview-round-crates-sharing-hybrid.md` (E8–E15)
+- `kanban/discovery/2026-07-18-x-interview-round-live-reliability-controllers.md` (E16–E26) — **round 2**
+- Synthesis of round 2: `kanban/federation/signal/2026-07-18-x-interview-round-2-live-reliability.md`
 
 ---
 
@@ -61,9 +63,10 @@ Full capture files:
 |---|---|---|
 | Prep/failure round E1–E7 | 7 captures | past_behavior |
 | Crates/share/hybrid E8–E15 | 8 captures (E14 trend-only) | mostly past_behavior |
+| Live reliability/gear E16–E26 | 11 captures | past_behavior + negative AI |
 | Prior field brief 2026-07-18 Opp-ACD | 1 aggregate | low confidence secondary |
 
-**Loop task progress:** public ethnography **started**; still need **direct** macOS-AS target interviews for high confidence. Do **not** mark `discovery-continuous-customer-evidence-loop` done.
+**Loop task progress:** public ethnography **two rounds** (~26 captures); still need **direct** macOS-AS target interviews for high confidence. Do **not** mark `discovery-continuous-customer-evidence-loop` done.
 
 ---
 
@@ -89,4 +92,5 @@ Full capture files:
 
 ## Next discovery step
 
-Optional: one more X pass on **controller / club dark-UI** pain; or human runs 3 live interviews using E1–E15 as probe script.
+Round 2 completed (live reliability / firmware / gear path). Controller dark-UI stayed thin; dual-USB firmware-fork pain was the real signal.  
+**Primary next:** human runs 3 live macOS-AS interviews using probe script in `2026-07-18-x-interview-round-2-live-reliability.md`.
