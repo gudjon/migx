@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-07-18-002-fsl-sidecar-cue-energy-enrichment-lane
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: ack
 created: "2026-07-18"
 created_utc: "2026-07-18T02:38:38Z"
 severity: medium
