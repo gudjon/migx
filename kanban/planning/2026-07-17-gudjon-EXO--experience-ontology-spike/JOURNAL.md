@@ -55,3 +55,6 @@
 - Fixture: `res/qml/CoPilot/fixture_why_next.json` synced by `just exo-copilot-why`
 - Ack/Reject UI-only; Theme tokens; no CO / RT
 - Task `layer-b-copilot-qml-chrome` → done
+
+## 2026-07-18 — co-pilot runs on REAL sidecar data + tempo demotes un-mixable
+Added tools/exo/ontology_from_sidecar.py (FSL track.json -> song-ontology, robust key->Camelot for Camelot/OpenKey/Traditional). Ran real sidecar->ontology->co-pilot end-to-end on 4 realistic tracks: from 8A/126 house, prog-house Em/128 (9A) wins (81), and dnb Em/174 (9A, SAME harmonic compat) is demoted to last (37) by the tempo clash. Honest gap: sidecar has no cues/energy yet -> analyzer (spike-musicunderstanding-local-to-exo). Fixtures under fixtures/sidecars/.
