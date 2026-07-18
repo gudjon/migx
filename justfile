@@ -140,6 +140,7 @@ exo_why_json := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spik
 exo_intent := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/dogfood/intent-inbox.v1.json"
 
 exo_qml_fixture := "res/qml/CoPilot/fixture_why_next.json"
+exo_sidecar_out := "/private/tmp/migx-exo-sidecar-demo"
 
 exo-copilot-why:
     python3 tools/exo/copilot_why_next.py \
@@ -157,6 +158,30 @@ exo-copilot-why-mirror:
       --md-out {{exo_why_md}} \
       --json-out {{exo_why_json}} \
       --write-intent {{exo_intent}}
+
+# Real-library bridge smoke: FSL track sidecars -> EXO song ontologies -> co-pilot proposal.
+exo-sidecar-ontology:
+    python3 tools/exo/ontology_from_sidecar.py \
+      --sidecars \
+      kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sidecars/deep-house-am-126.migx/track.json \
+      kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sidecars/prog-house-em-128.migx/track.json \
+      kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sidecars/tech-house-dm-124.migx/track.json \
+      kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/sidecars/dnb-em-174.migx/track.json \
+      --out-dir {{exo_sidecar_out}}
+    python3 tools/exo/copilot_why_next.py --session {{exo_sidecar_out}}/session.json
+
+# Set-level co-pilot: audit a planned set and optionally propose a smoother order.
+exo-set-audit:
+    python3 tools/exo/set_planner.py --session {{exo_session_hybrid}} --audit
+
+exo-set-plan START="song-02-peak":
+    @start="{{START}}"; start="${start#START=}"; python3 tools/exo/set_planner.py --session {{exo_session_hybrid}} --audit --plan --start "$start"
+
+exo-tool-tests: exo-fixtures-check
+    python3 tools/exo/test_copilot_tempo.py
+    python3 tools/exo/test_ontology_from_sidecar.py
+    python3 tools/exo/test_set_planner.py
+    python3 -m py_compile tools/exo/copilot_why_next.py tools/exo/ontology_from_sidecar.py tools/exo/set_planner.py
 
 # PLT Wave 1: Core Audio HAL soak (measurement only — not product RT path).
 # Defaults: 20s · 256 frames · 48 kHz. Override via env:
