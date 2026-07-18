@@ -1,12 +1,12 @@
 {
   "schema": "migx.copilot-why-next/1",
-  "generated_utc": "2026-07-17T14:00:30Z",
+  "generated_utc": "2026-07-18T01:23:30Z",
   "current_song_id": "song-02-peak",
   "current_source": "local",
   "current_camelot": "9A",
   "proposal": {
     "song_id": "song-04-spotify-uri-only",
-    "score": 102.0,
+    "score": 122.0,
     "relation": "sequence-only",
     "source": "spotify",
     "camelot": "10A",
@@ -19,6 +19,7 @@
       "session edge harmonically-compatible: 9A \u2192 10A Camelot +1; agent ranking only \u2014 sequence if SP playback later",
       "session edge sequence-only: Local\u2192Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro",
       "Camelot compatible: 9A \u2192 10A (self/\u00b11/mode flip)",
+      "tempo beatmixable: 126\u2192125 BPM (\u03940.8%)",
       "energy lift: tail 0.28 \u2192 head 0.38 (\u0394+0.10)",
       "matches planned order (next in session.order)"
     ]
@@ -26,7 +27,7 @@
   "ranked": [
     {
       "song_id": "song-04-spotify-uri-only",
-      "score": 102.0,
+      "score": 122.0,
       "relation": "sequence-only",
       "source": "spotify",
       "camelot": "10A",
@@ -39,13 +40,14 @@
         "session edge harmonically-compatible: 9A \u2192 10A Camelot +1; agent ranking only \u2014 sequence if SP playback later",
         "session edge sequence-only: Local\u2192Spotify: no dual Spotify stream; hand off to sequential_spotify or play SP alone after local outro",
         "Camelot compatible: 9A \u2192 10A (self/\u00b11/mode flip)",
+        "tempo beatmixable: 126\u2192125 BPM (\u03940.8%)",
         "energy lift: tail 0.28 \u2192 head 0.38 (\u0394+0.10)",
         "matches planned order (next in session.order)"
       ]
     },
     {
       "song_id": "song-01-deep-intro",
-      "score": 41.0,
+      "score": 61.0,
       "relation": "harmonically-compatible",
       "source": "local",
       "camelot": "8A",
@@ -56,12 +58,13 @@
       "reasons": [
         "source policy: local\u2192local; multi-deck allowed if both local",
         "Camelot compatible: 9A \u2192 8A (self/\u00b11/mode flip)",
+        "tempo beatmixable: 126\u2192124 BPM (\u03941.6%)",
         "energy steady: tail 0.28 \u2192 head 0.22"
       ]
     },
     {
       "song_id": "song-03-cool-down",
-      "score": 20.0,
+      "score": 40.0,
       "relation": "planned-transition",
       "source": "local",
       "camelot": "7A",
@@ -72,6 +75,7 @@
       "reasons": [
         "source policy: local\u2192local; multi-deck allowed if both local",
         "Camelot not adjacent: 9A \u2192 7A (energy/sequence may still hold)",
+        "tempo beatmixable: 126\u2192122 BPM (\u03943.2%)",
         "energy steady: tail 0.28 \u2192 head 0.28",
         "appears later in planned order"
       ]

@@ -106,14 +106,30 @@ market context → segment → lived situation → past behavior → problem evi
 | **Opp-D:** “Partner can’t see my crate” | Shared-lib capability note; Plex as prior art | Migx-native share (no Plex dep) |
 | **Opp-E:** “Agents can’t prove mix quality” | TDD/sim research | Headless scenario harness |
 
+### Field re-rank after X ethnography (2026-07-18)
+
+Secondary X/web observation produced low/medium-confidence `CustomerEvidenceCaptured` records, not
+target-user interviews. It is enough to steer implementation order, not enough to close product
+success:
+
+| Opportunity | Evidence update | Capability routing |
+|---|---|---|
+| **Opp-A** | Prep behavior is stronger than live AI Ack: DJs pre-mark cues, check transitions, run USB/CDJ verification, and keep backup set chunks. | Build **prep assist first**: why-next, cue/transition checks, export checklist, and Ack telemetry later. |
+| **Opp-C** | Multi-source is mostly a **prep identity/export** problem; pro live sets still center owned files, USBs, and CDJs. | Keep Spotify/hybrid **sequence-only** and prioritize Track/FSL → EXO export with bpm/key/cues. |
+| **Opp-D** | Partner sharing evidence points to dual media and copy/export handoff, not live network crates. | Shape shared-library work as **session/crate export packs** before NAS/server sharing. |
+| **Opp-B** | Reliability stories reinforce the existing MTL/soak line: AI that increases crash or export risk loses trust. | Continue EVD-backed Apple Silicon tuning as product trust, but label it technical evidence. |
+
+Open assumptions remain: observed mid-set AI Ack, willingness-to-pay for Intelligence, and direct
+macOS Apple-Silicon DJ interviews.
+
 ### Smallest tests that change decisions
 
 | Opportunity | Smallest test | Kill criterion |
 |---|---|---|
-| Opp-A | 3 working DJs dogfood offline why-next on their real crate export | 0/3 would Ack any proposal without heavy edit |
+| Opp-A | 3 working DJs dogfood prep-first why-next on their real crate export | 0/3 would keep any proposal/cue/export check without heavy edit |
 | Opp-B | EVD-0003 + soak gates on M4 | Underrun or p99 regression |
-| Opp-C | Hybrid session fixture + policy badges | Users try dual Spotify multi-deck and blame us |
-| Opp-D | Paper prototype of “known shares” list | “USB is enough forever” |
+| Opp-C | Sidecar/FSL → EXO ontology export with bpm/key/cues + sequence-only policy badges | Exported metadata is too thin for useful prep suggestions |
+| Opp-D | Crate/session export-pack prototype and 2 partner-gig interviews | “USB copy is enough forever” and no partner handoff pain appears |
 | Opp-E | One SimScenario gtest green in CI | Never used by agents for RED/GREEN |
 
 ---
@@ -233,9 +249,9 @@ Until that folder exists, use **federation signal** with type status + subject `
 
 | Bet | Status | Next discovery action |
 |---|---|---|
-| Offline EXO co-pilot | Tech feasible | **Dogfood with real crates** + Ack logging design |
-| Live CO path | Incomplete | Assumption test: does offline accept predict live? |
-| Shared libraries | Spec | 2 interviews on partner crate pain |
+| Offline EXO co-pilot | Tech feasible; tempo scoring added | **Dogfood with real crates** via Track/FSL → EXO bpm/key/cue export |
+| Live CO path | Incomplete; product value still assumption | Assumption test: does prep accept predict live Ack? |
+| Shared libraries | Spec; live network share unvalidated | Test crate/session export-pack shape before server/NAS sharing |
 | Headless sim | Phased go | Build for **engineering** learning first; product narrative second |
 | Freemium | Unvalidated | Explicit open assumption; no billing code yet |
 
