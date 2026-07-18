@@ -33,7 +33,13 @@ RGB tests: 13 passed, no correctness regression.
 - **Scope:** RGB renderer only. The Filtered renderer has the same pattern; applying the skip there is a
   cheap follow-on.
 
+## Correctness gate (headless — green)
+`src/test/waveformrendererrgb_test.cpp` (`WaveformRendererRGBIdleSkipTest`) pins the contract by
+comparing the produced vertex buffer: identical frame → identical output (skip is bit-safe); position
+change → output changes; return-to-frame → reproduces; size change → vertex count changes. **Passes.**
+So the skip is proven correct for the main dynamic inputs, with a permanent regression guard. Codex is
+separately auditing the *full* input-key completeness (federation msg -003).
+
 ## Remaining gate
-Headless correctness is green (input enumeration is complete + `operator==` is memberwise; tests pass;
-non-regression proven). The one gate not reachable headlessly is a **GUI visual eyeball** that a paused
-waveform still renders correctly frame-to-frame (same class of gate as the VBO win). Cheap to check.
+The one gate not reachable headlessly is a **GUI visual eyeball** that a paused waveform still renders
+correctly frame-to-frame (same class of gate as the VBO win). Cheap to check when convenient.
