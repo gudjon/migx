@@ -65,6 +65,39 @@ def energy_head(song: dict[str, Any]) -> float:
     return float(samples[0])
 
 
+def bpm_of(song: dict[str, Any]) -> float:
+    try:
+        v = song.get("bpm")
+        return float(v) if v else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def tempo_compat(cur_bpm: float, cand_bpm: float) -> tuple[float, str]:
+    """Beatmatch compatibility — the #1 mixing constraint the harmonic/energy
+    scores alone miss. A DJ can pitch a few percent and can mix at half/double
+    time, so we take the smallest gap across direct, double-time, and half-time
+    relationships. A large gap PENALIZES so a harmonically-perfect but
+    un-beatmixable candidate ranks below a mixable one.
+    """
+    if cur_bpm <= 0 or cand_bpm <= 0:
+        return 0.0, "tempo: unknown bpm — beatmatch not scored"
+    best_pct: float | None = None
+    best_label = ""
+    for factor, label in ((1.0, ""), (2.0, " via double-time"), (0.5, " via half-time")):
+        pct = abs((cand_bpm * factor) / cur_bpm - 1.0) * 100.0
+        if best_pct is None or pct < best_pct:
+            best_pct, best_label = pct, label
+    span = f"{cur_bpm:.0f}→{cand_bpm:.0f} BPM (Δ{best_pct:.1f}%{best_label})"
+    if best_pct <= 6.0:
+        return 20.0, f"tempo beatmixable: {span}"
+    if best_pct <= 10.0:
+        return 10.0, f"tempo mixable with pitch: {span}"
+    if best_pct <= 15.0:
+        return 3.0, f"tempo a stretch: {span}"
+    return -8.0, f"tempo clash: {span} — not beatmixable"
+
+
 def load_songs(session_path: Path, session: dict[str, Any]) -> dict[str, dict[str, Any]]:
     base = session_path.parent
     out: dict[str, dict[str, Any]] = {}
@@ -174,6 +207,11 @@ def score_candidate(
                 relation = "harmonically-compatible"
         else:
             reasons.append(f"Camelot not adjacent: {cur_key} → {cand_key} (energy/sequence may still hold)")
+
+    # Tempo / beatmatch compatibility (the #1 mixing constraint).
+    tscore, treason = tempo_compat(bpm_of(cur), bpm_of(cand))
+    score += tscore
+    reasons.append(treason)
 
     # Energy direction
     et, eh = energy_tail(cur), energy_head(cand)
