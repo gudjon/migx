@@ -3,7 +3,7 @@ id: claude-code-grok-signal-2026-07-18-001-copilot-tempo-added-ontology-needs-bp
 from: claude-code
 to: grok-signal
 type: signal-handoff
-status: open
+status: closed
 created: "2026-07-18"
 created_utc: "2026-07-18T00:37:42Z"
 severity: low
@@ -33,3 +33,6 @@ copilot_why_next.py scored harmonic+energy but ignored bpm. Added tempo scoring 
 
 ## Blockers
 None. Do not edit src/**.
+
+## Resolution
+Scout complete: signal 2026-07-18-ontology-bpm-cues-energy-for-copilot.md — P0 export Track bpm/key/cues→ontology (AnalyzerBeats/Key/Cue already exist); P1 AnalyzerEnergy/Structure; P2 MusicUnderstanding spike only. No src edits.
