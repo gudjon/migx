@@ -7,7 +7,7 @@ changed** (`preprocessInner()` rebuilt all vertices + `markDirtyGeometry()` unco
 ## Change
 `WaveformRendererRGB::preprocessInner()` now caches every input that shapes the geometry
 (position/zoom via `xVisualFrame`+`visualIncrementPerPixel`, size, DPR, gains, breadth, split option,
-9 colors, waveform ptr + completion, dataSize). On an identical frame it **returns early without
+axis color + 9 signal colors, waveform ptr + completion, dataSize). On an identical frame it **returns early without
 rebuilding and without marking the geometry dirty** — so both the CPU rebuild and the persistent-VBO
 re-upload are skipped. A C++20 defaulted `operator==` compares all members, so no input can be silently
 dropped from the check; the cache is invalidated on any failed/empty frame.
@@ -20,6 +20,13 @@ dropped from the check; the cache is invalidated on any failed/empty frame.
 
 **~750× reduction** for the static/paused frame; **zero regression** for the moving frame. Waveform +
 RGB tests: 13 passed, no correctness regression.
+
+## Codex cache-key audit — 2026-07-18
+Codex found and fixed one missing read input: `preprocessInner()` writes the center axis rectangle using
+`m_axesColor_r/g/b`, but Wave 2a's first cache key only included the 9 low/mid/high signal color
+channels. A static deck could therefore skip after an axes-color change and keep stale axis vertex
+colors. `PreprocessInputs` now includes `axesR/axesG/axesB` alongside the signal colors; the defaulted
+`operator==` covers them automatically.
 
 ## What this is / is not (honest scope)
 - **Is:** the *idle-frame skip*. A paused/static deck redrawing every vsync (decks sitting at a cue

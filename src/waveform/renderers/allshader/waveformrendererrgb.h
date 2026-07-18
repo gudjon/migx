@@ -56,6 +56,7 @@ class allshader::WaveformRendererRGB final
         float highGain = 0.f;
         float breadth = 0.f;
         bool splitLeftRight = false;
+        float axesR = 0.f, axesG = 0.f, axesB = 0.f;
         float lowR = 0.f, lowG = 0.f, lowB = 0.f;
         float midR = 0.f, midG = 0.f, midB = 0.f;
         float highR = 0.f, highG = 0.f, highB = 0.f;
