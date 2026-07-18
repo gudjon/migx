@@ -30,6 +30,7 @@ it starves the cross-dossier learning loop.
 | **Definition-of-Done met?** | ☐ yes ☐ partial ☐ halted |
 | **Criteria green** | `<X of N>` (list which acceptance criteria passed, by `PS-<PFX>-NN`) |
 | **Headline number** | `<the measured result vs baseline — e.g. 1.8× waveform throughput on M4>` |
+| **Product evidence boundary** | `<technical-only | customer-evidence-linked | open assumption — cite CustomerEvidence/Opportunity/Assumption or say none>` |
 | **One next action** | `<the single most important follow-on>` |
 | **Do NOT trust** | `<what in this dossier is already stale / will mislead a future reader>` |
 
@@ -78,6 +79,8 @@ Each durable learning re-homes into the living layer *now*:
 
 - [ ] No green-over-red: every "met" criterion has a passing benchmark/test cited above.
 - [ ] No house-physics regression (MG-6): no new RT-thread allocation/lock; Qt ownership sound.
+- [ ] Product-facing bets do not treat technical EVD/fixtures as product truth: cite customer evidence,
+      opportunity/assumption records, or mark the product claim still open.
 - [ ] Every produced surface is WIRED or has a follow-on task.
 - [ ] The retro above is authored, not boilerplate.
 
