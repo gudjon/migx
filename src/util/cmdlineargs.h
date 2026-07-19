@@ -27,6 +27,9 @@ class CmdlineArgs final {
     //! The optional second run, that provides translated user feedback
     //! This requires an initialized QCoreApplication
     void parseForUserFeedback();
+    bool shouldParseForUserFeedbackBeforeGui() const {
+        return m_parseForUserFeedbackBeforeGui;
+    }
 
     const QList<QString>& getMusicFiles() const { return m_musicFiles; }
     bool getStartInFullscreen() const { return m_startInFullscreen; }
@@ -119,6 +122,7 @@ class CmdlineArgs final {
     double m_scaleFactor;
     bool m_useColors;       // should colors be used
     bool m_parseForUserFeedbackRequired;
+    bool m_parseForUserFeedbackBeforeGui;
     mixxx::LogLevel m_logLevel; // Level of stderr logging message verbosity
     mixxx::LogLevel m_logFlushLevel; // Level of mixx.log file flushing
     qint64 m_logMaxFileSize;

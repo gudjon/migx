@@ -32,14 +32,15 @@ and the steps to get Migx build-ready before executing any dossier.
 | Compiler | Apple clang (via `/usr/bin/c++`) |
 | clangd | present — needs root `compile_commands.json` symlink (`P-26`) |
 
-## Readiness status (2026-07-19) — **buildable; binary may be stale**
+## Readiness status (2026-07-19) — **buildable; use bundle binary**
 
 | Check | Status |
 |---|---|
 | Host macOS 26+ arm64 | ✅ |
 | `build/` Ninja + RelWithDebInfo + arm64 + deploy 26.0 | ✅ |
 | Qt6 via `buildenv/mixxx-deps-…/arm64-osx-min1100` | ✅ |
-| `build/mixxx` arm64 exists | ✅ but **rebuild if HEAD moved** (e.g. after FSL cues/energy) |
+| `build/migx.app/Contents/MacOS/migx` arm64 exists | ✅ fresh after `just build` / `cmake --build build --target mixxx` |
+| `build/mixxx` arm64 exists | ⚠️ legacy standalone path; may be stale in this bundle build |
 | `compile_commands.json` → `build/` | ✅ |
 | Prefer | `just build` / `just test` (see root `justfile`) |
 
@@ -51,9 +52,10 @@ If configure fails (missing buildenv): `source tools/macos_buildenv.sh setup` th
 cd /Users/gudjon/code/migx   # main checkout — not migx-grok/codex worktrees for first rebuild
 git pull --ff-only
 just build                   # configure (idempotent) + parallel build
-file build/mixxx | grep arm64
-./build/mixxx                # GUI dogfood
-ctest --test-dir build -R 'Engine|Track' --output-on-failure
+file build/migx.app/Contents/MacOS/migx | grep arm64
+build/migx.app/Contents/MacOS/migx --version
+open build/migx.app          # GUI dogfood from an interactive macOS session
+build/mixxx-test --gtest_filter='TrackDAOTest.*:EngineBufferTest.*'
 ```
 
 Manual equivalent:
@@ -70,8 +72,10 @@ cmake --build build --parallel $(sysctl -n hw.ncpu)
 - [x] Host is **macOS ≥ 26.0** on **Apple Silicon** (`sw_vers`; `uname -m` → `arm64`).
 - [x] buildenv/Qt present; `cmake` configure succeeds.
 - [x] `build/compile_commands.json` exists and is symlinked at repo root.
-- [ ] **Fresh** binary at current HEAD: `file build/mixxx | grep arm64` after rebuild.
-- [ ] `ctest --test-dir build` smoke (Engine/Track) on current HEAD.
+- [ ] **Fresh** binary at current HEAD: `file build/migx.app/Contents/MacOS/migx | grep arm64` after rebuild.
+- [ ] CLI smoke: `build/migx.app/Contents/MacOS/migx --version` exits 0.
+- [ ] Focused smoke: `build/mixxx-test --gtest_filter='TrackDAOTest.*:EngineBufferTest.*'`.
+- [ ] Broad `ctest --test-dir build -R 'Engine|Track'` only after the focused gate; this pattern is not cheap and can select controller/track-adjacent tests.
 - [ ] `benchmark::benchmark` / `just bench` when measuring (`P-03`).
 - [ ] `pre-commit` on changed files before commit.
 
@@ -82,16 +86,16 @@ cmake --build build --parallel $(sysctl -n hw.ncpu)
 ```bash
 # From repo root after just build:
 mkdir -p /tmp/migx-dogfood
-./build/mixxx --developer \
+open build/migx.app --args --developer \
   --settings-path /tmp/migx-dogfood \
   --resource-path "$(pwd)/res"
 ```
 
-- **`--resource-path`**: required for unpackaged `build/mixxx` so skins/keyboard/maps resolve under `res/`.
+- **Bundle path**: use `build/migx.app/Contents/MacOS/migx` or `open build/migx.app`; `build/mixxx` can be stale.
+- **`--resource-path`**: keeps skins/keyboard/maps resolving from repo `res/` during local dogfood.
 - **`--settings-path`**: isolates dogfood from a bad `~/Library/Application Support/Mixxx` DB.
 - **JACK `dlopen` errors**: ignore unless you need JACK (Core Audio is the AS default path).
 - Logs: `$settings-path/mixxx.log` — grep Critical/Error after any dialog.
 - Known bug: keyboard fallback misses `keyboard/` subdir (see signal 2026-07-19-launch-failure-analysis).
 
 See also: `kanban/federation/signal/2026-07-19-launch-failure-analysis-for-claude.md`
-

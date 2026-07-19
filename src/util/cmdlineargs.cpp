@@ -17,7 +17,6 @@
 
 #include "config.h"
 #include "defs_urls.h"
-#include "sources/soundsourceproxy.h"
 #include "util/assert.h"
 
 namespace {
@@ -66,6 +65,7 @@ CmdlineArgs::CmdlineArgs()
           m_scaleFactor(1.0),
           m_useColors(calcUseColorsAuto()),
           m_parseForUserFeedbackRequired(false),
+          m_parseForUserFeedbackBeforeGui(false),
           m_logLevel(mixxx::kLogLevelDefault),
           m_logFlushLevel(mixxx::kLogFlushLevelDefault),
           m_logMaxFileSize(mixxx::kLogMaxFileSizeDefault),
@@ -430,6 +430,7 @@ bool CmdlineArgs::parse(const QStringList& arguments, CmdlineArgs::ParseMode mod
 #endif
     ) {
         m_parseForUserFeedbackRequired = true;
+        m_parseForUserFeedbackBeforeGui = true;
     }
 
     m_startInFullscreen = parser.isSet(fullScreen) || parser.isSet(fullScreenDeprecated);

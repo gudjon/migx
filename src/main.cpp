@@ -254,6 +254,11 @@ int main(int argc, char * argv[]) {
     if (!args.parse(argc, argv)) {
         return kParseCmdlineArgsErrorExitCode;
     }
+    if (args.shouldParseForUserFeedbackBeforeGui()) {
+        QCoreApplication coreApp(argc, argv);
+        CmdlineArgs::Instance().parseForUserFeedback();
+        return 0;
+    }
 
     // Set a unique thread object name
     //

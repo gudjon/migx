@@ -28,7 +28,7 @@ method: "Repo readiness audit + prior X product signals; handoff to Claude imple
 | CMake / Ninja / ccache | present under Homebrew |
 | Configure cache | `build/` exists: **Ninja**, `RelWithDebInfo`, `arm64`, deploy **26.0** |
 | Qt6 | via `buildenv/mixxx-deps-…/arm64-osx-min1100` (not brew qt — OK) |
-| Binary | `build/mixxx` exists, **arm64**, but **stale** (mtime 2026-07-17 vs HEAD `a03a250` 2026-07-18) |
+| Binary | fresh bundle binary is `build/migx.app/Contents/MacOS/migx`; legacy `build/mixxx` can be stale |
 
 **Do not** reconfigure unless cache is broken. **Do** incremental rebuild against current `main`.
 
@@ -51,9 +51,11 @@ just build       # configure (idempotent) + cmake --build -j$(sysctl -n hw.ncpu)
 # cmake --build build --parallel $(sysctl -n hw.ncpu)
 
 # Smoke
-file build/mixxx | grep arm64          # P-24 — fail if x86_64
-./build/mixxx --help 2>&1 | head -20   # or launch GUI
-ctest --test-dir build -R 'Engine|Track' --output-on-failure   # cheap first gate
+file build/migx.app/Contents/MacOS/migx | grep arm64   # P-24 — fail if x86_64
+build/migx.app/Contents/MacOS/migx --version           # CLI smoke; exits before GUI init
+build/mixxx-test --gtest_filter='TrackDAOTest.*:EngineBufferTest.*'
+open build/migx.app                                    # GUI dogfood from interactive macOS session
+# Broad later: ctest --test-dir build --output-on-failure
 # Full later: just test
 ```
 
@@ -110,9 +112,9 @@ Claim `build/` surface only if multi-agent collision risk; prefer single Claude 
 ## Done when (acceptance)
 
 1. `just build` (or cmake build) succeeds at current HEAD.  
-2. `file build/mixxx` → `arm64`.  
-3. App launches (or headless `--help` / smoke documented).  
+2. `file build/migx.app/Contents/MacOS/migx` → `arm64`.
+3. `build/migx.app/Contents/MacOS/migx --version` exits 0; GUI launch or dogfood documented separately.
 4. Short note in federation status or EXO JOURNAL: commit SHA + wall time + any configure fixes.  
-5. Optional: `ctest -R Engine` green.
+5. Focused `TrackDAOTest.*:EngineBufferTest.*` green; broader `ctest` can follow once the GUI/control-test hang is isolated.
 
 Grok will not edit `src/**` or own the compile; next wave polls for your status.
