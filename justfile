@@ -42,6 +42,23 @@ bench: build
     {{build_dir}}/mixxx-test --benchmark {{bench_filter}}
 bench_filter := ""
 
+# ---- Run the app: build latest + a runnable (un-sandboxed, ad-hoc) bundle + Desktop launcher ----
+# `just app` builds the current source, installs dist/migx.app, refreshes
+# ~/Desktop/Migx.app -> it, and launches. Re-run any time to get the latest.
+# Un-sandboxed via BundleInstall.cmake.in (dev builds), so it can write settings
+# + read your music library (the App Sandbox is App-Store-only).
+app:
+    cmake -S . -B {{build_dir}} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DMACOS_BUNDLE=ON -DMACOS_BUNDLE_NAME=migx -DMACOS_BUNDLE_IDENTIFIER=com.gudjon.migx \
+      -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
+    cmake --build {{build_dir}} --target mixxx --parallel {{jobs}}
+    rm -rf dist/migx.app
+    cmake --install {{build_dir}} --prefix "$PWD/dist"
+    xattr -dr com.apple.quarantine dist/migx.app 2>/dev/null || true
+    ln -sfn "$PWD/dist/migx.app" ~/Desktop/Migx.app
+    @echo "Launching Migx (also on your Desktop as Migx.app)…"
+    open dist/migx.app
+
 # ---- Fast quality gate (CLAUDE.md mandates this before commit) ----
 lint:
     pre-commit run --all-files

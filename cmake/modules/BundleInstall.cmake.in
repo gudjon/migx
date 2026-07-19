@@ -20,10 +20,14 @@ fixup_bundle("${BUNDLE_PATH}" "${BUNDLE_LIBS}" "${BUNDLE_DIRS}")
 if(DEFINED APPLE_CODESIGN_IDENTITY AND DEFINED APPLE_CODESIGN_ENTITLEMENTS)
   foreach(PATH_TO_SIGN IN LISTS BUNDLE_LIBS BUNDLE_PATH)
     if(APPLE_CODESIGN_IDENTITY STREQUAL "-")
-      message(STATUS "Ad-hoc signing bundle without hardened runtime")
+      # Ad-hoc = local dev/test build. Do NOT apply the App Sandbox entitlements:
+      # sandboxing forces settings into a locked per-bundle container (the
+      # "settings directory not writable" launch dialog) and blocks reading the
+      # user's music library. The sandbox is only needed for Mac App Store
+      # distribution (MACAPPSTORE), which uses a real signing identity below.
+      message(STATUS "Ad-hoc signing bundle without hardened runtime or sandbox (local dev)")
       execute_process(COMMAND
           codesign --verbose=4 --deep --force
-          --entitlements "${APPLE_CODESIGN_ENTITLEMENTS}"
           --sign "${APPLE_CODESIGN_IDENTITY}"
           "${PATH_TO_SIGN}"
           RESULT_VARIABLE CODESIGN_EXIT_CODE
