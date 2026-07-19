@@ -76,3 +76,22 @@ cmake --build build --parallel $(sysctl -n hw.ncpu)
 - [ ] `pre-commit` on changed files before commit.
 
 **Handoff:** `kanban/federation/signal/2026-07-19-get-running-macos-build-claude.md`
+
+## Dev launch recipe (avoid false first-run fails)
+
+```bash
+# From repo root after just build:
+mkdir -p /tmp/migx-dogfood
+./build/mixxx --developer \
+  --settings-path /tmp/migx-dogfood \
+  --resource-path "$(pwd)/res"
+```
+
+- **`--resource-path`**: required for unpackaged `build/mixxx` so skins/keyboard/maps resolve under `res/`.
+- **`--settings-path`**: isolates dogfood from a bad `~/Library/Application Support/Mixxx` DB.
+- **JACK `dlopen` errors**: ignore unless you need JACK (Core Audio is the AS default path).
+- Logs: `$settings-path/mixxx.log` — grep Critical/Error after any dialog.
+- Known bug: keyboard fallback misses `keyboard/` subdir (see signal 2026-07-19-launch-failure-analysis).
+
+See also: `kanban/federation/signal/2026-07-19-launch-failure-analysis-for-claude.md`
+
