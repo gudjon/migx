@@ -5,11 +5,12 @@ title: "Build setup + readiness — macOS 26+ Apple Silicon (M4)"
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-07-19"
 defers_to:
   - CONTRIBUTING.md
   - kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md
   - kanban/knowledge/claude-code-capabilities.md
+  - justfile
 ---
 
 # Build setup & readiness — macOS 26+ · Apple Silicon only
@@ -26,40 +27,52 @@ and the steps to get Migx build-ready before executing any dossier.
 | SoC | Apple **M4** — 10 cores (**4 performance + 6 efficiency**) |
 | Arch | `arm64` (native — no Rosetta; `P-24`) |
 | OS | **macOS 26.2** (build 25C56) — **minimum product OS is 26.0** |
-| CMake | 4.1.2 (`/opt/homebrew/bin/cmake`) |
-| Compiler | Apple clang 17.0.0 |
-| clangd | present (`/usr/bin/clangd`) — symbol navigation ready once `compile_commands.json` exists |
+| CMake | Homebrew (`/opt/homebrew/bin/cmake`) |
+| Ninja / ccache | present |
+| Compiler | Apple clang (via `/usr/bin/c++`) |
+| clangd | present — needs root `compile_commands.json` symlink (`P-26`) |
 
-## Readiness status (2026-07-17) — NOT yet buildable
-Missing prerequisites (the build will not configure without Qt):
-- **Qt6** — not installed (no `brew qt`/`qt@6`, `QTDIR`/`CMAKE_PREFIX_PATH` unset). **Blocker.**
-- `ninja`, `ccache` — missing (recommended generator + compile cache).
-- `clang-format`, `clang-tidy` — missing (the pre-commit gate needs clang-format 19.1.3).
-- `pre-commit` — missing.
+## Readiness status (2026-07-19) — **buildable; binary may be stale**
 
-## Get build-ready (run these — some need the user; `!` prefix runs a command in this session)
-1. **Bootstrap deps (installs Qt6 + libs via homebrew):**
-   `source tools/macos_buildenv.sh setup`
-2. **Dev tools:** `brew install ninja ccache llvm` (llvm gives clang-format/clang-tidy) and
-   `pip install pre-commit`, then `pre-commit install && pre-commit install -t pre-push`.
-3. **Configure (arm64-native, macOS 26+, compile_commands for clangd — `P-26` / ADR-006):**
-   ```
-   cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DQT6=ON \
-     -DCMAKE_OSX_ARCHITECTURES=arm64 \
-     -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
-   ln -sf build/compile_commands.json compile_commands.json   # clangd looks at repo root
-   ```
-4. **Build:** `cmake --build build --parallel 10`  (heavy — the fast loop is `pre-commit`, not this).
-5. **Test:** `ctest --test-dir build` (target `mixxx-test`; `BUILD_TESTING` on when GTest is found).
+| Check | Status |
+|---|---|
+| Host macOS 26+ arm64 | ✅ |
+| `build/` Ninja + RelWithDebInfo + arm64 + deploy 26.0 | ✅ |
+| Qt6 via `buildenv/mixxx-deps-…/arm64-osx-min1100` | ✅ |
+| `build/mixxx` arm64 exists | ✅ but **rebuild if HEAD moved** (e.g. after FSL cues/energy) |
+| `compile_commands.json` → `build/` | ✅ |
+| Prefer | `just build` / `just test` (see root `justfile`) |
+
+If configure fails (missing buildenv): `source tools/macos_buildenv.sh setup` then `just configure`.
+
+## Get running (Claude / implementer DRI)
+
+```bash
+cd /Users/gudjon/code/migx   # main checkout — not migx-grok/codex worktrees for first rebuild
+git pull --ff-only
+just build                   # configure (idempotent) + parallel build
+file build/mixxx | grep arm64
+./build/mixxx                # GUI dogfood
+ctest --test-dir build -R 'Engine|Track' --output-on-failure
+```
+
+Manual equivalent:
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DBUILD_BENCH=ON \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0
+ln -sf build/compile_commands.json compile_commands.json
+cmake --build build --parallel $(sysctl -n hw.ncpu)
+```
 
 ## Readiness checklist (gate before executing a perf dossier)
-- [ ] Host is **macOS ≥ 26.0** on **Apple Silicon** (`sw_vers`; `uname -m` → `arm64`).
-- [ ] `source tools/macos_buildenv.sh setup` completed; `cmake` configure succeeds.
-- [ ] `build/compile_commands.json` exists and is symlinked at repo root (clangd resolves symbols).
-- [ ] Deployment target **26.0+**; binary is `arm64` (`file build/mixxx | grep arm64`); NOT x86_64/Rosetta (`P-24`, ADR-006).
-- [ ] `ctest --test-dir build` runs; at least the engine + waveform suites pass on a clean checkout.
-- [ ] `benchmark::benchmark` bench binary builds/runs (needed for `P-03` contracts).
-- [ ] `pre-commit run --all-files` is green (or known-baseline) so the fast gate works.
+- [x] Host is **macOS ≥ 26.0** on **Apple Silicon** (`sw_vers`; `uname -m` → `arm64`).
+- [x] buildenv/Qt present; `cmake` configure succeeds.
+- [x] `build/compile_commands.json` exists and is symlinked at repo root.
+- [ ] **Fresh** binary at current HEAD: `file build/mixxx | grep arm64` after rebuild.
+- [ ] `ctest --test-dir build` smoke (Engine/Track) on current HEAD.
+- [ ] `benchmark::benchmark` / `just bench` when measuring (`P-03`).
+- [ ] `pre-commit` on changed files before commit.
 
-Until the first two boxes are checked, dossier **execution** is blocked (design/scaffolding is not).
+**Handoff:** `kanban/federation/signal/2026-07-19-get-running-macos-build-claude.md`
