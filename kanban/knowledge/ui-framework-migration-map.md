@@ -352,10 +352,11 @@ Migrate **in place first** (rulebook + MODULE.md), physical reorg second (avoids
 
 ## 8. Immediate next steps (ordered)
 
+0. **§X field map frozen** — framework choice is evidence-mapped (this revision), not taste-only.  
 1. **Owner accept/amend ADR-004** (QML-primary modular shell).  
 2. Execute `kanban/tasks/ui-migration-judge-rulebook-inventory.md`.  
 3. Follow `kanban/runbooks/ai-ui-migration-loop.md` for module contracts and judges.  
-4. **Write RULEBOOK** (one page: bindings, theme, file layout, RT bans).  
+4. **Write RULEBOOK** (bindings, theme, file layout, RT bans) — X: “documentation is law / DESIGN_SYSTEM first.”  
 5. **Mechanical inventory script**: list every `.qml` + every skin widget type → CSV/JSON module tags.  
 6. **Stress-test dossier**: DESIGN.md → Theme + one primitive row + one CO-bound control (eq or knob).  
 7. **Judge spike**: scripted CO toggle + launch stays up.  
