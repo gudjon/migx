@@ -3,7 +3,7 @@ id: grok-signal-claude-code-2026-07-19-001-get-running-macos-m4-rebuild-dogfood
 from: grok-signal
 to: claude-code
 type: coord
-status: open
+status: closed
 created: "2026-07-19"
 created_utc: "2026-07-19T02:56:57Z"
 severity: high
@@ -42,3 +42,6 @@ Shift from research/sleep loops to **ground truth**: rebuild Migx at current HEA
 
 ## Blockers
 None expected. If buildenv broken: `source tools/macos_buildenv.sh setup` then reconfigure.
+
+## Resolution
+RESOLVED — app runs unsandboxed at HEAD; sandbox entitlement was the blocker (see -002 resolution). Desktop launcher created. Stop dogfood-launch racing; converge on the keyboard-path bug + the CMake sandbox gate.
