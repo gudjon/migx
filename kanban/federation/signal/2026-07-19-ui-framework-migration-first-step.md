@@ -50,3 +50,6 @@ Each module: CO/proxy contract, no RT, MODULE.md, mechanical acceptance.
 ## Relation to “get running”
 
 Dogfood QML shell on M4 is the **judge bootstrap**. Migration without a launching app fails step 0.
+
+## Update 2026-07-19
+X ethnography annexed as **§X** in `ui-framework-migration-map.md` + signal `2026-07-19-ui-migration-x-field-learnings.md`.

@@ -10,20 +10,104 @@ lastUpdated: "2026-07-19"
 defers_to:
   - kanban/architecture/decisions/ADR-004-ui-stack-qml-vs-rive-vs-react.md
   - kanban/knowledge/design-md-ui-modernization.md
+  - kanban/runbooks/ai-ui-migration-loop.md
   - kanban/architecture/ddd/bounded-contexts/arch-qml-ui.md
   - kanban/architecture/ddd/bounded-contexts/arch-skin-widgets.md
   - kanban/Strategy-Current.md
 inspired_by:
   - "https://claude.com/blog/ai-code-migration (2026-07-16 Anthropic — fix the process/loop, not only the code)"
   - "https://github.com/anthropics/code-migration-kit-with-claude-code"
+  - "X ethnography 2026-07 — desktop UI stacks, DESIGN.md, modular agents (see §X)"
 ---
 
 # UI framework migration map (first step: **what** + **modular units**)
 
-**Ask:** Migrate Migx UI into a “new and better” framework, modular and manageable — informed by AI code-migration practice and trends.  
+**Ask:** Migrate Migx UI into a “new and better” framework, modular and manageable — informed by AI code-migration practice and **X trending discourse**.  
 **First step (this doc):** decide **target stack**, inventory **components as migration units**, define **module seams**. Not a full port plan yet.
 
 **Core insight (Anthropic migration guide):** *Don’t fix only the code — fix the **process (loop)** that will produce the new UI.* Rulebook → dependency map → gap inventory → stress-test → translate in batches → mechanical judge (tests / visual contracts / CO parity).
+
+**X-aligned companion insight:** *AGENTS.md controls logic; DESIGN.md controls UI* — agents that invent tokens produce “slop”; modular surfaces with continuous evals survive stack churn.
+
+---
+
+## X. Field learnings from X (2025–2026) — map properly before picking tools
+
+X is **not a vote**. It is a map of **incentives**: what devs ship for DX vs what users feel under load, and how agent-era teams structure design systems. Filtered for **DJ dual-deck + Apple Silicon**.
+
+### X-1. Two debates that must not be collapsed
+
+| Discourse cluster | What people optimize for | Migx takeaway |
+|---|---|---|
+| **Electron defenders** (high engagement: “Electron hate is confidently wrong”) | One codebase, feature velocity, “RAM is cheap,” Chromium for docs/chat/IDEs | Valid for **Surface B islands** only — **not** sample-synced waveforms |
+| **Native / anti-slop** (“Native. No Electron.” SwiftUI menu-bar tools) | Feel, size, focus rings, thermal headroom | Aligns with **Surface A** and gig laptops |
+| **Qt/QML practitioners** | Prefer Qt over GTK; QML “awesome”; C++/Qt6 anti-Electron terminals (Fincept-style native AI shells) | **Reinforces QML-primary** already in tree |
+| **Journey stories** | Widgets → WebEngine for “modern design” → **back to Qt Quick** for speed/feel | Web is a *step*, not the permanent shell |
+
+**Rule:** never let SaaS-desktop DX discourse choose the **deck shell**. Use it only to license optional web **panels**.
+
+### X-2. Hybrid native host + WebKit is the grown-up pattern
+
+Repeated framing: **native shell (SwiftUI/AppKit or Qt) + WKWebView** for browser-shaped work — not full Chromium for the product.
+
+| Pattern on X | Migx mapping |
+|---|---|
+| Native chrome + embedded web for HTML/JS | QML shell + optional WebView for pure AI chat / help |
+| Personal Spotify tools in Swift; web SDK only where rights force it | Metadata/sequence web; **owned-file** decks stay native |
+| “Foreign UI toolkit pretending to belong” = slop (padding, focus, colors) | DESIGN.md + Theme.qml so QML doesn’t feel random |
+
+### X-3. DESIGN.md is the agent-era design brain (strong trend)
+
+High-engagement threads:
+
+- *“AGENTS.md controls the logic. DESIGN.md controls the UI.”*  
+- Drop DESIGN.md so agents stop guessing colors/spacing (Stitch / awesome-design-md / getdesign.md).  
+- Lint WCAG + broken token refs; system prompts: *never invent tokens — check design system first*.
+
+**Implication:** a migration unit is **module + tokens**, not “port QML alone.” Existing `design-md-ui-modernization.md` is **on-trend**. Stress-test **must** include Theme generation.
+
+### X-4. Modular = survival under agent + stack churn
+
+| X claim | Migration discipline |
+|---|---|
+| Don’t marry one stack for 30 days; modular + continuous evals | Modules own CO contracts; GL→Metal swappable under same QML host |
+| Parallel agents need worktree isolation, CI feedback, PR per unit | One `mod-*` per batch; claims on shared Theme |
+| Architect / Engineer / Reviewer / Optimizer roles | Federation: Claude implement · Codex verify · Grok signal |
+| Universal agent config (AGENTS.md) | Add **UI rulebook** + DESIGN.md — don’t invent a third agent OS |
+
+### X-5. When people leave frameworks for GPU
+
+Builders abandon SwiftUI/Qt/Tauri/Electron/Flutter for **direct Metal/DX** when continuous interactive graphics *are* the product. Music-reactive shaders / custom GUI frameworks trend GPU-first.
+
+| Layer | Stay abstract | Go metal-close |
+|---|---|---|
+| Layout, settings, library, knobs | QML + Theme | — |
+| Waveforms, spinny, GPU meters | Host in QML | **rendergraph / Metal** (MTL) |
+
+Do **not** invent a third full GUI framework; **do** keep waveform path metal-close.
+
+### X-6. Qt6 + AI agents without Electron
+
+2026 hype: **C++20 + Qt6** “anti-Bloomberg” terminals — native binary, AI agents *inside* the shell, MCP/local models. Message: **AI does not require Electron**.
+
+**Implication:** Co-pilot as **QML module** matches culture of “AI in native host,” not “rewrite UI in React so AI can edit CSS.”
+
+### X-7. What X does *not* prove
+
+- No consensus “CDJ UI rewritten in SwiftUI.”  
+- No proof Electron holds dual-deck underrun contracts.  
+- Anti-slop includes **accessibility/focus**, not only fps — Theme + primitives still need quality.
+
+### X → decisions locked for this map
+
+| Decision | Supported by X cluster |
+|---|---|
+| QML-primary Surface A | Qt/QML praise + journey back from WebEngine + Fincept-class native AI |
+| No Electron decks | Anti-slop + hybrid-not-whole-app + GPU-close visual tools |
+| DESIGN.md before mass port | DESIGN.md = agent UI brain |
+| Modules + worktrees + evals | Modular agent systems discourse |
+| WebView only as island | Hybrid native+WebKit pattern |
+| Waveforms metal-close under QML host | Leave-framework-for-GPU discourse |
 
 ---
 
@@ -175,6 +259,8 @@ Retire arch-skin-widgets default path  (viewer/export only if needed)
 
 ### 4.1 Module contract (every `mod-*`)
 
+X agent practice: **no hallucinated design** — every visual property traces to DESIGN.md/Theme; **no assumptions** — undocumented CO bindings stop and escalate; **verification before done**.
+
 ```yaml
 # res/qml/_modules/<id>/MODULE.md  (proposed layout — future)
 id: mod-eq
@@ -183,12 +269,13 @@ qml_root: EqColumn.qml
 proxies: [QmlControlProxy]
 controls_read: ["[ChannelN],filterLow", ...]
 controls_write: []   # or single-writer CO keys if any
-theme_tokens: [color.control.fill, space.sm]
+theme_tokens: [color.control.fill, space.sm]  # MUST exist in DESIGN.md / Theme.qml
 rt_safety: none
 acceptance:
   - visual: screenshot vs golden (optional)
   - behavior: CO values match when UI actuated (gtest or scripted)
   - no_src_engine_edit: true
+  - tokens_only: true   # no hard-coded #RRGGBB outside Theme
 ```
 
 ### 4.2 Binding pattern (canonical)
@@ -266,12 +353,13 @@ Migrate **in place first** (rulebook + MODULE.md), physical reorg second (avoids
 ## 8. Immediate next steps (ordered)
 
 1. **Owner accept/amend ADR-004** (QML-primary modular shell).  
-2. **Register initiative** `initiative-ui-qml-shell` (or fold under design-md) + prefix for dossiers.  
-3. **Write RULEBOOK** (one page: bindings, theme, file layout, RT bans).  
-4. **Mechanical inventory script**: list every `.qml` + every skin widget type → CSV module tags.  
-5. **Stress-test dossier**: DESIGN.md → Theme + one primitive row + one CO-bound control (eq or knob).  
-6. **Judge spike**: scripted CO toggle + launch with `--resource-path` stays up.  
-7. Only then: batch-migrate `mod-deck-shell` without full waveform Metal dependency.
+2. Execute `kanban/tasks/ui-migration-judge-rulebook-inventory.md`.  
+3. Follow `kanban/runbooks/ai-ui-migration-loop.md` for module contracts and judges.  
+4. **Write RULEBOOK** (one page: bindings, theme, file layout, RT bans).  
+5. **Mechanical inventory script**: list every `.qml` + every skin widget type → CSV/JSON module tags.  
+6. **Stress-test dossier**: DESIGN.md → Theme + one primitive row + one CO-bound control (eq or knob).  
+7. **Judge spike**: scripted CO toggle + launch stays up.  
+8. Only then: batch-migrate `mod-deck-shell` without full waveform Metal dependency.
 
 ---
 
