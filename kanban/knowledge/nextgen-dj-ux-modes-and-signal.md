@@ -52,9 +52,10 @@ To help choose the next track, the management surface shows **social-proof / pop
 These become an EXO ontology property (`community_signal`) that feeds **both** the visual management
 screen **and** the co-pilot's "why next" ranking, alongside harmonic/tempo/energy.
 
-**Honest gap (DC-PDCL-4.6 / 1.11):** this data is not trivially available (external APIs, scraping, ToS,
-rate limits, coverage). The UX/ontology *slot* is defined now; the **data pipeline is a separate spike**
-and a Grok scouting item (which sources/APIs actually yield DJ-set-appearance + play-count data).
+**Data pipeline (researched 2026-07-21):** SSoT `nextgen-community-signal-data-sourcing.md` + chip
+schema in `mod-music-management-mode.md` §4. **YT views feasible offline;** MC/SC/BP do **not** yield a
+clean reverse “N sets” index — v1 chips = YT + Beatport chart + SC plays + local; true setlist heat =
+licensed 1001Tracklists-class feed (v2). UX/ontology slot remains; enrich is PREP/offline only.
 
 ## How this feeds the build
 - **First-module candidate:** the **music-management mode** is the strongest first NG module — it is the
