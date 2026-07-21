@@ -7,8 +7,11 @@ owner: gudjon
 authored_by: grok-signal
 created: "2026-07-19"
 lastUpdated: "2026-07-19"
+enriched: "2026-07-19 — §Methods from X; Cursor-path owner framing (VS Code fork → Agent UI)"
 defers_to:
   - kanban/knowledge/ui-framework-migration-map.md
+  - kanban/knowledge/nextgen-dj-needs-and-leader-ui-map.md
+  - kanban/knowledge/nextgen-music-management-mode.md
   - kanban/architecture/decisions/ADR-004-ui-stack-qml-vs-rive-vs-react.md
   - kanban/knowledge/design-md-ui-modernization.md
   - kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md
@@ -19,9 +22,13 @@ related:
   - initiative-ai-djing-product
   - arch-control-messaging
   - arch-engine-realtime
+  - nextgen-dj-needs-and-leader-ui-map
+  - nextgen-music-management-mode
 inspired_by:
   - "Owner thesis: NextGen ghost/shadow Agent DJ; one module at a time; DESIGN.md; agent-friendly UI engine"
+  - "Owner analogy: Cursor path — VS Code fork first, then promote Cursor Agent UI; Migx classic stays base, all new UI work is NextGen until full migration"
   - "X 2026: strangler/shadow, DESIGN.md, modular agents, native+WebKit, Qt6 AI shells, worktree isolation"
+  - "X methods annex: shadow deployment, read-then-write strangler, deploy≠release flags, worktree isolation bottleneck, micro-agent→verifier, expand-contract"
   - "https://claude.com/blog/ai-code-migration"
 ---
 
@@ -32,6 +39,41 @@ inspired_by:
 Build a **NextGen / Agent DJ** surface as a **ghost or shadow** of Migx: full new development path, **one module at a time**, done right (DESIGN.md + optimized UI engine that agents — Claude Code, Grok CLI, Codex — can actually own). Classic Migx keeps shipping; NextGen grows until it can strangulate the default UX.
 
 This is **not** “rewrite the audio engine first.” It is a **product shell + agent harness** strategy with a **stable CO/engine bus**.
+
+### The Cursor path (owner framing — locked)
+
+Same track Cursor took: **start from a working fork** (VS Code → Cursor; Mixxx/classic Migx → us), keep that base reliable, and **put the real product work into a new UI** that eventually becomes what you promote (Cursor Agent UI ↔ NextGen Agent DJ).
+
+| Cursor | Migx |
+|---|---|
+| VS Code fork as the working IDE | Classic Migx (skins + partial QML) as the working DJ app |
+| New Agent UI grows beside it | NextGen shell grows beside classic |
+| New features / agent UX land in the new UI | **All new UI work lands only in NextGen** |
+| Old surface kept until new is default | Classic kept until dual-deck + dogfood acceptance |
+| Promote Agent UI as the product | Promote Agent DJ / NextGen as the product |
+
+**Operating rule for the fleet:**
+
+1. **Do not invest feature work in classic UI** beyond keep-alive (build, crash, RT, launch). No new product chrome on LateNight/legacy skins.
+2. **All forward UI work is NextGen** — one module at a time, DESIGN.md, agent-owned modules, judge-gated.
+3. **Migrate by strangulation**, not dual forever: each module moves capability old → new; when classic is unused, freeze/delete the twin.
+4. **End state is one product** on the new UI framework — not a permanent two-app company. Classic is the VS Code-era base we graduated from, not a second roadmap.
+
+```text
+Phase 0  classic works (fork dogfood)          ← we are here / just past
+Phase 1  NextGen shell + primitives + Theme    ← first agent work
+Phase 2  modules strangulate feature-by-feature
+Phase 3  NextGen is default launch / marketed surface
+Phase 4  classic UI path frozen or removed
+```
+
+### Music management is a first-class mode
+
+Owner refinement, 2026-07-21: Agent DJ must solve the arrangement/next-queue problem, not only repaint
+the decks. The DJ needs a fast full-screen music-management mode for recognition, tags, playlist
+membership, cached community signal, staging, and explicit load-to-free-deck actions while the current
+set keeps playing. That mode is specified in `nextgen-music-management-mode.md` and should be included
+in ADR-007 and the first module-order debate.
 
 ---
 
@@ -249,18 +291,121 @@ Trigger: MODULE.md acceptance open
 
 ---
 
-## 7. Immediate next steps (if fleet agrees)
+## 7. Methods — how to best do this (X + field practice)
+
+Methods below are **how**, not **what**. They refine Option A (shadow binary) + module strangler.
+Field refresh (2026-07-19 X): strangler/facade, **shadow traffic**, deploy≠release flags, expand-contract, **worktree isolation as the bottleneck**, micro-agent→verifier, orchestrator non-overlapping lanes.
+
+### 7.1 Migration topology methods
+
+| Method | What X/practitioners say | Apply to Agent DJ |
+|---|---|---|
+| **Strangler fig** | Build alongside legacy; route one function at a time; retire old only when stable; users shouldn’t feel a flip | Each `mod-*` has a route (flag or binary menu); classic remains default until dual-deck acceptance |
+| **Facade first (Stage 0)** | Intercept layer *before* migration; clients keep same interface while backend swaps | **CO bus is already the facade** — NextGen and classic both talk `[Group],key`; never invent a second control plane |
+| **Read path first, then writes** | Proxy reads to new service while writes stay on monolith; move writes only after reads are trusted | For shared library/FSL: NextGen **reads** first; any dual-write expands sidecar fields (expand-contract), never hot-cut writers |
+| **Shadow / mirror traffic** | Parallel env gets duplicated requests; prod still answers; compare outputs; activate only when compare is green | Optional later: shadow CO observers / offline judges replaying classic sessions against NextGen UI contracts — not day-1 |
+| **Decouple deploy from release** | Merge code when ready; flip flag when the feature is | Merge NextGen modules to main anytime; **release** via flag/`migx-agent` dogfood only |
+| **Feature flags from day one** | Retrofitting flags later is painful; agent changes (prompts/tools/UI modules) need gradual rollout + kill-switch | `ui.nextgen.*` flags + fallback = classic skin/QML path; agents may stage flags, **humans approve enable** |
+| **Rollback without redeploy** | Flip flag back; no new build required for safety | Prefer flag kill-switch over “git revert the monorepo” |
+| **Expand-and-contract** | Add-only → dual-write → backfill → drop old later; blue-green **lies** if schema diverges (flip-back 500s) | Shared FSL/library: expand sidecar first; NextGen reads new fields; classic keeps working; drop never blocks classic |
+| **Preserve contracts** | Gateway/BFF routes old vs new; one endpoint/module at a time | Contract = `[Group],key` + MODULE.md acceptance — UI can change, CO cannot drift |
+
+**Anti-method:** Big-bang rewrite of LateNight; “shadow” that shares no contracts; flipping default before judge is green; dual-write without expand-contract.
+
+### 7.2 Agent execution methods (how the team builds modules)
+
+| Method | What X says | Apply |
+|---|---|---|
+| **Plan → structure → build → isolate → guardrail → evaluate** | Don’t open Claude and ask it to “build the app” | BMAD/PRD/MODULE.md first; then code |
+| **Bounded coding loop inside a DAG** | Single loop OK for small tasks; full product needs parallel implement → independent review → integration gate → checkpoint → next layer | Wave per module; federation mail = gate |
+| **Micro-agent loop** | Fast context fetch → **single-task** LLM → verifier checker → ship behind flag | One claim = one module task; judge is the verifier; flag is release |
+| **Brainstorm → Plan → Work → Review → Compound** | Parallel agents; **compound** learnings into repo knowledge after each fix | Update rulebook/LESSONS after each module |
+| **Worktree isolation = the bottleneck** | Models already write code; clobbering one cwd kills the speed gain; isolation is infrastructure not ceremony | One worktree (or `isolation: worktree`) per `mod-*` claim; never two agents on main checkout |
+| **Orchestrator enforces non-overlapping lanes** | Orchestrator skill: non-overlap, status updates, then **independent** fleet review | Grok/Claude orchestrate claims; Codex review after completion — not same agent |
+| **Human becomes picker of best output** | Senior role shifts to “orchestrate N agents, review branches, pick winner” | Owner + Codex pick; Claude does not self-merge |
+| **Never grade own work** | Second agent assumes first is broken; agentic review + flag + test before release | Codex verify; P-08; no Claude self-seal |
+| **Persist to disk not chat** | Results land on disk; context window is not memory | MODULE.md status, EVD, federation close notes |
+| **Schedule / loop** | 24/7 autonomous only with discover→handoff→verify→persist | Grok Mode A for signal; implement loops for modules |
+| **PRD then tasks then implement groups** | Speak/spec PRD → generate tasks → implement batch → build+test → commit → next batch | MODULE.md = PRD; tasks in dossier waves |
+| **Structured I/O** | Free-form agent output is fragile | MODULE acceptance YAML machine-checkable |
+| **Hooks for safety** | Pre/post tool lint, block dangerous ops | pre-commit + RT path bans in CLAUDE.md |
+| **Shadow/mirror mode for agent changes** | Field joke with teeth: agent code starts behind flags / mirror, multi-week rollout not “YOLO main” | NextGen modules ship dark; dogfood cohort; then widen |
+
+### 7.3 Concrete operating cadence (recommended)
+
+```text
+For each module M:
+  1. SPEC     — MODULE.md + CO list + DESIGN tokens (human + Grok field if UX)
+  2. CLAIM    — worktree + claim paths (Claude); orchestrator checks non-overlap
+  3. BUILD    — implement only M (Claude); no adjacent "cleanup"
+  4. JUDGE    — launch NextGen + CO script + DESIGN lint (mechanical)
+  5. REVIEW   — Codex assumes broken; P1/P2/P3 (independent)
+  6. COMPOUND — rulebook/LESSONS update if pattern found (any peer)
+  7. FLAG     — enable M behind flag / ship in migx-agent only (deploy ≠ release)
+  8. STRANGLE — when classic path unused, delete or freeze classic twin
+```
+
+**Integration gate between layers:** no `mod-deck-shell` until primitives+Theme judge green; no default flip until dual-deck + underrun contract.
+
+**Strangler order inside a module (X read-then-write):**
+1. Facade already exists (CO).
+2. NextGen **renders** from CO (read).
+3. NextGen **writes** CO only when single-writer rule still holds (P-06).
+4. Classic twin retired only after dogfood + judge green.
+
+### 7.4 What “done” means for a shadow module (method acceptance)
+
+| Check | Owner |
+|---|---|
+| MODULE.md acceptance block green | Mechanical judge |
+| DESIGN tokens only (no free `#hex`) | lint / Theme |
+| No `src/engine/**` unless separate RT claim | Claims + pre-commit |
+| Classic still builds and launches | CI / smoke |
+| Independent review not self-review | Codex / P-08 |
+| Flag documented fallback | MODULE.md |
+| Deploy path ≠ release path documented | MODULE.md / flag table |
+
+### 7.5 Methods explicitly rejected by field practice
+
+| Reject | Why |
+|---|---|
+| Big-bang UI rewrite | Strangler discourse: business still needs classic |
+| Self-grading agents | “Agent never grades own work” is widespread production rule |
+| One mega-agent for whole product | Bounded roles; DAG; hallucination rises when one agent does everything |
+| Two agents, one working directory | Worktree isolation is the bottleneck; race conditions eat the speedup |
+| Ship without evals | “No looks good — pass/fail” |
+| Deploy = release | Flags separate merge from user exposure |
+| Dual-write schema without expand-contract | Rollback becomes a lie |
+| Flip blue-green after destructive schema drop | Expand-contract first or rollback is fake |
+| Agent self-enable production flags | Stage yes; enable needs approval + audit trail |
+
+### 7.6 X sources (methods annex — durable themes, not every URL)
+
+| Theme | Representative field signal |
+|---|---|
+| Strangler + facade | Route selected functionality; Stage 0 facade; low-risk gradual replace |
+| Shadow deployment | Parallel env, duplicate traffic, compare, then activate (migration case study pattern) |
+| Read then write | Reads via proxy first; writes later; always-on rollback to monolith |
+| Expand-contract | Dual write + backfill + late drop; honest rollback vs blue-green schema lies |
+| Deploy ≠ release / flags | Flags for agent logic; kill-switch; % rollout; agents stage, humans enable |
+| Worktree multi-agent | Isolation is the moat; fleet/parallel agents; non-overlapping lanes + independent review |
+| P-08 culture | Generator ≠ evaluator; micro-agent + verifier; flag before release |
+
+---
+
+## 8. Immediate next steps (if fleet agrees)
 
 1. Owner pick Option A/B/C/D.  
 2. ADR draft: `ADR-00X-nextgen-agent-dj-shadow` (or amend ADR-004).  
 3. Scaffold dossier: empty NextGen target + DESIGN.md + Theme + launch.  
 4. Stress-test primitives (AI migration loop, discard thrice).  
-5. Judge harness v0.  
+5. Judge harness v0 (method §7.4).
 6. First product module: co-pilot chrome **or** single-deck play/cue (product choice).
+7. Adopt cadence §7.3 as initiative operating rule.
 
 ---
 
-## 8. Relationship to existing docs
+## 9. Relationship to existing docs
 
 | Doc | Role |
 |---|---|

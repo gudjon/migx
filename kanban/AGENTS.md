@@ -95,6 +95,8 @@ product acceptance numbers. Roadmap: `kanban/planning/00-PORTFOLIO/migx-harness-
 | Active fleet how-to / what’s missing | `kanban/knowledge/fleet-operating-model.md` |
 | Fleet conductor + Codex drain | `just fleet` / `just fleet-drain` · `kanban/runbooks/fleet-conductor.md` |
 | Run Grok 4.5 like a Claude Code long loop | `kanban/runbooks/grok-long-harness-loop.md` |
+| Port UI components with agents | `kanban/runbooks/ai-ui-migration-loop.md` + `kanban/knowledge/ui-framework-migration-map.md` |
+| Shape NextGen music/arrangement mode | `kanban/knowledge/nextgen-music-management-mode.md` + `kanban/tasks/nextgen-music-management-mode.md` |
 | Fix Gemini CLI on macOS / migrate to Antigravity | `kanban/runbooks/gemini-cli-macos-fix.md` |
 | Understand the **product strategy** (Cursor for AI-DJing) | `kanban/Strategy-Current.md` + ADR-005 |
 | Git posture (public early, agora later) | `kanban/runbooks/go-private-and-git-posture.md` |

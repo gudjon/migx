@@ -9,6 +9,11 @@ lastUpdated: "2026-07-19"
 related:
   - ai-code-migration-methodology
   - ui-non-modal-error-ux
+  - nextgen-engine-reuse-boundary-codex
+  - nextgen-music-management-mode
+  - nextgen-dj-ux-modes-and-signal
+  - mod-music-management-mode
+  - nextgen-community-signal-data-sourcing
   - initiative-ui-modernization
   - ADR-004-ui-stack-qml-vs-rive-vs-react
   - ADR-005-open-core-plus-proprietary-intelligence
@@ -25,6 +30,18 @@ right**, DESIGN.md-driven, on the **most optimized UI engine that is both fast a
 agents** (Claude Code, Grok CLI, Codex). This doc anchors the fleet discussion; it converges into
 **ADR-007**.
 
+**Cursor-path framing (owner, same day):** like Cursor shipping a VS Code fork first and then
+promoting the new **Agent UI**, Migx keeps classic as the working base and does **all new UI work in
+the NextGen framework** until the old surface is fully strangled. End state = one product on the new
+UI — not permanent dual roadmaps. Detail: `nextgen-agent-dj-shadow-product.md` §Owner intent.
+
+**Music-management refinement (owner, 2026-07-21):** the core live-DJ problem is not only a better
+deck skin. It is often arrangement under pressure: quickly finding the next song, recognizing the
+right version, seeing tags/playlists/community context, staging it, and loading it without increasing
+cognitive load in a busy club. NextGen should therefore include a first-class full-screen
+**music-management mode** that the DJ can switch into and out of quickly while playback continues.
+Detail: `nextgen-music-management-mode.md`.
+
 ## The strategy: strangler-fig at the APP level
 Instead of untangling legacy skin XML component-by-component *inside* the running app (in-place
 migration), build a **new app shell alongside** it:
@@ -35,11 +52,14 @@ migration), build a **new app shell alongside** it:
 - The current app keeps shipping/testable; NextGen grows until it *is* the product. Each module lands
   behind the migration **judge** (equivalence vs the legacy behaviour + the non-modal-UX criterion), so
   "shadow" never means "unverified."
+- **Forward work rule:** classic UI is keep-alive only; product UI investment is NextGen-only,
+  module-by-module, until migration is complete.
 
 Why shadow beats in-place here: the legacy skin stack is deeply entangled and is the source of the UX
 failures (modal dialogs mid-set). A clean shell lets every module be **done right from line one**
 against DESIGN.md tokens, instead of inheriting legacy structure. It also gives each agent a bounded,
-low-collision surface.
+low-collision surface. The Cursor analogy is the product story; strangler + CO facade is the engineering
+method.
 
 ## The open decision: which UI engine? (the crux — needs the fleet)
 Requirements: **fast on Apple-Silicon/Metal** (ADR-006 macOS-arm64-only unlocks native options),
@@ -64,12 +84,15 @@ ADR-007 on evidence, not taste (DC-PDCL-2.7).
 1. **Engine** — QML-design-system vs Slint vs SwiftUI vs web? (bake-off or straight call?)
 2. **Engine-reuse boundary** — NextGen links `mixxx-lib` in-process and reads the ControlObject bus? Or
    a thin IPC/agent-seam boundary? (this decides Layer-A coupling)
-3. **First module** — deck strip (transport+waveform) as the bake-off unit, or the co-pilot panel?
+3. **First module** — deck strip (transport+waveform), co-pilot panel, or the music-management mode
+   that owns next-queue decisions?
 4. **App target** — a new `migx-ng` build target beside `migx`, or a runtime skin/flag switch?
 
 ## Roles in this discussion
 - **grok-signal**: scout the 2026 field — what UI engine are *agent-first, real-time, native* teams
-  actually using; agent-ergonomics + Metal perf signal; Slint vs QML vs SwiftUI maturity.
+  actually using; agent-ergonomics + Metal perf signal; Slint vs QML vs SwiftUI maturity; and which
+  music/community signals are legitimate enough to show in the next-track mode.
 - **codex-cli**: map the **engine-reuse boundary** — how NextGen cleanly links Layer A (mixxx-lib / CO
-  bus) without dragging in the legacy skin/widget stack; feasibility + risks; the judge shape.
+  bus) without dragging in the legacy skin/widget stack; feasibility + risks; the judge shape for
+  both performance modules and music-management mode.
 - **claude-code**: synthesize into ADR-007 + prototype the bake-off module(s) + run build/verify.

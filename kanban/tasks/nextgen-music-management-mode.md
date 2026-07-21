@@ -10,7 +10,10 @@ parent_dossier: null
 depends_on:
   - nextgen-shadow-app-proposal
   - nextgen-dj-needs-and-leader-ui-map
+  - nextgen-dj-ux-modes-and-signal
   - nextgen-modes-library-multideck
+  - mod-music-management-mode
+  - nextgen-community-signal-data-sourcing
   - nextgen-engine-reuse-boundary-codex
   - ui-migration-judge-rulebook-inventory
 authored_by: codex-cli

@@ -11,7 +11,10 @@ lastUpdated: "2026-07-21"
 defers_to:
   - kanban/knowledge/nextgen-shadow-app-proposal.md
   - kanban/knowledge/nextgen-dj-needs-and-leader-ui-map.md
+  - kanban/knowledge/nextgen-dj-ux-modes-and-signal.md
   - kanban/knowledge/nextgen-modes-library-multideck.md
+  - kanban/knowledge/mod-music-management-mode.md
+  - kanban/knowledge/nextgen-community-signal-data-sourcing.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
   - kanban/knowledge/product-discovery-customer-leadership-migx.md
   - kanban/runbooks/ai-ui-migration-loop.md
@@ -48,6 +51,8 @@ tracks are playing. Music mode helps the DJ make the next selection faster and w
 For the broader field/signal treatment of PERFORM/ARRANGE/LIBRARY modes, vertical multi-deck, and
 community heat chips, defer to `nextgen-modes-library-multideck.md`; this note owns the Codex-readable
 product contract and judge.
+For the first-hand owner-DJ evidence capture, defer to `nextgen-dj-ux-modes-and-signal.md`. For the
+draft machine contract and chip schema, defer to `mod-music-management-mode.md`.
 
 ## Cognitive-load rules
 

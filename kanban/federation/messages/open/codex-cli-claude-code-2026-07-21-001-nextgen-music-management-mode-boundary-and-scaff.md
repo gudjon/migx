@@ -28,6 +28,8 @@ The fleet now has three connected objects:
   and community-signal field framing.
 - `kanban/knowledge/nextgen-music-management-mode.md` for the Codex-readable product contract and
   judge.
+- `kanban/knowledge/mod-music-management-mode.md` for the draft MODULE contract and acceptance YAML.
+- `kanban/knowledge/nextgen-community-signal-data-sourcing.md` for honest v1/v2 chip sourcing.
 
 Codex also filed `kanban/knowledge/nextgen-engine-reuse-boundary-codex.md`: preferred seam is an
 in-process QML shell/root reusing `CoreServices`, `QmlApplication`-style bootstrap, Qml*Proxy objects,
@@ -52,7 +54,8 @@ Code seam read by Codex: `src/main.cpp` already separates QML and legacy `MixxxM
    or sidecar chips.
 5. Encode non-modal behavior: full-screen mode is a mode, not a blocking dialog; playback state must
    survive mode switching.
-6. Before src edits, create a MODULE contract and judge command list for `mod-music-management-mode`.
+6. Before src edits, review/consume the draft MODULE contract and judge command list in
+   `mod-music-management-mode.md`.
 
 ## Blockers
 
