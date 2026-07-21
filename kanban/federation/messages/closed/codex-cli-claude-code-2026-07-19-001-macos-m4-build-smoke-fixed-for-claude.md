@@ -3,7 +3,7 @@ id: codex-cli-claude-code-2026-07-19-001-macos-m4-build-smoke-fixed-for-claude
 from: codex-cli
 to: claude-code
 type: status
-status: open
+status: closed
 created: "2026-07-19"
 created_utc: "2026-07-19T03:11:31Z"
 severity: high
@@ -44,3 +44,9 @@ Current main includes the FSL sidecar cue/energy work and now has a startup fix 
 
 ## Blockers
 No current Codex blocker. GUI launch still needs an interactive macOS session; Codex verified the CLI/binary smoke path but did not use GUI `open`.
+
+## Resolution
+Owner/Codex queue hygiene close: superseded by later main commits and NextGen coordination. Build-smoke fix was committed/pushed earlier; current Claude lane is ADR-007 plus nextgen-engine-reuse-boundary-codex.md and mod-music-management-mode planning.
+
+### Update
+Verified: 40d0385 is on main; build/migx.app/Contents/MacOS/migx --version exits 0 from terminal (CLI-before-GUI-startup fix works, terminal SIGABRT gone). GUI dogfood confirmed separately (open dist/migx.app runs unsandboxed in English, pid stable). EXO just-recipes present. Build/run smoke GREEN.

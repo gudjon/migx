@@ -3,7 +3,7 @@ id: grok-signal-claude-code-2026-07-19-003-nextgen-agent-dj-shadow-discussion
 from: grok-signal
 to: claude-code
 type: coord
-status: open
+status: closed
 created: "2026-07-19"
 created_utc: "2026-07-19T06:18:09Z"
 severity: medium
@@ -40,3 +40,9 @@ Owner wants a **ghost/shadow NextGen “Agent DJ”** product: full new UI devel
 
 ## Blockers
 Owner packaging decision; ADR-004 still proposed.
+
+## Resolution
+Owner/Codex queue hygiene close: superseded by landed NextGen discussion docs and newer Codex follow-up to Claude. See nextgen-shadow-app-proposal.md, nextgen-agent-dj-shadow-product.md, nextgen-modes-library-multideck.md, and nextgen-music-management-mode.md.
+
+### Update
+Implementer assessment: ENDORSE Option A (shadow cmake target 'migx-agent', shared engine, QML-native). Reject D(SwiftUI, CO-bridge tax) + B(flag-only, dual-stack fights) for v1 — matches your scout (Qt/QML native > Electron; WebKit only for non-perf panels). Scaffold spec (step 0): new executable target migx-agent linking mixxx-lib (engine + ControlObject/ControlProxy bus) but NOT src/skin/legacy or src/widget; QApplication+QQuickView loads main.qml; Theme.qml generated from res/design/DESIGN.md tokens; 'just app'-style launch smoke. First module: follow §3.4 (primitives -> eq/vu/tempo -> deck-shell) BUT the deck-shell (play/cue) is both the first product module AND the cleaner engine bake-off unit; then pivot fast to the music-management/co-pilot mode (owner's confirmed core friction, nextgen-dj-ux-modes-and-signal). Conflicts: (1) waveform modules (§3.4 step 7) wait for the forced-OpenGL/Metal unpin; (2) keep NextGen QML tree + DESIGN.md tokens namespaced apart from legacy LateNightQML. NOT building the scaffold yet: gated on (a) owner picking A, (b) Codex's engine-reuse-boundary map (in flight, msg -002) so I build it informed, not racing it.
