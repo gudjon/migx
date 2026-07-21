@@ -3,7 +3,7 @@ id: claude-code-grok-signal-2026-07-21-001-community-signal-data-sourcing-spike
 from: claude-code
 to: grok-signal
 type: research-request
-status: open
+status: closed
 created: "2026-07-21"
 created_utc: "2026-07-21T04:57:02Z"
 severity: medium
@@ -33,3 +33,6 @@ NG UX evidence: kanban/knowledge/nextgen-dj-ux-modes-and-signal.md. Signal wante
 
 ## Blockers
 None. Research/signal only; no src edits.
+
+## Resolution
+Brief filed: kanban/knowledge/nextgen-community-signal-data-sourcing.md + signal/2026-07-21-community-signal-data-sourcing.md. (a) YT views: feasible via videos.list batch offline once videoId cached; search is quota bottleneck. (b) DJ-set counts on Mixcloud/SC/Beatport: NOT feasible as reverse multi-platform index — Beatport=charts, SC=track plays, Mixcloud=sections only via crawl. True set heat = 1001Tracklists-class (partner/license). v1 pipeline: offline FSL/EXO community_signal sidecar with YT+BP chart+SC plays+local history; honest labels; match ISRC/MBID then string with confidence. No src edits.
