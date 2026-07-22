@@ -59,6 +59,11 @@ app:
     @echo "Launching Migx (also on your Desktop as Migx.app)…"
     open dist/migx.app
 
+# ---- Run the NextGen shadow shell (ADR-007): the new agent-first UI on the shared engine ----
+app-ng: app
+    @echo "Launching Migx NextGen shell (--nextgen)…"
+    open dist/migx.app --args --nextgen
+
 # ---- Fast quality gate (CLAUDE.md mandates this before commit) ----
 lint:
     pre-commit run --all-files
