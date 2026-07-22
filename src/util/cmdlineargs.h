@@ -53,6 +53,9 @@ class CmdlineArgs final {
     bool isQml() const {
         return m_qml;
     }
+    bool isNextGen() const {
+        return m_nextGen;
+    }
     bool isAwareOfRisk() const {
         return m_awareOfRisk;
     }
@@ -112,6 +115,7 @@ class CmdlineArgs final {
     bool m_developer; // Developer Mode
 #ifdef MIXXX_USE_QML
     bool m_qml;
+    bool m_nextGen; // ADR-007 NextGen shadow QML shell
     bool m_awareOfRisk;
 #endif
     bool m_safeMode;

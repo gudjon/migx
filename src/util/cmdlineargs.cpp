@@ -56,6 +56,7 @@ CmdlineArgs::CmdlineArgs()
           m_developer(false),
 #ifdef MIXXX_USE_QML
           m_qml(false),
+          m_nextGen(false),
 #endif
           m_safeMode(false),
           m_useLegacyVuMeter(false),
@@ -298,6 +299,13 @@ bool CmdlineArgs::parse(const QStringList& arguments, CmdlineArgs::ParseMode mod
     qmlDeprecated.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOption(qmlDeprecated);
     parser.addOption(qml);
+    const QCommandLineOption nextGen(QStringLiteral("nextgen"),
+            forUserFeedback
+                    ? QCoreApplication::translate("CmdlineArgs",
+                              "Loads the NextGen (Agent DJ) QML shell on the "
+                              "shared engine (ADR-007). Experimental.")
+                    : QString());
+    parser.addOption(nextGen);
     const QCommandLineOption awareOfRisk(
             QStringLiteral("allow-dangerous-data-corruption-risk"),
             forUserFeedback
@@ -481,6 +489,7 @@ bool CmdlineArgs::parse(const QStringList& arguments, CmdlineArgs::ParseMode mod
     m_developer = parser.isSet(developer);
 #ifdef MIXXX_USE_QML
     m_qml = parser.isSet(qml);
+    m_nextGen = parser.isSet(nextGen);
     if (parser.isSet(qmlDeprecated)) {
         m_qml |= true;
         qWarning() << "The argument '--qml' is deprecated and will be soon "

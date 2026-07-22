@@ -66,6 +66,14 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
 #ifdef MIXXX_USE_QML
     QString mainQmlFilePath;
     bool loadQml = args.isQml();
+    if (args.isNextGen()) {
+        // ADR-007: NextGen shadow shell — load the NextGen QML root on the
+        // shared engine/ControlObject bus, with no legacy MixxxMainWindow,
+        // skin XML, or src/widget product chrome.
+        loadQml = true;
+        mainQmlFilePath = pCoreServices->getSettings()->getResourcePath() +
+                QStringLiteral("qml/nextgen/main.qml");
+    }
     if (!loadQml && args.getDeveloper()) {
         mixxx::skin::SkinLoader skinLoader(pCoreServices->getSettings());
         const mixxx::skin::SkinPointer pSkin = skinLoader.getConfiguredSkin();
