@@ -19,10 +19,15 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE = REPO / "fixtures/music-mode-50"
 DEFAULT_DECK_CLOCK_FIXTURE = REPO / "fixtures/deck-clock-states.json"
+DEFAULT_DECK_IDENTITY_FIXTURE = REPO / "fixtures/deck-identity-states.json"
 NEXTGEN_QML = REPO / "res/qml/nextgen"
 KEYMAP = REPO / "res/design/KEYMAP.md"
 DECK_CLOCK_QML = REPO / "res/qml/nextgen/components/DeckClock.qml"
 DECK_CLOCK_MODEL_QML = REPO / "res/qml/nextgen/components/DeckClockModel.qml"
+DECK_IDENTITY_QML = REPO / "res/qml/nextgen/components/DeckIdentity.qml"
+DECK_IDENTITY_MODEL_QML = REPO / "res/qml/nextgen/components/DeckIdentityModel.qml"
+KEYS_PROTO = REPO / "src/proto/keys.proto"
+KEYUTILS_CPP = REPO / "src/track/keyutils.cpp"
 ALLOWED_CHIP_KINDS = {
     "youtube_views",
     "beatport_chart",
@@ -70,6 +75,7 @@ class MusicFixture:
     history: dict[str, int]
     deck_state: dict[str, Any]
     layout: dict[str, Any]
+    transitions: dict[str, Any]
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -121,6 +127,9 @@ def load_fixture(root: Path) -> MusicFixture:
         for row in read_jsonl(root / "history.jsonl")
     }
 
+    transitions_path = root / "transitions.json"
+    transitions = read_json(transitions_path) if transitions_path.is_file() else {}
+
     return MusicFixture(
         root=root,
         tracks=tracks,
@@ -133,6 +142,7 @@ def load_fixture(root: Path) -> MusicFixture:
         history=history,
         deck_state=read_json(root / "free_decks.json"),
         layout=read_json(root / "layout.json"),
+        transitions=transitions,
     )
 
 
@@ -183,6 +193,25 @@ def assert_fixture_integrity(fx: MusicFixture) -> None:
     if coverage < 0.60:
         raise JudgeError(f"community signal coverage {coverage:.2%} below 60%")
 
+    # Optional ARRANGE co-occurrence priors (migx.transition_priors.v1)
+    if fx.transitions:
+        schema = fx.transitions.get("schema", "")
+        if schema != "migx.transition_priors.v1":
+            raise JudgeError(f"transitions.json: expected schema migx.transition_priors.v1, got {schema!r}")
+        edges = fx.transitions.get("edges")
+        if not isinstance(edges, list) or len(edges) < 1:
+            raise JudgeError("transitions.json: edges must be a non-empty list")
+        for i, edge in enumerate(edges):
+            for field in ("from", "to", "count"):
+                if field not in edge:
+                    raise JudgeError(f"transitions.json edges[{i}]: missing {field}")
+            if edge["from"] not in fx.tracks:
+                raise JudgeError(f"transitions.json: unknown from track {edge['from']}")
+            if edge["to"] not in fx.tracks:
+                raise JudgeError(f"transitions.json: unknown to track {edge['to']}")
+            if int(edge["count"]) < 1:
+                raise JudgeError(f"transitions.json edges[{i}]: count must be >= 1")
+
 
 def track_search_text(fx: MusicFixture, track_id: str) -> str:
     track = fx.tracks[track_id]
@@ -211,7 +240,8 @@ def cmd_fixture_load(args: argparse.Namespace, fx: MusicFixture) -> None:
     assert_fixture_integrity(fx)
     print(
         f"OK fixture-load tracks={len(fx.tracks)} tags={len(fx.tags)} "
-        f"playlists={len(fx.playlists)} chips={len(fx.community)}"
+        f"playlists={len(fx.playlists)} chips={len(fx.community)} "
+        f"transition_edges={len(fx.transitions.get('edges') or [])}"
     )
 
 
@@ -464,6 +494,196 @@ def strip_line_comment(line: str) -> str:
     return line
 
 
+def strip_js_line_comments(text: str) -> str:
+    return "\n".join(strip_line_comment(line) for line in text.splitlines())
+
+
+def parse_chromatic_key_ids() -> dict[int, str]:
+    text = KEYS_PROTO.read_text(encoding="utf-8")
+    match = re.search(r"enum\s+ChromaticKey\s*\{(?P<body>.*?)\};", text, re.DOTALL)
+    if not match:
+        raise JudgeError(f"{rel(KEYS_PROTO)} missing enum ChromaticKey")
+    ids: dict[int, str] = {}
+    for item in re.finditer(r"^\s*([A-Z_]+)\s*=\s*(\d+)\s*;", match.group("body"), re.MULTILINE):
+        ids[int(item.group(2))] = item.group(1)
+    for key_id in range(0, 25):
+        if key_id not in ids:
+            raise JudgeError(f"{rel(KEYS_PROTO)} missing ChromaticKey id {key_id}")
+    return ids
+
+
+def parse_keyutils_open_key_map() -> dict[str, int]:
+    text = KEYUTILS_CPP.read_text(encoding="utf-8")
+    entries = re.findall(
+        r"\{\s*mixxx::track::io::key::([A-Z_]+),\s*"
+        r"mixxx::track::io::key::([A-Z_]+)\s*\},?\s*//\s*(\d+)",
+        text,
+    )
+    if len(entries) != 12:
+        raise JudgeError(f"{rel(KEYUTILS_CPP)} expected 12 s_openKeyToKeys entries, got {len(entries)}")
+    key_to_open: dict[str, int] = {}
+    for major_key, minor_key, open_key_raw in entries:
+        open_key = int(open_key_raw)
+        key_to_open[major_key] = open_key
+        key_to_open[minor_key] = open_key
+    return key_to_open
+
+
+def open_key_to_lancelot_number(open_key_number: int) -> int:
+    lancelot_number = open_key_number - 5
+    return lancelot_number + 12 if lancelot_number < 1 else lancelot_number
+
+
+def parse_deck_identity_camelot_table() -> dict[int, int]:
+    text = strip_js_line_comments(DECK_IDENTITY_MODEL_QML.read_text(encoding="utf-8"))
+    match = re.search(r"var\s+t\s*=\s*\[(?P<body>.*?)\]\s*;", text, re.DOTALL)
+    if not match:
+        raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} missing camelotNumber() table")
+    values = [int(raw) for raw in re.findall(r"-?\d+", match.group("body"))]
+    if len(values) != 25:
+        raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} camelot table expected 25 values, got {len(values)}")
+    return {key_id: values[key_id] for key_id in range(0, 25)}
+
+
+def parse_deck_identity_names() -> dict[int, str]:
+    text = strip_js_line_comments(DECK_IDENTITY_MODEL_QML.read_text(encoding="utf-8"))
+    match = re.search(r"var\s+names\s*=\s*\[(?P<body>.*?)\]\s*;", text, re.DOTALL)
+    if not match:
+        raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} missing keyLabel() names table")
+    names = [
+        quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
+        for quoted in re.finditer(r"\"([^\"]*)\"|'([^']*)'", match.group("body"))
+    ]
+    if len(names) != 25:
+        raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} key names table expected 25 values, got {len(names)}")
+    return {key_id: names[key_id] for key_id in range(0, 25)}
+
+
+def expected_deck_identity_keymap() -> dict[int, dict[str, Any]]:
+    key_ids = parse_chromatic_key_ids()
+    key_to_open = parse_keyutils_open_key_map()
+    qml_names = parse_deck_identity_names()
+    expected: dict[int, dict[str, Any]] = {}
+    for key_id in range(1, 25):
+        key_name = key_ids[key_id]
+        if key_name not in key_to_open:
+            raise JudgeError(f"{rel(KEYUTILS_CPP)} missing OpenKey mapping for {key_name}")
+        number = open_key_to_lancelot_number(key_to_open[key_name])
+        letter = "B" if key_id <= 12 else "A"
+        label = f"{qml_names[key_id]} · {number}{letter}"
+        expected[key_id] = {
+            "key_name": key_name,
+            "camelot_number": number,
+            "camelot_label": f"{number}{letter}",
+            "label": label,
+        }
+    return expected
+
+
+def derive_deck_identity_state(row: dict[str, Any], expected_keymap: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    has_track = float(row.get("track_loaded", 0)) > 0
+    title = str(row.get("title", ""))
+    artist = str(row.get("artist", ""))
+    art_url = str(row.get("art_url", ""))
+    bpm = float(row.get("bpm", 0))
+    key_id = int(round(float(row.get("key", 0))))
+    key_entry = expected_keymap.get(key_id)
+    bpm_text = f"{bpm:.1f}" if has_track and bpm > 0 else "--"
+    key_text = key_entry["label"] if has_track and key_entry else "--"
+    key_camelot = int(key_entry["camelot_number"]) if has_track and key_entry else 0
+    title_text = title if has_track and title else ("Untitled" if has_track else "— no track —")
+    return {
+        "has_track": has_track,
+        "title_text": title_text,
+        "artist_text": artist,
+        "artist_visible": has_track and artist != "",
+        "art_source": art_url if has_track else "",
+        "bpm_text": bpm_text,
+        "bpm_badge": f"{bpm_text} BPM",
+        "key_text": key_text,
+        "key_badge": key_text,
+        "key_camelot": key_camelot,
+        "key_color": f"Theme.keyWheel{key_camelot}" if key_camelot > 0 else "Theme.transparent",
+        "title_elides": has_track and len(title) >= int(row.get("long_title_min_chars", 10_000)),
+    }
+
+
+def assert_deck_identity_qml_contract() -> None:
+    view_text = DECK_IDENTITY_QML.read_text(encoding="utf-8")
+    model_text = DECK_IDENTITY_MODEL_QML.read_text(encoding="utf-8")
+    required_view_fragments = [
+        "text: view.hasTrack ? (view.title !== \"\" ? view.title : \"Untitled\") : \"— no track —\"",
+        "elide: Text.ElideRight",
+        "Layout.maximumWidth: Theme.nextgenWindowWidth / 3",
+        "source: view.hasTrack ? view.artUrl : \"\"",
+        "text: view.bpmText + \" BPM\"",
+        "text: view.keyText",
+        "accent: view.keyColor",
+        "Theme[\"keyWheel\" + keyCamelot]",
+    ]
+    required_model_fragments = [
+        "READ-ONLY",
+        "DeckIdentityModel",
+        'key: "track_loaded"',
+        'key: "bpm"',
+        'key: "key"',
+        "function camelotNumber(k)",
+        "function keyLabel(k)",
+    ]
+    for fragment in required_view_fragments:
+        if fragment not in view_text:
+            raise JudgeError(f"{rel(DECK_IDENTITY_QML)} missing contract fragment: {fragment}")
+    for fragment in required_model_fragments:
+        if fragment not in model_text:
+            raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} missing contract fragment: {fragment}")
+    forbidden_writes = re.findall(r"\b(?:loadedControl|bpmControl|keyControl)\.value\s*=", model_text)
+    if forbidden_writes:
+        raise JudgeError(f"{rel(DECK_IDENTITY_MODEL_QML)} writes to ControlProxy value: {forbidden_writes}")
+
+
+def cmd_deck_identity_states(args: argparse.Namespace) -> None:
+    fixture_path = Path(args.fixture)
+    if not fixture_path.is_absolute():
+        fixture_path = REPO / fixture_path
+    fixture = read_json(fixture_path)
+    expected_ids = {"no-track", "loaded", "long-title"}
+    rows = fixture.get("states", [])
+    ids = {row.get("id") for row in rows}
+    missing = expected_ids - ids
+    if missing:
+        raise JudgeError(f"{rel(fixture_path)} missing DeckIdentity states: {sorted(missing)}")
+
+    assert_deck_identity_qml_contract()
+    expected_keymap = expected_deck_identity_keymap()
+    qml_camelot = parse_deck_identity_camelot_table()
+    fixture_keymap = {int(row["key_id"]): row for row in fixture.get("keymap", [])}
+    if set(fixture_keymap) != set(range(1, 25)):
+        raise JudgeError(f"{rel(fixture_path)} keymap must contain key_id 1..24")
+    for key_id, expected in expected_keymap.items():
+        got_number = qml_camelot.get(key_id)
+        if got_number != expected["camelot_number"]:
+            raise JudgeError(
+                f"key_id {key_id}: DeckIdentityModel camelotNumber={got_number!r}, "
+                f"expected {expected['camelot_number']!r} from KeyUtils Lancelot"
+            )
+        fixture_expected = fixture_keymap[key_id]
+        for field in ("key_name", "camelot_number", "camelot_label", "label"):
+            if fixture_expected.get(field) != expected[field]:
+                raise JudgeError(
+                    f"key_id {key_id}: fixture {field}={fixture_expected.get(field)!r}, "
+                    f"expected {expected[field]!r}"
+                )
+
+    for row in rows:
+        derived = derive_deck_identity_state(row, expected_keymap)
+        expected = row.get("expect", {})
+        for key, want in expected.items():
+            got = derived.get(key)
+            if got != want:
+                raise JudgeError(f"{row.get('id')}: {key}={got!r}, expected {want!r}")
+    print(f"OK deck identity-states states={len(rows)} keymap=24 read_only=true")
+
+
 def iter_qml_files(root: Path) -> list[Path]:
     root = root.resolve()
     if not root.exists():
@@ -609,6 +829,8 @@ def build_parser() -> argparse.ArgumentParser:
     deck_sub = deck.add_subparsers(dest="action", required=True)
     clock = deck_sub.add_parser("clock-states")
     clock.add_argument("--fixture", default=str(DEFAULT_DECK_CLOCK_FIXTURE), help="DeckClock fixture")
+    identity = deck_sub.add_parser("identity-states")
+    identity.add_argument("--fixture", default=str(DEFAULT_DECK_IDENTITY_FIXTURE), help="DeckIdentity fixture")
 
     nextgen = sub.add_parser("nextgen-ui")
     nextgen_sub = nextgen.add_subparsers(dest="action", required=True)
@@ -672,6 +894,9 @@ def main(argv: list[str]) -> int:
             return 0
         if args.domain == "deck" and args.action == "clock-states":
             cmd_deck_clock_states(args)
+            return 0
+        if args.domain == "deck" and args.action == "identity-states":
+            cmd_deck_identity_states(args)
             return 0
 
         fx = load_fixture(Path(fixture_arg))

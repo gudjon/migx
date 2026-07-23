@@ -246,7 +246,7 @@ score = w_key * key_fit
       + w_community * f(chips)     # small; never dominates
 ```
 
-`f(chips)` must ignore `setlist_appearances` until v2 feed is real. Do not use raw YT views as the only community term (wedding-banger bias).
+`f(chips)` may use fixture `setlist_appearances` / `transitions.json` co-occurrence; do not treat YT views as sets. Cap trend weight under mixability (wedding-banger bias).
 
 ---
 
@@ -263,13 +263,15 @@ fixtures/music-mode-50/
   playlist_tracks.jsonl  # playlist_id, track_id, position
   community_signal/      # cached chip stubs (>=60% coverage)
     index.jsonl
+  transitions.json       # migx.transition_priors.v1 — co-occurrence (TL · N after)
+  TRANSITIONS.md         # consumer notes for ARRANGE
   history.jsonl          # local plays for "you" chips
   free_decks.json        # playable deck pool state for load tests
   layout.json            # non-modal/no-network/viewport-overlap metadata
 ```
 
 **Judge v0 uses only this tree** — no network, no live YT/SC/BP. Later visual/CO judges may add
-in-process QML.
+in-process QML. Co-occurrence: `TRANSITIONS.md` + `arrange-nexttrack-copilot-scoring.md`.
 
 ---
 

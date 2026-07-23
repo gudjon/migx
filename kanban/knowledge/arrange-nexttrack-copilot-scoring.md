@@ -85,7 +85,8 @@ Store FSL: transition_priors[from_isrc][to_isrc] = count_90d
 ARRANGE reads cache only; ranks candidates with prior > 0 higher
 ```
 
-Until feed exists: fixture JSON `fixtures/music-mode-50/transitions.json` with fake priors so UI can show `TL · N after`.
+**Fixture (landed):** `fixtures/music-mode-50/transitions.json` (`migx.transition_priors.v1`) + `TRANSITIONS.md`.  
+Synthetic edges e.g. `id:03 → id:11` count 48 → chip `48 after`. Aggregate inbound → `setlist_appearances` chips in `community_signal/index.jsonl`. Judge validates schema + track IDs when file present.
 
 ---
 

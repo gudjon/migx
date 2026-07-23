@@ -1,0 +1,345 @@
+{
+  "schema": "migx.transition_priors.v1",
+  "window_days": 90,
+  "source": "fixture_synthetic",
+  "source_note": "Synthetic DJ-set co-occurrence for ARRANGE TL\u00b7N after stubs. Not real 1001TL data.",
+  "fetched_at": "2026-07-23T00:00:00Z",
+  "display_unit": "sets_after",
+  "chip_kind": "setlist_appearances",
+  "edges": [
+    {
+      "from": "id:01",
+      "to": "id:02",
+      "count": 28,
+      "unique_djs": 11,
+      "display": "28 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:01",
+      "to": "id:08",
+      "count": 14,
+      "unique_djs": 6,
+      "display": "14 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:02",
+      "to": "id:04",
+      "count": 22,
+      "unique_djs": 9,
+      "display": "22 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:02",
+      "to": "id:06",
+      "count": 18,
+      "unique_djs": 7,
+      "display": "18 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:08",
+      "to": "id:12",
+      "count": 11,
+      "unique_djs": 5,
+      "display": "11 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:33",
+      "to": "id:01",
+      "count": 9,
+      "unique_djs": 4,
+      "display": "9 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:04",
+      "to": "id:06",
+      "count": 31,
+      "unique_djs": 12,
+      "display": "31 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:06",
+      "to": "id:14",
+      "count": 24,
+      "unique_djs": 10,
+      "display": "24 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:14",
+      "to": "id:03",
+      "count": 35,
+      "unique_djs": 14,
+      "display": "35 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:14",
+      "to": "id:05",
+      "count": 19,
+      "unique_djs": 8,
+      "display": "19 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:09",
+      "to": "id:06",
+      "count": 16,
+      "unique_djs": 6,
+      "display": "16 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:20",
+      "to": "id:14",
+      "count": 13,
+      "unique_djs": 5,
+      "display": "13 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:03",
+      "to": "id:11",
+      "count": 48,
+      "unique_djs": 19,
+      "display": "48 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:03",
+      "to": "id:27",
+      "count": 41,
+      "unique_djs": 16,
+      "display": "41 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:11",
+      "to": "id:27",
+      "count": 37,
+      "unique_djs": 15,
+      "display": "37 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:11",
+      "to": "id:31",
+      "count": 29,
+      "unique_djs": 12,
+      "display": "29 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:27",
+      "to": "id:31",
+      "count": 26,
+      "unique_djs": 11,
+      "display": "26 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:05",
+      "to": "id:03",
+      "count": 21,
+      "unique_djs": 9,
+      "display": "21 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:13",
+      "to": "id:03",
+      "count": 17,
+      "unique_djs": 7,
+      "display": "17 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:17",
+      "to": "id:11",
+      "count": 15,
+      "unique_djs": 6,
+      "display": "15 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:43",
+      "to": "id:03",
+      "count": 20,
+      "unique_djs": 8,
+      "display": "20 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:45",
+      "to": "id:27",
+      "count": 18,
+      "unique_djs": 7,
+      "display": "18 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:03",
+      "to": "id:07",
+      "count": 12,
+      "unique_djs": 5,
+      "display": "12 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:11",
+      "to": "id:07",
+      "count": 10,
+      "unique_djs": 4,
+      "display": "10 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:07",
+      "to": "id:49",
+      "count": 14,
+      "unique_djs": 6,
+      "display": "14 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:31",
+      "to": "id:26",
+      "count": 22,
+      "unique_djs": 9,
+      "display": "22 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:27",
+      "to": "id:26",
+      "count": 16,
+      "unique_djs": 7,
+      "display": "16 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:26",
+      "to": "id:46",
+      "count": 19,
+      "unique_djs": 8,
+      "display": "19 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:49",
+      "to": "id:26",
+      "count": 11,
+      "unique_djs": 5,
+      "display": "11 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:12",
+      "to": "id:46",
+      "count": 8,
+      "unique_djs": 3,
+      "display": "8 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:01",
+      "to": "id:11",
+      "count": 25,
+      "unique_djs": 10,
+      "display": "25 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:11",
+      "to": "id:01",
+      "count": 3,
+      "unique_djs": 2,
+      "display": "3 after",
+      "window_days": 90
+    },
+    {
+      "from": "id:03",
+      "to": "id:22",
+      "count": 2,
+      "unique_djs": 1,
+      "display": "2 after",
+      "window_days": 90
+    }
+  ],
+  "inbound_totals": {
+    "id:27": {
+      "count": 96,
+      "display": "96 sets"
+    },
+    "id:03": {
+      "count": 93,
+      "display": "93 sets"
+    },
+    "id:11": {
+      "count": 88,
+      "display": "88 sets"
+    },
+    "id:06": {
+      "count": 65,
+      "display": "65 sets"
+    },
+    "id:31": {
+      "count": 55,
+      "display": "55 sets"
+    },
+    "id:26": {
+      "count": 49,
+      "display": "49 sets"
+    },
+    "id:14": {
+      "count": 37,
+      "display": "37 sets"
+    },
+    "id:02": {
+      "count": 28,
+      "display": "28 sets"
+    },
+    "id:46": {
+      "count": 27,
+      "display": "27 sets"
+    },
+    "id:04": {
+      "count": 22,
+      "display": "22 sets"
+    },
+    "id:07": {
+      "count": 22,
+      "display": "22 sets"
+    },
+    "id:05": {
+      "count": 19,
+      "display": "19 sets"
+    },
+    "id:08": {
+      "count": 14,
+      "display": "14 sets"
+    },
+    "id:49": {
+      "count": 14,
+      "display": "14 sets"
+    },
+    "id:01": {
+      "count": 12,
+      "display": "12 sets"
+    },
+    "id:12": {
+      "count": 11,
+      "display": "11 sets"
+    },
+    "id:22": {
+      "count": 2,
+      "display": "2 sets"
+    }
+  }
+}

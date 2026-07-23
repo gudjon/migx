@@ -74,3 +74,20 @@ lands ([[copilot-transition-intelligence]], A6 open).
 3. **Community signal in v1** — show the `▲ listens · sets` chips now (needs Grok's data source) or ship
    mixability-only first and add signal as a fast-follow? (Recommend: mixability first, signal next.)
 4. **Load action** — Enter/double-click loads the pick to the **first stopped deck** — correct default?
+
+## Grok scoring lock (2026-07-23) — build against this
+
+SSoT: `kanban/knowledge/arrange-nexttrack-copilot-scoring.md` · federation
+`grok-signal-claude-code-2026-07-23-001-arrange-nexttrack-scoring-…`.
+
+| Q | Answer |
+|---|---|
+| 1 Data | Selected **crate**; fixtures seed |
+| 2 Scoring | **QML** mixability v1 vs live deck COs; port EXO Camelot/tempo |
+| 3 Chips | Mixability first; offline chips OK |
+| 4 Load | **Enter → free deck** |
+
+**Owner NEXT idea (playlist co-occurrence):** `fixtures/music-mode-50/transitions.json`
+(`migx.transition_priors.v1`) — edges `from→to` with `count` / `display` (`48 after`). Rank under
+mixability; never over `✗ clash`. See `fixtures/music-mode-50/TRANSITIONS.md`. Aggregate heat also on
+`setlist_appearances` community chips.
