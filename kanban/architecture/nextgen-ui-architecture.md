@@ -100,6 +100,22 @@ Built one module at a time, each **strategic** — a bounded DDD unit, not a fea
   `MODULE.md` contract, judge-verified. An agent moves one module with zero global context; compiler +
   theme-check + `ng-ui-lint` + the module judge are the referees.
 
+## Per-module design gate — draft & review BEFORE any code
+No module is built until its **UI draft passes review**. This is the first step of every module intake,
+ahead of the build flow below. Each draft produces, in order:
+1. **ASCII wireframe** — the component in place on its screen at low fidelity, so layout, hierarchy, and
+   space cost are judged *before* a line of QML.
+2. **Value-creation case** — why THIS is the highest-value next increment: the DJ job it does, the
+   friction it removes, what it unblocks. Compared against the other candidate modules, not asserted.
+3. **Cognitive-load case** — it must *lower* the DJ's load: fewest glances, one clear hierarchy, no new
+   mode to learn, minimal chrome (per "Admin chrome is minimal"). Anything that adds load is redesigned
+   or dropped.
+4. **Industry-trend grounding** — how the top DJ software (Serato / rekordbox / Traktor / VirtualDJ /
+   djay) present this, cited, so DJs meet familiar patterns and keep muscle memory.
+Drafts are the **pre-build SSoT** at `res/design/wireframes/<module>.md`; the `MODULE.md` contract is
+written at build time from the approved draft. Choosing which module is worth building is an owner value
+judgment — **the loop produces the draft and holds for review; it does not auto-build past this gate.**
+
 ## Build order (unchanged, now layered)
 `Theme/tokens → primitives → components → modes → deck-shell (first product module) → music-management
 mode → library → co-pilot → waveform (post-Metal unpin)`. Each lands behind its `MODULE.md` judge.
