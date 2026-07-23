@@ -5,7 +5,7 @@ title: "Migx product strategy — Cursor-for-AI-DJing (MIT operating model)"
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/architecture/decisions/ADR-002-hard-fork-no-upstream-merge.md
   - kanban/architecture/decisions/ADR-003-licensing-and-openness.md
@@ -14,6 +14,7 @@ related:
   - kanban/initiatives/initiative-ai-djing-product.md
   - kanban/initiatives/initiative-apple-silicon.md
   - kanban/knowledge/world-model-experience-ontology.md
+  - kanban/knowledge/migx-brand-positioning-experience-designer.md
   - kanban/runbooks/go-private-and-git-posture.md
   - kanban/federation/signal/2026-07-17-deep-x-community-alignment.md
 note: >
@@ -30,6 +31,10 @@ note: >
 a proprietary AI-native product under the MIT operating model (like Cursor on VS Code), keep early
 dev public, later house it under Agora — and put the moat in the product + Intelligence, not in a
 sidebar plugin.**
+
+**Brand / market voice (proposal):** DJ as **experience designer** — design nights, shape arcs, serve
+judgment not autopilot. Category language and name shortlist live in
+`kanban/knowledge/migx-brand-positioning-experience-designer.md` (does not rename eng `migx` until owner locks).
 
 ---
 
