@@ -5,7 +5,7 @@ title: "AI-assisted UI migration loop — QML modules, DESIGN.md, mechanical jud
 status: active
 owner: gudjon
 created: "2026-07-19"
-lastUpdated: "2026-07-19"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/knowledge/ai-code-migration-methodology.md
   - kanban/knowledge/ui-framework-migration-map.md
@@ -114,10 +114,18 @@ understand, own, and verify.
 Use these as the initial floor while the stronger visual/CO judges are being built:
 
 ```bash
+just ng-ui-lint
+just ng-music-judge
 just theme-check
 build/migx.app/Contents/MacOS/migx --version
 build/mixxx-test --gtest_filter='TrackDAOTest.*:EngineBufferTest.*'
 ```
+
+For all NextGen QML, `just ng-ui-lint` is the first architecture-rule floor: no hardcoded visual
+literals below `Theme.qml`, and no blocking modal pattern in `res/qml/nextgen/**`. For
+`mod-music-management-mode`, `just ng-music-judge` is the first module-specific floor. It checks the
+frozen ARRANGE fixture, cached community chips, no-network hot path, free-deck-only load behavior, and
+layout guard metadata before the richer screenshot/CO parity judge exists.
 
 For UI-specific work, add at least one of:
 

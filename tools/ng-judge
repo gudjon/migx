@@ -1,0 +1,550 @@
+#!/usr/bin/env python3
+"""Offline judges for NextGen module fixtures.
+
+The first judge target is mod-music-management-mode. It validates the fixture
+contract that the QML ARRANGE mode will consume before any live UI/network work
+is allowed into the club path.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+REPO = Path(__file__).resolve().parents[1]
+DEFAULT_FIXTURE = REPO / "fixtures/music-mode-50"
+NEXTGEN_QML = REPO / "res/qml/nextgen"
+ALLOWED_CHIP_KINDS = {
+    "youtube_views",
+    "beatport_chart",
+    "soundcloud_plays",
+    "local_plays",
+    "setlist_appearances",
+}
+FORBIDDEN_V1_CHIP_KINDS = {"mixcloud_sets"}
+HEX_LITERAL_RE = re.compile(r"(?<![\w])['\"]?#[0-9A-Fa-f]{3,8}['\"]?")
+COLOR_CONSTRUCTOR_RE = re.compile(r"\bQt\.(?:rgba|hsla?|darker|lighter|tint)\s*\(")
+COLOR_STRING_RE = re.compile(
+    r"\b(?:color|border\.color|property\s+color\s+\w+)\s*:\s*['\"][^'\"]+['\"]"
+)
+VISUAL_NUMERIC_RE = re.compile(
+    r"\b(?:"
+    r"width|height|spacing|padding|leftPadding|rightPadding|topPadding|bottomPadding|"
+    r"font\.pixelSize|duration|opacity|radius|border\.width|anchors\.margins|"
+    r"anchors\.leftMargin|anchors\.rightMargin|anchors\.topMargin|anchors\.bottomMargin"
+    r")\s*:\s*-?\d+(?:\.\d+)?\b"
+)
+BLOCKING_COMPONENT_RE = re.compile(
+    r"^\s*(?:Dialog|MessageDialog|FileDialog|FolderDialog|ColorDialog|FontDialog)\s*\{"
+)
+MODAL_TRUE_RE = re.compile(r"\bmodal\s*:\s*true\b")
+
+
+class JudgeError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class MusicFixture:
+    root: Path
+    tracks: dict[str, dict[str, Any]]
+    tags: dict[str, dict[str, Any]]
+    playlists: dict[str, dict[str, Any]]
+    track_tags: dict[str, list[str]]
+    playlist_tracks: dict[str, list[str]]
+    track_playlists: dict[str, list[str]]
+    community: dict[str, dict[str, Any]]
+    history: dict[str, int]
+    deck_state: dict[str, Any]
+    layout: dict[str, Any]
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise JudgeError(f"missing fixture file: {path}")
+    rows: list[dict[str, Any]] = []
+    for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            rows.append(json.loads(raw))
+        except json.JSONDecodeError as exc:
+            raise JudgeError(f"{path}:{line_no}: {exc}") from exc
+    return rows
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise JudgeError(f"missing fixture file: {path}")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise JudgeError(f"{path}: {exc}") from exc
+
+
+def load_fixture(root: Path) -> MusicFixture:
+    root = root.resolve()
+    tracks = {row["id"]: row for row in read_jsonl(root / "library.jsonl")}
+    tags = {row["id"]: row for row in read_jsonl(root / "tags.jsonl")}
+    playlists = {row["id"]: row for row in read_jsonl(root / "playlists.jsonl")}
+
+    track_tags: dict[str, list[str]] = {track_id: [] for track_id in tracks}
+    for row in read_jsonl(root / "track_tags.jsonl"):
+        track_tags.setdefault(row["track_id"], []).append(row["tag_id"])
+
+    playlist_tracks: dict[str, list[str]] = {playlist_id: [] for playlist_id in playlists}
+    track_playlists: dict[str, list[str]] = {track_id: [] for track_id in tracks}
+    for row in read_jsonl(root / "playlist_tracks.jsonl"):
+        playlist_tracks.setdefault(row["playlist_id"], []).append(row["track_id"])
+        track_playlists.setdefault(row["track_id"], []).append(row["playlist_id"])
+
+    community: dict[str, dict[str, Any]] = {}
+    community_path = root / "community_signal/index.jsonl"
+    for row in read_jsonl(community_path):
+        community[row["track_id"]] = row
+
+    history = {
+        row["track_id"]: int(row.get("local_plays", 0))
+        for row in read_jsonl(root / "history.jsonl")
+    }
+
+    return MusicFixture(
+        root=root,
+        tracks=tracks,
+        tags=tags,
+        playlists=playlists,
+        track_tags=track_tags,
+        playlist_tracks=playlist_tracks,
+        track_playlists=track_playlists,
+        community=community,
+        history=history,
+        deck_state=read_json(root / "free_decks.json"),
+        layout=read_json(root / "layout.json"),
+    )
+
+
+def assert_fixture_integrity(fx: MusicFixture) -> None:
+    if len(fx.tracks) < 50:
+        raise JudgeError(f"expected >=50 tracks, got {len(fx.tracks)}")
+    if len(fx.tags) < 8:
+        raise JudgeError(f"expected >=8 tags, got {len(fx.tags)}")
+    if len(fx.playlists) < 4:
+        raise JudgeError(f"expected >=4 playlists, got {len(fx.playlists)}")
+
+    for track_id, track in fx.tracks.items():
+        for field in ("title", "artist", "bpm", "key", "energy", "art_stub", "waveform_thumb"):
+            if track.get(field) in (None, ""):
+                raise JudgeError(f"{track_id}: missing {field}")
+        if track_id not in fx.track_tags or not fx.track_tags[track_id]:
+            raise JudgeError(f"{track_id}: missing tag relation")
+        if track_id not in fx.track_playlists or not fx.track_playlists[track_id]:
+            raise JudgeError(f"{track_id}: missing playlist relation")
+
+    for track_id, tag_ids in fx.track_tags.items():
+        if track_id not in fx.tracks:
+            raise JudgeError(f"track_tags: unknown track {track_id}")
+        for tag_id in tag_ids:
+            if tag_id not in fx.tags:
+                raise JudgeError(f"track_tags: unknown tag {tag_id}")
+
+    for playlist_id, track_ids in fx.playlist_tracks.items():
+        if playlist_id not in fx.playlists:
+            raise JudgeError(f"playlist_tracks: unknown playlist {playlist_id}")
+        for track_id in track_ids:
+            if track_id not in fx.tracks:
+                raise JudgeError(f"playlist_tracks: unknown track {track_id}")
+
+    for track_id, signal in fx.community.items():
+        if track_id not in fx.tracks:
+            raise JudgeError(f"community_signal: unknown track {track_id}")
+        for chip in signal.get("chips", []):
+            kind = chip.get("kind")
+            if kind in FORBIDDEN_V1_CHIP_KINDS:
+                raise JudgeError(f"{track_id}: forbidden v1 chip kind {kind}")
+            if kind not in ALLOWED_CHIP_KINDS:
+                raise JudgeError(f"{track_id}: unknown chip kind {kind}")
+            if float(chip.get("match_confidence", 0.0)) < 0.7:
+                raise JudgeError(f"{track_id}: chip {kind} below confidence gate")
+
+    coverage = len(fx.community) / len(fx.tracks)
+    if coverage < 0.60:
+        raise JudgeError(f"community signal coverage {coverage:.2%} below 60%")
+
+
+def track_search_text(fx: MusicFixture, track_id: str) -> str:
+    track = fx.tracks[track_id]
+    tag_names = [fx.tags[tag_id]["name"] for tag_id in fx.track_tags.get(track_id, [])]
+    return " ".join([
+        str(track.get("title", "")),
+        str(track.get("artist", "")),
+        str(track.get("remixer", "")),
+        *tag_names,
+    ]).lower()
+
+
+def key_compatible(candidate: str, target: str) -> bool:
+    def parse(key: str) -> tuple[int, str]:
+        if len(key) < 2:
+            raise JudgeError(f"invalid Camelot key {key!r}")
+        return int(key[:-1]), key[-1].upper()
+
+    c_num, c_letter = parse(candidate)
+    t_num, t_letter = parse(target)
+    adjacent = {((t_num - 2) % 12) + 1, t_num, (t_num % 12) + 1}
+    return (c_letter == t_letter and c_num in adjacent) or (c_num == t_num and c_letter != t_letter)
+
+
+def cmd_fixture_load(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    print(
+        f"OK fixture-load tracks={len(fx.tracks)} tags={len(fx.tags)} "
+        f"playlists={len(fx.playlists)} chips={len(fx.community)}"
+    )
+
+
+def cmd_search(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    query = args.q.lower()
+    ids = sorted(track_id for track_id in fx.tracks if query in track_search_text(fx, track_id))
+    if args.expect_ids:
+        expected = [item.strip() for item in args.expect_ids.split(",") if item.strip()]
+        if ids != expected:
+            raise JudgeError(f"search ids {ids} != expected {expected}")
+    print(f"OK search q={args.q!r} ids={','.join(ids)}")
+
+
+def cmd_filter(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    target = fx.deck_state.get("free_deck_key")
+    if not target:
+        raise JudgeError("free_decks.json missing free_deck_key")
+    ids = sorted(track_id for track_id, track in fx.tracks.items() if key_compatible(track["key"], target))
+    if args.expect_count_range:
+        low_raw, high_raw = args.expect_count_range.split(",", 1)
+        low, high = int(low_raw), int(high_raw)
+        if not low <= len(ids) <= high:
+            raise JudgeError(f"compatible count {len(ids)} not in range {low},{high}")
+    print(f"OK filter key_target={target} count={len(ids)}")
+
+
+def require_card_fields(args: argparse.Namespace, fx: MusicFixture) -> None:
+    requirements = {item.strip() for item in (args.require or "").split(",") if item.strip()}
+    if "chips" in requirements and not args.track:
+        coverage = len(fx.community) / len(fx.tracks)
+        if coverage < 0.60:
+            raise JudgeError(f"community chip coverage {coverage:.2%} below 60%")
+        requirements.remove("chips")
+    track_ids = [args.track] if args.track else sorted(fx.tracks)
+    for track_id in track_ids:
+        if track_id not in fx.tracks:
+            raise JudgeError(f"unknown track {track_id}")
+        track = fx.tracks[track_id]
+        checks = {
+            "art": bool(track.get("art_stub")),
+            "bpm": track.get("bpm") is not None,
+            "key": bool(track.get("key")),
+            "energy": track.get("energy") is not None,
+            "tags": bool(fx.track_tags.get(track_id)),
+            "playlists": bool(fx.track_playlists.get(track_id)),
+            "chips": track_id in fx.community,
+        }
+        for requirement in requirements:
+            if requirement == "chips" and args.assert_chip_empty_ok:
+                continue
+            if requirement not in checks:
+                raise JudgeError(f"unknown card requirement {requirement}")
+            if not checks[requirement]:
+                raise JudgeError(f"{track_id}: card requirement failed: {requirement}")
+
+
+def cmd_cards(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    require_card_fields(args, fx)
+    if args.assert_no_modal and fx.layout.get("modal") is not False:
+        raise JudgeError("layout modal flag is not false")
+    print("OK cards")
+
+
+def cmd_switch_roundtrip(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    if args.assert_playhead_continues:
+        if not fx.deck_state.get("playhead_continues_on_mode_switch"):
+            raise JudgeError("playhead_continues_on_mode_switch is not true")
+        playing = [d for d in fx.deck_state.get("decks", []) if d.get("is_playing")]
+        if not playing:
+            raise JudgeError("no playing deck in fixture")
+    threshold = int(fx.deck_state.get("mode_switch_ms_p95", 9999))
+    if threshold > 100:
+        raise JudgeError(f"mode switch p95 {threshold}ms exceeds 100ms")
+    print(f"OK switch-roundtrip p95={threshold}ms")
+
+
+def choose_deck(args: argparse.Namespace, fx: MusicFixture) -> dict[str, Any]:
+    decks = fx.deck_state.get("decks", [])
+    if args.deck == "free":
+        for deck in decks:
+            if deck.get("status") == "free":
+                return deck
+        raise JudgeError("no free deck available")
+    if args.deck == "busy":
+        for deck in decks:
+            if deck.get("status") != "free":
+                return deck
+        raise JudgeError("no busy deck available")
+    for deck in decks:
+        if deck.get("id") == args.deck:
+            return deck
+    raise JudgeError(f"unknown deck selector {args.deck}")
+
+
+def cmd_stage_and_load(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    if args.track not in fx.tracks:
+        raise JudgeError(f"unknown track {args.track}")
+    if args.require_ack is not True:
+        raise JudgeError("stage-and-load requires explicit ack")
+    deck = choose_deck(args, fx)
+    if deck.get("status") != "free":
+        raise JudgeError(f"selected deck {deck.get('id')} is not free")
+    print(f"OK stage-and-load track={args.track} deck={deck.get('id')}")
+
+
+def cmd_load(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    deck = choose_deck(args, fx)
+    rejected = deck.get("status") != "free"
+    if args.expect_reject and not rejected:
+        raise JudgeError(f"expected reject but selected deck {deck.get('id')} is free")
+    if not args.expect_reject and rejected:
+        raise JudgeError(f"deck {deck.get('id')} is busy; load rejected")
+    print(f"OK load track={args.track} deck={deck.get('id')} rejected={str(rejected).lower()}")
+
+
+def cmd_offline_box(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    if args.deny_net and fx.layout.get("network_hot_path") is not False:
+        raise JudgeError("network_hot_path flag is not false")
+    aliases = {
+        "fixture-load": lambda: cmd_fixture_load(args, fx),
+        "search-stable": lambda: cmd_search(
+            argparse.Namespace(q="peak", expect_ids="id:03,id:11,id:27"), fx
+        ),
+        "cards-render": lambda: cmd_cards(
+            argparse.Namespace(
+                require="art,bpm,key,energy,tags,playlists,chips",
+                track=None,
+                assert_no_modal=False,
+                assert_chip_empty_ok=False,
+            ),
+            fx,
+        ),
+    }
+    for item in [part.strip() for part in args.run.split(",") if part.strip()]:
+        if item not in aliases:
+            raise JudgeError(f"unknown offline-box run alias {item}")
+        aliases[item]()
+    print("OK offline-box")
+
+
+def cmd_screenshot(args: argparse.Namespace, fx: MusicFixture) -> None:
+    assert_fixture_integrity(fx)
+    sizes = [part.strip() for part in args.sizes.split(",") if part.strip()]
+    layout_sizes = fx.layout.get("sizes", {})
+    for size in sizes:
+        if size not in layout_sizes:
+            raise JudgeError(f"layout missing size {size}")
+        if args.assert_no_text_overlap and layout_sizes[size].get("text_overlap") is not False:
+            raise JudgeError(f"{size}: text_overlap is not false")
+    print(f"OK screenshot sizes={','.join(sizes)}")
+
+
+def strip_line_comment(line: str) -> str:
+    in_single = False
+    in_double = False
+    index = 0
+    while index < len(line) - 1:
+        char = line[index]
+        prev = line[index - 1] if index > 0 else ""
+        if char == "'" and not in_double and prev != "\\":
+            in_single = not in_single
+        elif char == '"' and not in_single and prev != "\\":
+            in_double = not in_double
+        elif char == "/" and line[index + 1] == "/" and not in_single and not in_double:
+            return line[:index]
+        index += 1
+    return line
+
+
+def iter_qml_files(root: Path) -> list[Path]:
+    root = root.resolve()
+    if not root.exists():
+        raise JudgeError(f"QML path does not exist: {root}")
+    if root.is_file():
+        if root.suffix != ".qml":
+            raise JudgeError(f"QML path is not a .qml file: {root}")
+        return [root]
+    return sorted(path for path in root.rglob("*.qml") if path.is_file())
+
+
+def rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO))
+    except ValueError:
+        return str(path)
+
+
+def cmd_nextgen_ui_lint(args: argparse.Namespace) -> None:
+    if not args.assert_token_only and not args.assert_no_blocking_modal:
+        args.assert_token_only = True
+        args.assert_no_blocking_modal = True
+
+    root = Path(args.path)
+    if not root.is_absolute():
+        root = REPO / root
+
+    files = iter_qml_files(root)
+    violations: list[str] = []
+    for path in files:
+        for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            code = strip_line_comment(raw)
+            if not code.strip():
+                continue
+            if args.assert_token_only:
+                if HEX_LITERAL_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: hardcoded hex/color literal")
+                if COLOR_STRING_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: hardcoded color string")
+                if COLOR_CONSTRUCTOR_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: hardcoded color constructor")
+                if VISUAL_NUMERIC_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: hardcoded visual numeric literal")
+            if args.assert_no_blocking_modal:
+                if BLOCKING_COMPONENT_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: blocking dialog component")
+                if MODAL_TRUE_RE.search(code):
+                    violations.append(f"{rel(path)}:{line_no}: modal true")
+
+    if violations:
+        raise JudgeError("\n  - " + "\n  - ".join(violations))
+    print(f"OK nextgen-ui lint files={len(files)}")
+
+
+def extract_fixture_arg(argv: list[str]) -> tuple[list[str], str]:
+    """Allow --fixture before or after the action subcommand."""
+    fixture = str(DEFAULT_FIXTURE)
+    remaining: list[str] = []
+    index = 0
+    while index < len(argv):
+        token = argv[index]
+        if token == "--fixture":
+            if index + 1 >= len(argv):
+                raise JudgeError("--fixture requires a path")
+            fixture = argv[index + 1]
+            index += 2
+            continue
+        if token.startswith("--fixture="):
+            fixture = token.split("=", 1)[1]
+            index += 1
+            continue
+        remaining.append(token)
+        index += 1
+    return remaining, fixture
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="tools/ng-judge")
+    sub = parser.add_subparsers(dest="domain", required=True)
+
+    nextgen = sub.add_parser("nextgen-ui")
+    nextgen_sub = nextgen.add_subparsers(dest="action", required=True)
+    lint = nextgen_sub.add_parser("lint")
+    lint.add_argument("--path", default=str(NEXTGEN_QML), help="QML file or directory")
+    lint.add_argument("--assert-token-only", action="store_true")
+    lint.add_argument("--assert-no-blocking-modal", action="store_true")
+
+    music = sub.add_parser("music-mode")
+    music_sub = music.add_subparsers(dest="action", required=True)
+
+    music_sub.add_parser("fixture-load")
+
+    search = music_sub.add_parser("search")
+    search.add_argument("--q", required=True)
+    search.add_argument("--expect-ids")
+
+    filt = music_sub.add_parser("filter")
+    filt.add_argument("--key-compat", choices=["free-deck"], required=True)
+    filt.add_argument("--expect-count-range")
+
+    cards = music_sub.add_parser("cards")
+    cards.add_argument("--require", default="")
+    cards.add_argument("--track")
+    cards.add_argument("--assert-no-modal", action="store_true")
+    cards.add_argument("--assert-chip-empty-ok", action="store_true")
+
+    switch = music_sub.add_parser("switch-roundtrip")
+    switch.add_argument("--assert-playhead-continues", action="store_true")
+
+    stage = music_sub.add_parser("stage-and-load")
+    stage.add_argument("--track", required=True)
+    stage.add_argument("--deck", required=True)
+    stage.add_argument("--require-ack", action="store_true")
+
+    load = music_sub.add_parser("load")
+    load.add_argument("--track", required=True)
+    load.add_argument("--deck", required=True)
+    load.add_argument("--expect-reject", action="store_true")
+
+    offline = music_sub.add_parser("offline-box")
+    offline.add_argument("--deny-net", action="store_true")
+    offline.add_argument("--run", required=True)
+
+    screenshot = music_sub.add_parser("screenshot")
+    screenshot.add_argument("--sizes", required=True)
+    screenshot.add_argument("--assert-no-text-overlap", action="store_true")
+
+    return parser
+
+
+def main(argv: list[str]) -> int:
+    parser = build_parser()
+    try:
+        argv, fixture_arg = extract_fixture_arg(argv)
+        args = parser.parse_args(argv)
+        if args.domain == "nextgen-ui" and args.action == "lint":
+            cmd_nextgen_ui_lint(args)
+            return 0
+
+        fx = load_fixture(Path(fixture_arg))
+        if args.domain == "music-mode" and args.action == "fixture-load":
+            cmd_fixture_load(args, fx)
+        elif args.domain == "music-mode" and args.action == "search":
+            cmd_search(args, fx)
+        elif args.domain == "music-mode" and args.action == "filter":
+            cmd_filter(args, fx)
+        elif args.domain == "music-mode" and args.action == "cards":
+            cmd_cards(args, fx)
+        elif args.domain == "music-mode" and args.action == "switch-roundtrip":
+            cmd_switch_roundtrip(args, fx)
+        elif args.domain == "music-mode" and args.action == "stage-and-load":
+            cmd_stage_and_load(args, fx)
+        elif args.domain == "music-mode" and args.action == "load":
+            cmd_load(args, fx)
+        elif args.domain == "music-mode" and args.action == "offline-box":
+            cmd_offline_box(args, fx)
+        elif args.domain == "music-mode" and args.action == "screenshot":
+            cmd_screenshot(args, fx)
+        else:
+            raise JudgeError(f"unsupported command {args.domain} {args.action}")
+    except JudgeError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

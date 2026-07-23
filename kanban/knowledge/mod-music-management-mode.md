@@ -44,6 +44,9 @@ acceptance:
     min_playlists: 4
     community_signal_stub_coverage: ">=0.6"  # fraction of tracks with ≥1 chip stub
   checks:
+    - id: nextgen-ui-rulebook
+      cmd: "tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal"
+      expect: exit 0
     - id: fixture-load
       cmd: "tools/ng-judge music-mode fixture-load --fixture fixtures/music-mode-50/"
       expect: exit 0
@@ -80,6 +83,19 @@ acceptance:
 ```
 
 **P-08:** Author of the module does not sole-grade — Codex/judge binary runs the frozen checks above.
+
+### 1.1 Judge v0 landed
+
+Codex landed the first offline judge on 2026-07-23:
+
+- `tools/ng-judge` owns the `music-mode` acceptance checks above.
+- `fixtures/music-mode-50/` is the frozen v0 data pack: 51 tracks, 9 tags, 5 playlists, 31 cached community-signal rows, free/busy deck state, and layout guard metadata.
+- `tools/ng-judge nextgen-ui lint` fails QML below `res/qml/nextgen` on hardcoded visual literals or blocking modal patterns.
+- `just ng-music-judge` runs the full acceptance list in one command, including `just ng-ui-lint`.
+
+This is a fixture judge, not the final visual/CO parity judge. It exists so the ARRANGE module can be
+built against a stable contract before real sidecar enrichment, UI screenshots, and ControlObject load
+writers are wired in.
 
 ---
 
@@ -234,23 +250,24 @@ score = w_key * key_fit
 
 ## 5. Fixture contract (`fixtures/music-mode-50/`)
 
-Minimum files (paths illustrative until tree exists):
+Minimum files:
 
 ```text
 fixtures/music-mode-50/
-  library.jsonl          # 50 tracks: id, title, artist, remix, bpm, key, energy, art_stub
+  library.jsonl          # >=50 tracks: id, title, artist, remix, bpm, key, energy, art_stub
   tags.jsonl             # tag_id, name, color
   track_tags.jsonl       # track_id, tag_id
   playlists.jsonl        # playlist_id, name
   playlist_tracks.jsonl  # playlist_id, track_id, position
-  community_signal/      # optional per-track yaml/json stubs (≥60% coverage)
-    id-01.json
-    …
+  community_signal/      # cached chip stubs (>=60% coverage)
+    index.jsonl
   history.jsonl          # local plays for "you" chips
   free_decks.json        # playable deck pool state for load tests
+  layout.json            # non-modal/no-network/viewport-overlap metadata
 ```
 
-**Judge uses only this tree + in-process QML** — no network, no live YT/SC/BP.
+**Judge v0 uses only this tree** — no network, no live YT/SC/BP. Later visual/CO judges may add
+in-process QML.
 
 ---
 

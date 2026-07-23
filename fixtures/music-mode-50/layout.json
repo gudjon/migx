@@ -1,0 +1,8 @@
+{
+  "modal": false,
+  "network_hot_path": false,
+  "sizes": {
+    "laptop-1440x900": {"text_overlap": false, "mode_bar_visible": true, "now_ribbon_visible": true},
+    "wide-1920x1080": {"text_overlap": false, "mode_bar_visible": true, "now_ribbon_visible": true}
+  }
+}

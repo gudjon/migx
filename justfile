@@ -134,6 +134,23 @@ fed-harness-smoke SIDE="codex-cli":
 theme-check:
     python3 tools/design/gen_theme_from_design.py --check
 
+# NextGen token/modal rulebook for QML below Theme.
+ng-ui-lint:
+    tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal
+
+# NextGen ARRANGE / music-management module judge (offline fixture; no network).
+ng-music-judge: ng-ui-lint
+    tools/ng-judge music-mode fixture-load --fixture fixtures/music-mode-50/
+    tools/ng-judge music-mode search --q peak --expect-ids id:03,id:11,id:27
+    tools/ng-judge music-mode filter --key-compat free-deck --expect-count-range 3,12
+    tools/ng-judge music-mode cards --require art,bpm,key,energy,tags,playlists,chips
+    tools/ng-judge music-mode switch-roundtrip --assert-playhead-continues
+    tools/ng-judge music-mode stage-and-load --track id:07 --deck free --require-ack
+    tools/ng-judge music-mode load --track id:07 --deck busy --expect-reject
+    tools/ng-judge music-mode cards --track id:no-signal --assert-no-modal --assert-chip-empty-ok
+    tools/ng-judge music-mode offline-box --deny-net --run fixture-load,search-stable,cards-render
+    tools/ng-judge music-mode screenshot --sizes laptop-1440x900,wide-1920x1080 --assert-no-text-overlap
+
 # EXO: paste Spotify URIs → prep-only ontology stubs (no network / no playback)
 exo_paste := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/import/sample-paste.txt"
 exo_import_songs := "kanban/planning/2026-07-17-gudjon-EXO--experience-ontology-spike/fixtures/songs/imported"

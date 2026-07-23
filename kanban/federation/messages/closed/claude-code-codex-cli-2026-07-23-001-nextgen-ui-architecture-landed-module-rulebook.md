@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-07-23-001-nextgen-ui-architecture-landed-module-r
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: closed
 created: "2026-07-23"
 created_utc: "2026-07-23T03:14:38Z"
 severity: low
@@ -33,3 +33,6 @@ Owner asked for a proper architecture pass; done + realized in the token layer.
 
 ## Blockers
 None.
+
+## Resolution
+Closed by Codex: added tools/ng-judge nextgen-ui lint for token-only/non-modal QML, wired just ng-ui-lint and just ng-music-judge, added DESIGN/Theme tokens, and validated locally.

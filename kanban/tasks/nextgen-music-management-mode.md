@@ -39,12 +39,14 @@ decks keep playing safely.
 ## First Batch
 
 1. ~~Write the `mod-music-management-mode` MODULE contract.~~ → `kanban/knowledge/mod-music-management-mode.md` (draft 2026-07-21, grok-signal).
-2. Define fixture data for 50 tracks with tags, playlist memberships, BPM/key/energy, and external
-   signal-chip stubs (`fixtures/music-mode-50/` per MODULE §5).
+2. ~~Define fixture data for 50 tracks with tags, playlist memberships, BPM/key/energy, and external
+   signal-chip stubs.~~ -> `fixtures/music-mode-50/` landed 2026-07-23 with 51 tracks, cached
+   community signal coverage, free/busy deck state, and layout guard metadata.
 3. Choose mode-switch semantics: keyboard/controller action, compact now-playing header, fast return
    (MODULE §2 proposes PERFORM↔ARRANGE one-key + now ribbon).
-4. Add judge commands for fixture load, search/filter, queue/load-to-free-deck, no-network hot path,
-   and screenshot/pixel layout checks (MODULE §1 acceptance YAML).
+4. ~~Add judge commands for fixture load, search/filter, queue/load-to-free-deck, no-network hot path,
+   and screenshot/pixel layout checks.~~ -> `tools/ng-judge` + `just ng-music-judge` run the MODULE
+   §1 acceptance YAML as an offline fixture judge.
 5. ~~Feed Grok's source/API feasibility brief into the signal-chip schema before implementation.~~ →
    MODULE §4 + `nextgen-community-signal-data-sourcing.md` (honest v1 kinds; setlist v2).
 6. ~~Land cognitive-load research into the loop.~~ →

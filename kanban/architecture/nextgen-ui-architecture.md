@@ -42,7 +42,7 @@ A layer may only import layers **below** it. No upward or sideways-hidden depend
 ## The six invariants (what makes it agent-optimized)
 1. **Tokens are the only source of visual values.** No hex/size/font literal in any primitive/component/
    mode — everything reads `Theme.*` (generated from `DESIGN.md`). Enforced by `just theme-check` +
-   a `no-hardcoded-visual-literals` check over `res/qml/nextgen/**` (below `Theme.qml`).
+   `just ng-ui-lint` over `res/qml/nextgen/**` (below `Theme.qml`).
 2. **Views are dumb; a thin ViewModel binds the engine.** QML renders + emits *intent*; a per-component
    ViewModel binds `ControlObject`s via typed `Qml*Proxy`/`QmlControlProxy` over the `[Group],key` bus.
    **No business logic in QML, no engine call except through a proxy** (ADR-007, P-06 one-writer).

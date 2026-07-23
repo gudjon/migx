@@ -36,6 +36,11 @@ QtObject {
     property color eqLowColor: white
     property color eqMidColor: white
     property string fontFamily: "Open Sans"
+    property int fontSizeXs: 11
+    property int fontSizeSm: 13
+    property int fontSizeMd: 14
+    property int fontSizeLg: 15
+    property int fontSizeXl: 22
     property color gainKnobColor: blue
     property color green: "#85c85b"
     property string imgBpmSliderBackground: "images/slider_bpm.svg"
@@ -72,6 +77,7 @@ QtObject {
     property color sunkenBackgroundColor: "#0C0C0C"
     property color textColor: white
     property int textFontPixelSize: 14
+    property color transparent: "transparent"
     property color toolbarActiveColor: white
     property color toolbarBackgroundColor: darkGray2
     property color volumeSliderBarColor: blue
@@ -92,4 +98,19 @@ QtObject {
     property color modePerform: "#01dcfc"
     property color modeArrange: "#fca001"
     property color modeLibrary: "#9b7bf0"
+
+    // NextGen layout/interaction tokens (generated from DESIGN.md; nextgen-ui-architecture)
+    property int space0: 0
+    property int space2: 2
+    property int space3: 3
+    property int space12: 12
+    property int space16: 16
+    property int space18: 18
+    property int space28: 28
+    property int radius0: 0
+    property int motionFastMs: 120
+    property real opacityFull: 1.0
+    property real opacityMuted: 0.7
+    property int nextgenWindowWidth: 1280
+    property int nextgenWindowHeight: 800
 }

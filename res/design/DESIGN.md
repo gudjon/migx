@@ -33,6 +33,7 @@ colors:
   libraryPanelSplitterHandleActive: "#7a7a7a"
   deckInfoBarBackground: "#0e0e0e"
   deckEmptyCoverArt: "#3F3F3F"
+  transparent: "transparent"
   # NextGen mode identity colors (nextgen-ui-architecture): each full-screen mode
   # has its own accent so the DJ always knows the context at a glance.
   modePerform: "#01dcfc"
@@ -42,13 +43,37 @@ typography:
   fontFamily: "Open Sans"
   buttonFontPixelSize: 10
   textFontPixelSize: 14
+  fontSizeXs: 11
+  fontSizeSm: 13
+  fontSizeMd: 14
+  fontSizeLg: 15
+  fontSizeXl: 22
+spacing:
+  zero: 0
+  xxs: 2
+  xs: 3
+  md: 12
+  lg: 16
+  xl: 18
+  xxl: 28
+radii:
+  none: 0
+motion:
+  fastMs: 120
+opacity:
+  full: 1.0
+  muted: 0.7
+layout:
+  nextgenWindowWidth: 1280
+  nextgenWindowHeight: 800
 ---
 
 # Migx design system
 
 ## Overview
-Dark DJ console theme. Tokens in the YAML front matter are the **single source of truth** for colors
-and core typography consumed by QML via `res/qml/Theme/Theme.qml`.
+Dark DJ console theme. Tokens in the YAML front matter are the **single source of truth** for colors,
+spacing, radii, typography, motion, opacity, and shell layout consumed by QML via
+`res/qml/Theme/Theme.qml`.
 
 ## Colors
 Primary surfaces use near-black backgrounds with light gray text. Accents: blue for transport/gain,

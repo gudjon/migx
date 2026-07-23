@@ -21,25 +21,25 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 3
+        height: Theme.space3
         color: placeholder.accent
     }
 
     Column {
         anchors.centerIn: parent
-        spacing: 12
+        spacing: Theme.space12
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: placeholder.title
             color: placeholder.accent
-            font.pixelSize: 22
+            font.pixelSize: Theme.fontSizeXl
             font.bold: true
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: placeholder.body
             color: Theme.midGray
-            font.pixelSize: 14
+            font.pixelSize: Theme.fontSizeMd
             horizontalAlignment: Text.AlignHCenter
         }
     }

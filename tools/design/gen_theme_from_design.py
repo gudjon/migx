@@ -14,6 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 DESIGN = REPO / "res" / "design" / "DESIGN.md"
 THEME = REPO / "res" / "qml" / "Theme" / "Theme.qml"
+TOKEN_SECTIONS = ("colors", "typography", "spacing", "radii", "motion", "opacity", "layout")
 
 # DESIGN token path → Theme.qml property name
 COLOR_MAP = {
@@ -45,6 +46,7 @@ COLOR_MAP = {
     "libraryPanelSplitterHandleActive": "libraryPanelSplitterHandleActive",
     "deckInfoBarBackground": "deckInfoBarBackgroundColor",
     "deckEmptyCoverArt": "deckEmptyCoverArt",
+    "transparent": "transparent",
     "modePerform": "modePerform",
     "modeArrange": "modeArrange",
     "modeLibrary": "modeLibrary",
@@ -54,6 +56,45 @@ TYPO_MAP = {
     "fontFamily": "fontFamily",
     "buttonFontPixelSize": "buttonFontPixelSize",
     "textFontPixelSize": "textFontPixelSize",
+    "fontSizeXs": "fontSizeXs",
+    "fontSizeSm": "fontSizeSm",
+    "fontSizeMd": "fontSizeMd",
+    "fontSizeLg": "fontSizeLg",
+    "fontSizeXl": "fontSizeXl",
+}
+
+SCALAR_MAPS = {
+    "spacing": {
+        "zero": "space0",
+        "xxs": "space2",
+        "xs": "space3",
+        "md": "space12",
+        "lg": "space16",
+        "xl": "space18",
+        "xxl": "space28",
+    },
+    "radii": {
+        "none": "radius0",
+    },
+    "motion": {
+        "fastMs": "motionFastMs",
+    },
+    "opacity": {
+        "full": "opacityFull",
+        "muted": "opacityMuted",
+    },
+    "layout": {
+        "nextgenWindowWidth": "nextgenWindowWidth",
+        "nextgenWindowHeight": "nextgenWindowHeight",
+    },
+}
+
+SCALAR_PROPERTY_TYPES = {
+    "spacing": "int",
+    "radii": "int",
+    "motion": "int",
+    "opacity": "real",
+    "layout": "int",
 }
 
 
@@ -66,7 +107,7 @@ def parse_design_md(path: Path) -> dict:
         raise SystemExit(f"{path}: unclosed front matter")
     block = text[3:end]
     # minimal YAML subset: section keys and "  key: value"
-    data: dict = {"colors": {}, "typography": {}}
+    data: dict = {section: {} for section in TOKEN_SECTIONS}
     section = None
     for line in block.splitlines():
         if not line.strip() or line.strip().startswith("#"):
@@ -81,7 +122,7 @@ def parse_design_md(path: Path) -> dict:
             m = re.match(r"^  ([a-zA-Z_][\w]*)\s*:\s*'([^']*)'\s*$", line)
         if not m:
             m = re.match(r"^  ([a-zA-Z_][\w]*)\s*:\s*(\S+)\s*$", line)
-        if m and section in ("colors", "typography"):
+        if m and section in TOKEN_SECTIONS:
             data[section][m.group(1)] = m.group(2).strip()
             continue
         m2 = re.match(r'^([a-zA-Z_][\w]*)\s*:\s*"([^"]*)"\s*$', line)
@@ -89,22 +130,27 @@ def parse_design_md(path: Path) -> dict:
             m2 = re.match(r"^([a-zA-Z_][\w]*)\s*:\s*'([^']*)'\s*$", line)
         if not m2:
             m2 = re.match(r"^([a-zA-Z_][\w]*)\s*:\s*(\S+)\s*$", line)
-        if m2 and m2.group(1) not in ("colors", "typography") and not line.startswith(" "):
+        if m2 and m2.group(1) not in TOKEN_SECTIONS and not line.startswith(" "):
             data[m2.group(1)] = m2.group(2).strip()
             section = None
     return data
 
 
 def theme_property_values(theme_text: str) -> dict[str, str]:
-    """Extract `property color|int|string name: value` simple assignments."""
+    """Extract `property color|int|real|string name: value` simple assignments."""
     out: dict[str, str] = {}
     for m in re.finditer(
-        r"property\s+(?:color|int|string)\s+(\w+)\s*:\s*([^\n]+)",
+        r"property\s+(?:color|int|real|string)\s+(\w+)\s*:\s*([^\n]+)",
         theme_text,
     ):
         name, val = m.group(1), m.group(2).strip().rstrip(";")
         # only quote/hex/number literals for check
-        if val.startswith('"') or val.startswith("'") or val.startswith("#") or re.match(r"^\d+$", val):
+        if (
+            val.startswith('"')
+            or val.startswith("'")
+            or val.startswith("#")
+            or re.match(r"^\d+(?:\.\d+)?$", val)
+        ):
             out[name] = val.strip("\"'")
     return out
 
@@ -136,6 +182,17 @@ def check(design: dict, theme_text: str) -> list[str]:
             continue
         if str(got) != str(want):
             errors.append(f"{tkey}: Theme={got!r} DESIGN={want!r}")
+    for section, mapping in SCALAR_MAPS.items():
+        for dkey, tkey in mapping.items():
+            want = design.get(section, {}).get(dkey)
+            if want is None:
+                errors.append(f"DESIGN missing {section}.{dkey}")
+                continue
+            got = props.get(tkey)
+            if got is None:
+                continue
+            if str(got) != str(want):
+                errors.append(f"{tkey}: Theme={got!r} DESIGN={want!r}")
     if not design.get("colors"):
         errors.append("DESIGN colors section empty/unparsed")
     return errors
@@ -148,27 +205,13 @@ def apply_to_theme(design: dict, theme_text: str) -> str:
         want = design.get("colors", {}).get(dkey)
         if not want:
             continue
-        lit = want if want.startswith("#") or want.startswith("'") else want
-        if not (lit.startswith("#") or lit.startswith('"') or lit.startswith("'")):
-            lit = f'"{lit}"' if tkey in ("fontFamily",) else lit
-        if tkey.endswith("Color") or tkey in COLOR_MAP.values():
-            if not lit.startswith("#") and not lit.startswith('"'):
-                # hex colors
-                if re.match(r"^[0-9a-fA-F]{6,8}$", lit):
-                    lit = f"#{lit}"
-            if lit.startswith("#"):
-                # Theme uses double-quoted or single-quoted or bare # in some places
-                pattern = rf"(property color {tkey}\s*:\s*)(\"[^\"]*\"|'[^']*'|#[0-9A-Fa-f]+)"
-                text2, n = re.subn(pattern, rf'\g<1>"{lit}"' if False else rf"\g<1>{lit}", text, count=1)
-                # normalize to double quotes for hex
-                text2, n = re.subn(
-                    rf"(property color {tkey}\s*:\s*)(\"[^\"]*\"|'[^']*'|#[0-9A-Fa-f]+)",
-                    rf'\1"{lit}"',
-                    text,
-                    count=1,
-                )
-                if n:
-                    text = text2
+        replacement = f'"{want}"'
+        text, _ = re.subn(
+            rf"(property color {tkey}\s*:\s*)(\"[^\"]*\"|'[^']*'|#[0-9A-Fa-f]+)",
+            rf"\g<1>{replacement}",
+            text,
+            count=1,
+        )
     for dkey, tkey in TYPO_MAP.items():
         want = design.get("typography", {}).get(dkey)
         if want is None:
@@ -183,6 +226,18 @@ def apply_to_theme(design: dict, theme_text: str) -> str:
         else:
             text, n = re.subn(
                 rf"(property int {tkey}\s*:\s*)\d+",
+                rf"\g<1>{want}",
+                text,
+                count=1,
+            )
+    for section, mapping in SCALAR_MAPS.items():
+        prop_type = SCALAR_PROPERTY_TYPES[section]
+        for dkey, tkey in mapping.items():
+            want = design.get(section, {}).get(dkey)
+            if want is None:
+                continue
+            text, _ = re.subn(
+                rf"(property {prop_type} {tkey}\s*:\s*)\d+(?:\.\d+)?",
                 rf"\g<1>{want}",
                 text,
                 count=1,

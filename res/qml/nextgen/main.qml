@@ -13,8 +13,8 @@ import "primitives"
 ApplicationWindow {
     id: root
     visible: true
-    width: 1280
-    height: 800
+    width: Theme.nextgenWindowWidth
+    height: Theme.nextgenWindowHeight
     title: "Migx NextGen"
     color: Theme.sunkenBackgroundColor
 
@@ -25,28 +25,28 @@ ApplicationWindow {
     readonly property color currentModeColor: modeColors[mode]
 
     header: ToolBar {
-        padding: 0
+        padding: Theme.space0
         background: Rectangle {
             color: Theme.backgroundColor
             // The active mode's identity color, as a thin bottom seam.
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
-                height: 2
+                height: Theme.space2
                 color: root.currentModeColor
             }
         }
         RowLayout {
             anchors.fill: parent
-            spacing: 0
+            spacing: Theme.space0
             Label {
                 text: "◆ Migx NextGen"
                 color: root.currentModeColor
-                font.pixelSize: 15
+                font.pixelSize: Theme.fontSizeLg
                 font.bold: true
-                leftPadding: 18
-                rightPadding: 28
-                Behavior on color { ColorAnimation { duration: 120 } }
+                leftPadding: Theme.space18
+                rightPadding: Theme.space28
+                Behavior on color { ColorAnimation { duration: Theme.motionFastMs } }
             }
             Repeater {
                 model: root.modeNames
@@ -56,22 +56,22 @@ ApplicationWindow {
                     flat: true
                     checkable: true
                     checked: root.mode === index
-                    padding: 16
+                    padding: Theme.space16
                     onClicked: root.mode = index
                     contentItem: Label {
                         text: modelData
                         color: parent.checked ? root.modeColors[index] : Theme.textColor
-                        opacity: parent.checked ? 1.0 : 0.7
-                        font.pixelSize: 13
+                        opacity: parent.checked ? Theme.opacityFull : Theme.opacityMuted
+                        font.pixelSize: Theme.fontSizeSm
                         font.bold: parent.checked
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
-                        color: "transparent"
+                        color: Theme.transparent
                         Rectangle { // active-tab underline in the mode's color
                             anchors.bottom: parent.bottom
                             width: parent.width
-                            height: 2
+                            height: Theme.space2
                             color: root.modeColors[index]
                             visible: parent.parent.checked
                         }
@@ -82,8 +82,8 @@ ApplicationWindow {
             Label {
                 text: "engine: shared · non-modal"
                 color: Theme.midGray
-                font.pixelSize: 11
-                rightPadding: 16
+                font.pixelSize: Theme.fontSizeXs
+                rightPadding: Theme.space16
             }
         }
     }
