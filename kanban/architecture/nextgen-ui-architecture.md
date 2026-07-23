@@ -69,6 +69,21 @@ A layer may only import layers **below** it. No upward or sideways-hidden depend
 scale, and motion (durations/easing)** — so layout and interaction are also token-governed, not
 per-component guesses. Mode identity colors (`modePerform/modeArrange/modeLibrary`) live here too.
 
+## Keyboard shortcuts (KEYMAP.md — a second SSoT)
+Every action has a **clear keyboard shortcut**, declared in `res/design/KEYMAP.md` (the keymap SSoT, the
+way `DESIGN.md` is the token SSoT). Bindings **adopt the top DJ software conventions** (Serato/rekordbox/
+Traktor/VirtualDJ/Mixxx) so DJs keep muscle memory; Migx-only actions (the mode model) use Mac-idiomatic,
+non-colliding keys (mode switch = `⌘1/2/3` + `Tab`; hotcues keep the bare `1–0` row). Rules: no action
+ships without a KEYMAP entry (`just ng-ui-lint` fails an undeclared QML shortcut); no in-context collision; a
+shortcut hint may show inline but help is **non-modal**; deck bindings stay reconciled with the shared
+engine's `res/keyboard/en_US.kbd.cfg` (one binding, two surfaces).
+
+## Admin chrome is minimal (low cognitive load)
+Navigation/status/shortcut chrome — the **stable, fast-learned** surfaces (mode switcher, status,
+shortcut hints) — takes **minimum space and visual weight**; the content (decks, tracks, waveforms) gets
+the room. Shortcut hints are **on-demand** (hover/help), never permanent clutter. A DJ learns these once;
+the UI must not keep spending their attention on them. Every component is scored on this in its judge.
+
 ## Build order (unchanged, now layered)
 `Theme/tokens → primitives → components → modes → deck-shell (first product module) → music-management
 mode → library → co-pilot → waveform (post-Metal unpin)`. Each lands behind its `MODULE.md` judge.

@@ -9,6 +9,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../Theme"
 import "primitives"
+import "components"
 
 ApplicationWindow {
     id: root
@@ -21,8 +22,17 @@ ApplicationWindow {
     // Full-screen modes the DJ switches between (nextgen-dj-ux-modes-and-signal).
     readonly property var modeNames: ["PERFORM", "ARRANGE", "LIBRARY"]
     readonly property var modeColors: [Theme.modePerform, Theme.modeArrange, Theme.modeLibrary]
+    readonly property var modeKeys: ["⌘1", "⌘2", "⌘3"] // ⌘1/2/3
     property int mode: 0
     readonly property color currentModeColor: modeColors[mode]
+
+    // Hot mode switching (KEYMAP.md): ⌘1/2/3 direct, Tab cycles. On macOS
+    // Qt "Ctrl" is ⌘. Deck/hotcue/library shortcuts land with their modules.
+    Shortcut { sequences: ["Ctrl+1"]; onActivated: root.mode = 0 }
+    Shortcut { sequences: ["Ctrl+2"]; onActivated: root.mode = 1 }
+    Shortcut { sequences: ["Ctrl+3"]; onActivated: root.mode = 2 }
+    Shortcut { sequence: "Tab"; onActivated: root.mode = (root.mode + 1) % root.modeNames.length }
+    Shortcut { sequence: "Shift+Tab"; onActivated: root.mode = (root.mode + root.modeNames.length - 1) % root.modeNames.length }
 
     header: ToolBar {
         padding: Theme.space0
@@ -58,12 +68,17 @@ ApplicationWindow {
                     checked: root.mode === index
                     padding: Theme.space16
                     onClicked: root.mode = index
+                    // Minimal admin chrome: the tab shows only the name. The
+                    // shortcut is on-demand (hover), zero permanent space — it is
+                    // a stable, fast-learned feature.
+                    ToolTip.text: modelData + "   " + root.modeKeys[index]
+                    ToolTip.visible: hovered
                     contentItem: Label {
                         text: modelData
-                        color: parent.checked ? root.modeColors[index] : Theme.textColor
-                        opacity: parent.checked ? Theme.opacityFull : Theme.opacityMuted
+                        color: root.mode === index ? root.modeColors[index] : Theme.textColor
+                        opacity: root.mode === index ? Theme.opacityFull : Theme.opacityMuted
                         font.pixelSize: Theme.fontSizeSm
-                        font.bold: parent.checked
+                        font.bold: root.mode === index
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
@@ -92,11 +107,37 @@ ApplicationWindow {
         anchors.fill: parent
         currentIndex: root.mode
 
-        // 0 · PERFORM — the live multi-deck mix surface
-        NgModePlaceholder {
-            accent: Theme.modePerform
-            title: "PERFORM"
-            body: "multi-deck mix surface — the deck-shell module lands here\n(dual-deck default · vertical N-deck · ~4–6 playable)"
+        // 0 · PERFORM — first uplifted component: deck transport (Deck 1)
+        Rectangle {
+            color: Theme.sunkenBackgroundColor
+            Rectangle { // mode accent bar
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: Theme.space3
+                color: Theme.modePerform
+            }
+            DeckTransportModel {
+                id: deck1
+                group: "[Channel1]"
+            }
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: Theme.space16
+                DeckTransport {
+                    Layout.alignment: Qt.AlignHCenter
+                    deckLabel: "DECK 1"
+                    playing: deck1.playing
+                    hasTrack: deck1.hasTrack
+                    onToggleRequested: deck1.togglePlay()
+                }
+                Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "first uplifted component · the deck-shell grows here"
+                    color: Theme.midGray
+                    font.pixelSize: Theme.fontSizeXs
+                }
+            }
         }
         // 1 · ARRANGE — the differentiator: find the next track, fast
         NgModePlaceholder {

@@ -455,7 +455,10 @@ void KeyboardEventFilter::createKeyboardConfig() {
             kLogger.debug() << "Found and will use default keyboard mapping" << keyboardFile;
         } else {
             kLogger.debug() << keyboardFile << " not found, trying en_US.kbd.cfg";
-            keyboardFile = mappingFilePath(resourcePath, QStringLiteral("en_US"));
+            // The default keyboard mappings live under <resource>/keyboard/, so
+            // the en_US fallback must include that subdir too (not <resource>/).
+            keyboardFile = mappingFilePath(
+                    QString(resourcePath).append("keyboard/"), QStringLiteral("en_US"));
             if (!QFile::exists(keyboardFile)) {
                 kLogger.warning() << keyboardFile << " not found, starting without shortcuts";
                 keyboardFile = "";
