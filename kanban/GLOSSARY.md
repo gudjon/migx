@@ -5,7 +5,7 @@ title: "Migx Glossary — the typed-ID system"
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/AGENTS.md
   - kanban/planning/00-PORTFOLIO/prefix-registry.yaml
@@ -31,6 +31,8 @@ files themselves (derive, don't restate — MG-3). Registered prefixes are immut
 | `<pfx>` (3-letter) | **Dossier** key — the unit of work. Registered before first use. | `kanban/planning/` | `ASI`, `MTL` |
 | `task-{slug}` | **Task** — a flat backlog item not owned by a live dossier. Filename is the ID. | `kanban/tasks/` | `task-audit-rt-allocs` |
 | `TR-{slug}` | **Trigger** — a cadence/event firing row. | `kanban/triggers/registry.yaml` | `TR-nightly-dream` |
+| `BRND-*` | **Branding** — pillars, DIY steps, mistakes (process anchors). Not a dossier prefix. | `kanban/playbook/branding/` | `BRND-P1`, `BRND-DIY-1` |
+| `DC-PDCL-*` | **Product discovery / customer leadership** concepts (when cited). | `kanban/knowledge/product-discovery-customer-leadership-migx.md` | (see that file) |
 
 ## Rules
 

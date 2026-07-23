@@ -38,6 +38,7 @@ conventions. **Read the chapters in order on a first read; refer back by chapter
 | **[02](02-patterns-breakage-navigation.md)** | Patterns, Breakage, and Navigation | The pattern catalogue as compounding memory (anchor-not-name, skills cite not restate); the named breakage modes with Migx recoveries; symbol-not-string C++/Qt navigation with clangd. |
 | **[03](03-harness-engineering-outer-ring.md)** | Harness Engineering — The Outer Ring | The outer-ring control system; the **which-primitive keeper rule** (subagent / skill / workflow / `/loop` / `/schedule`) modernized for current Claude Code; Guides×Sensors; the verification escalation ladder; build-one recipes. |
 | **[04](04-daily-loop-and-the-dream.md)** | The Daily Loop and the Dream | The hour-by-hour developer loop; the autonomous decision cascade (running unattended); **the Dream** — the scheduled meta-loop that improves the harness itself; provenance. |
+| **[branding/](branding/00-README.md)** | Branding (BRND) | Positioning, messaging, visual identity, brand system — strategy before logo; agent IDs `BRND-*`. |
 
 ## Reading paths by role
 
@@ -50,6 +51,7 @@ conventions. **Read the chapters in order on a first read; refer back by chapter
 | Extending the harness (skill/agent/workflow/loop) | `03` §Which primitive + `.claude/skills/AGENTS.md` + `.claude/workflows/AGENTS.md` |
 | Running an overnight/optimization loop | `04` §Daily loop + §Autonomous decision cascade |
 | Building / extending the Dream | `04` §The Dream + `kanban/triggers/registry.yaml` |
+| Brand / positioning / messaging | `branding/` → `BRND-playbook.md` + `migx-brand-positioning-experience-designer.md` |
 
 ## Relationship to the rest of the kanban
 

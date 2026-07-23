@@ -9,6 +9,8 @@ created: "2026-07-23"
 lastUpdated: "2026-07-23"
 defers_to:
   - kanban/Strategy-Current.md
+  - kanban/playbook/branding/BRND-playbook.md
+  - kanban/playbook/branding/AGENTS.md
   - kanban/knowledge/nextgen-modes-library-multideck.md
   - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
   - kanban/knowledge/product-discovery-customer-leadership-migx.md
@@ -18,16 +20,20 @@ related:
   - initiative-ui-modernization
   - nextgen-agent-dj-shadow-product
   - world-model-experience-ontology
+  - brand-diy-positioning-lock
 sources:
   - "Owner brand workshop notes 2026-07-23 (history → identity → names → category)"
   - "Strategy: Cursor-for-AI-DJing; Automix is anti-identity; co-pilot in the flow"
   - "Field: curation culture; function crates; next-track under load"
+  - "BRND playbook (four pillars + Dunford method) processed into kanban 2026-07-23"
 ---
 
 # Brand & positioning — the DJ as experience designer
 
 **Status:** proposal for owner filter. Does **not** rename the repo code (`migx`) until owner decides.  
-**Job of this note:** give a clear **positioning spine**, **category language**, **name shortlist**, and **product story** that matches Strategy + NextGen modes + cognitive-load research.
+**Job of this note:** live **product brand claims** (spine, category, names, manifesto).  
+**Process / how to brand:** `kanban/playbook/branding/` (`BRND-*` pillars, DIY ladder, mistakes).  
+**Owner lock task:** `kanban/tasks/brand-diy-positioning-lock.md` (BRND-DIY-1/2).
 
 ---
 
