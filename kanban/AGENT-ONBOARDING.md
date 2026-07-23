@@ -44,6 +44,7 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Antigravity co-implementer | **Paused** (no tokens). See `AGY.md` re-enable checklist when available |
 | Claude implementer with federation live | `CLAUDE.md` §Multi-agent + `roles/claude-code.md` + `migx-fed sync` + `migx-fed poll` |
 | Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + `runbooks/go-private-and-git-posture.md` |
+| Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),
 `kanban/architecture/decisions/` (ADRs), `kanban/triggers/registry.yaml` (cadence).
