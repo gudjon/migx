@@ -136,6 +136,9 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         group: modelData
                         deckLabel: "DECK " + (index + 1)
+                        // On-beat play aligns to the sibling deck (v1 = 2-deck default;
+                        // 3+-deck timebase is the open owner question).
+                        leaderGroup: root.performDecks[(index + 1) % root.performDecks.length]
                     }
                 }
                 Item { Layout.fillHeight: true } // keep strips top-aligned

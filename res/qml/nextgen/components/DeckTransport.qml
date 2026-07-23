@@ -15,6 +15,7 @@ RowLayout {
     property string deckLabel: "DECK"
     property bool playing: false
     property bool hasTrack: false
+    property bool onBeatArmed: false // pressing PLAY would snap on-beat (cap-onbeat-play)
     signal toggleRequested()
 
     spacing: Theme.space12
@@ -36,8 +37,10 @@ RowLayout {
     }
 
     Label {
-        text: view.hasTrack ? (view.playing ? "▶ playing" : "❚❚ paused") : "no track loaded"
-        color: view.playing ? Theme.green : Theme.midGray
+        text: view.hasTrack ? (view.playing ? "▶ playing"
+                                             : (view.onBeatArmed ? "◇ on-beat" : "❚❚ paused"))
+                            : "no track loaded"
+        color: view.playing ? Theme.green : (view.onBeatArmed ? Theme.modePerform : Theme.midGray)
         font.pixelSize: Theme.fontSizeXs
     }
 }

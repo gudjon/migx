@@ -14,6 +14,7 @@ Rectangle {
 
     property string group: "[Channel1]"
     property string deckLabel: "DECK"
+    property string leaderGroup: "" // the deck on-beat play aligns to (shell sets it)
 
     Layout.fillWidth: true
     implicitHeight: row.implicitHeight + Theme.space16 + Theme.space16
@@ -23,6 +24,7 @@ Rectangle {
     DeckTransportModel {
         id: transportModel
         group: strip.group
+        leaderGroup: strip.leaderGroup
     }
     DeckClockModel {
         id: clockModel
@@ -65,6 +67,7 @@ Rectangle {
             deckLabel: strip.deckLabel
             playing: transportModel.playing
             hasTrack: transportModel.hasTrack
+            onBeatArmed: transportModel.onBeatArmed
             onToggleRequested: transportModel.togglePlay()
         }
     }

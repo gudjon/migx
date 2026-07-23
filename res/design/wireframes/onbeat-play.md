@@ -1,7 +1,9 @@
 # On-beat play — build note (defers to Grok's research SSoT)
 
-Status: **research locked (Grok) → owner timebase call → build**. Feature family **"On-beat play"** (not
-"SmartPlay" — "Smart"/"Automix" clash the Ritual brand). Capability `cap-onbeat-play`.
+Status: **v1 BUILT** 2026-07-23 (ladder wave 1 — policy compose). Feature family **"On-beat play"** (not
+"SmartPlay" — "Smart"/"Automix" clash the Ritual brand). Capability `cap-onbeat-play`. Live in
+`DeckTransportModel.togglePlay`; both dev decks arm it (leader = sibling). Owner timebase call only gates
+the 3+-deck case; the acceptance benchmark (`PS-OBP-01` phase-error) is the next rung.
 
 > **SSoT boundary (cooperation).** The **design + research SSoT** is Grok's
 > [`research-onbeat-play-phase-snap`](../../kanban/knowledge/research-onbeat-play-phase-snap.md) (~475
