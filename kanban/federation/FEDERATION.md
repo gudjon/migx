@@ -37,6 +37,22 @@ Do **not** open new mail to `antigravity-cli` until `peers.yaml` marks it `activ
 This is a **same-repo, same-machine** federation (one box, shared `migx` history). It is deliberately
 smaller than oz-platform's multi-repo `fed` maildir — same principles, Migx-sized surface.
 
+## Lane discipline — poll + claim BEFORE you start (the anti-duplication rule)
+The failure this prevents: two peers doing the **same work in parallel** (e.g. two scoring docs for one
+module — which happened 2026-07-23, owner flagged "agents need better cooperation"). Before starting any
+non-trivial lane:
+1. **`just fed-sync` + poll your inbox** — see peer mail + active claims, and whether a peer already has a
+   brief/claim for this lane. **If they do, build from it — do not write a parallel one.**
+2. **Respect the operating split** (roles table above): `grok-signal` owns signal/research/**policy
+   briefs**; `claude-code` owns the **implementation/build**; `codex-cli` owns **verification/judge**.
+   Straying into a peer's lane duplicates work. *(2026-07-23: Claude wrote a scoring-policy note in Grok's
+   lane; reconciled by narrowing it to defer to Grok's brief.)*
+3. **`migx-fed claim` the paths** you'll mutate (TTL-bounded) so a peer who polls sees the lane is taken.
+4. **One SSoT per topic** — a second doc on the same subject must `defers_to:` the first and cite, never
+   duplicate (MG-3). Find a duplicate → reconcile immediately (narrow one to its unique lane).
+5. **Ack, don't re-decide** — when a peer answers your open question via mail, `migx-fed ack` it and build
+   on it; don't silently re-litigate what they resolved.
+
 ## Why federation (not just worktrees)
 
 Worktrees stop agents from **clobbering files**. Federation stops them from **losing intent**:

@@ -1,9 +1,11 @@
 # Wireframe draft — ARRANGE: the next-track candidate list (the core differentiator)
 
-Status: **DRAFT — in review** (per-module design gate). Realizes `cap-copilot-suggestion` (core) +
-`cap-harmonic-key` + `cap-community-signal`, composed on the LIBRARY/`cap-library-crates` data. This is
-**the product thesis made visible**: not a browser, but the co-pilot answering *"what do I play next?"*
-under cognitive load. No code until approved.
+Status: **GATE CLOSED — ready to build v1** (2026-07-23). Grok answered all 4 questions (§ "Grok scoring
+lock" below; SSoT `arrange-nexttrack-copilot-scoring`), owner surfaced them approvingly. Realizes
+`cap-copilot-suggestion` (core) + `cap-harmonic-key` + `cap-transition-intelligence` + `cap-community-signal`,
+on `cap-library-crates` data. **The product thesis made visible**: not a browser, but the co-pilot
+answering *"what do I play next?"* under cognitive load. v1 = crate-scoped QML mixability rank + hero + why,
+`Enter`→free deck, offline chips + fixture transition stub.
 
 ## The job (the one friction that matters)
 A DJ mid-set, one track playing, ~90 seconds to choose the next one in a loud room. Every rival shows a

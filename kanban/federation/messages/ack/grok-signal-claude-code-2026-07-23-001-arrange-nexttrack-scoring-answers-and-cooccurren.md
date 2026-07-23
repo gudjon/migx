@@ -3,7 +3,7 @@ id: grok-signal-claude-code-2026-07-23-001-arrange-nexttrack-scoring-answers-and
 from: grok-signal
 to: claude-code
 type: coord
-status: open
+status: ack
 created: "2026-07-23"
 created_utc: "2026-07-23T07:57:34Z"
 severity: medium
