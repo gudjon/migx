@@ -18,7 +18,11 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE = REPO / "fixtures/music-mode-50"
+DEFAULT_DECK_CLOCK_FIXTURE = REPO / "fixtures/deck-clock-states.json"
 NEXTGEN_QML = REPO / "res/qml/nextgen"
+KEYMAP = REPO / "res/design/KEYMAP.md"
+DECK_CLOCK_QML = REPO / "res/qml/nextgen/components/DeckClock.qml"
+DECK_CLOCK_MODEL_QML = REPO / "res/qml/nextgen/components/DeckClockModel.qml"
 ALLOWED_CHIP_KINDS = {
     "youtube_views",
     "beatport_chart",
@@ -43,6 +47,10 @@ BLOCKING_COMPONENT_RE = re.compile(
     r"^\s*(?:Dialog|MessageDialog|FileDialog|FolderDialog|ColorDialog|FontDialog)\s*\{"
 )
 MODAL_TRUE_RE = re.compile(r"\bmodal\s*:\s*true\b")
+SHORTCUT_RE = re.compile(
+    r"\bsequences?\s*:\s*(\[[^\]]*\]|\"[^\"]+\"|'[^']+')"
+)
+STRING_LITERAL_RE = re.compile(r"\"([^\"]+)\"|'([^']+)'")
 
 
 class JudgeError(Exception):
@@ -363,6 +371,82 @@ def cmd_screenshot(args: argparse.Namespace, fx: MusicFixture) -> None:
     print(f"OK screenshot sizes={','.join(sizes)}")
 
 
+def format_clock(sec: float, has_track: bool) -> str:
+    if not has_track or sec < 0:
+        return "--:--"
+    whole = int(sec)
+    minutes = whole // 60
+    remainder = whole % 60
+    return f"{minutes}:{remainder:02d}"
+
+
+def derive_deck_clock_state(row: dict[str, Any], threshold_sec: int) -> dict[str, Any]:
+    has_track = float(row.get("track_loaded", 0)) > 0
+    duration = float(row.get("duration", 0))
+    position = min(1.0, max(0.0, float(row.get("playposition", 0))))
+    elapsed_sec = position * duration
+    remaining_sec = max(0.0, duration - elapsed_sec)
+    ending = has_track and remaining_sec > 0 and remaining_sec <= threshold_sec
+    return {
+        "elapsed": format_clock(elapsed_sec, has_track),
+        "remaining": "-" + format_clock(remaining_sec, has_track) if has_track else format_clock(0, False),
+        "total": format_clock(duration, has_track),
+        "ending": ending,
+        "remaining_color": "Theme.red" if ending else ("Theme.textColor" if has_track else "Theme.midGray"),
+        "context_color": "Theme.midGray",
+    }
+
+
+def assert_deck_clock_qml_contract() -> None:
+    clock_text = DECK_CLOCK_QML.read_text(encoding="utf-8")
+    model_text = DECK_CLOCK_MODEL_QML.read_text(encoding="utf-8")
+    required_clock_fragments = [
+        "text: view.remaining",
+        "view.ending ? Theme.red",
+        "view.hasTrack ? Theme.textColor : Theme.midGray",
+        "text: view.elapsed",
+        "text: view.total",
+    ]
+    required_model_fragments = [
+        'key: "duration"',
+        'key: "playposition"',
+        'key: "track_loaded"',
+        "endingThresholdSec: 30",
+        'remaining: hasTrack ? "-" + format(remainingSec) : format(0)',
+    ]
+    for fragment in required_clock_fragments:
+        if fragment not in clock_text:
+            raise JudgeError(f"{rel(DECK_CLOCK_QML)} missing contract fragment: {fragment}")
+    for fragment in required_model_fragments:
+        if fragment not in model_text:
+            raise JudgeError(f"{rel(DECK_CLOCK_MODEL_QML)} missing contract fragment: {fragment}")
+
+
+def cmd_deck_clock_states(args: argparse.Namespace) -> None:
+    fixture_path = Path(args.fixture)
+    if not fixture_path.is_absolute():
+        fixture_path = REPO / fixture_path
+    fixture = read_json(fixture_path)
+    threshold_sec = int(fixture.get("threshold_sec", 30))
+    expected_ids = {"no-track", "playing", "ending"}
+    rows = fixture.get("states", [])
+    ids = {row.get("id") for row in rows}
+    missing = expected_ids - ids
+    if missing:
+        raise JudgeError(f"{rel(fixture_path)} missing DeckClock states: {sorted(missing)}")
+    assert_deck_clock_qml_contract()
+    for row in rows:
+        derived = derive_deck_clock_state(row, threshold_sec)
+        expected = row.get("expect", {})
+        for key, want in expected.items():
+            got = derived.get(key)
+            if got != want:
+                raise JudgeError(
+                    f"{row.get('id')}: {key}={got!r}, expected {want!r}"
+                )
+    print(f"OK deck clock-states states={len(rows)}")
+
+
 def strip_line_comment(line: str) -> str:
     in_single = False
     in_double = False
@@ -398,22 +482,71 @@ def rel(path: Path) -> str:
         return str(path)
 
 
+def normalize_shortcut(sequence: str) -> str:
+    aliases = {
+        "ctrl": "⌘",
+        "control": "⌘",
+        "cmd": "⌘",
+        "command": "⌘",
+        "meta": "⌘",
+        "shift": "⇧",
+        "alt": "⌥",
+        "option": "⌥",
+        "left": "←",
+        "right": "→",
+        "up": "↑",
+        "down": "↓",
+        "escape": "Esc",
+        "return": "Enter",
+    }
+    pieces = [part.strip() for part in sequence.split("+") if part.strip()]
+    return "".join(aliases.get(part.lower(), part) for part in pieces)
+
+
+def collect_qml_shortcuts(path: Path, code: str) -> list[tuple[str, str]]:
+    shortcuts: list[tuple[str, str]] = []
+    for match in SHORTCUT_RE.finditer(code):
+        for literal in STRING_LITERAL_RE.finditer(match.group(1)):
+            sequence = literal.group(1) or literal.group(2)
+            shortcuts.append((sequence, normalize_shortcut(sequence)))
+    return shortcuts
+
+
 def cmd_nextgen_ui_lint(args: argparse.Namespace) -> None:
-    if not args.assert_token_only and not args.assert_no_blocking_modal:
+    if not args.assert_token_only and not args.assert_no_blocking_modal and not args.assert_keymap:
         args.assert_token_only = True
         args.assert_no_blocking_modal = True
+        args.assert_keymap = True
 
     root = Path(args.path)
     if not root.is_absolute():
         root = REPO / root
+    keymap_path = Path(args.keymap)
+    if not keymap_path.is_absolute():
+        keymap_path = REPO / keymap_path
 
     files = iter_qml_files(root)
     violations: list[str] = []
+    keymap_text = ""
+    declared_shortcuts: list[tuple[Path, int, str, str]] = []
+    if args.assert_keymap:
+        if not keymap_path.is_file():
+            raise JudgeError(f"missing keymap SSoT: {keymap_path}")
+        keymap_text = keymap_path.read_text(encoding="utf-8")
+
     for path in files:
         for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             code = strip_line_comment(raw)
             if not code.strip():
                 continue
+            if args.assert_keymap:
+                for sequence, display in collect_qml_shortcuts(path, code):
+                    declared_shortcuts.append((path, line_no, sequence, display))
+                    if display not in keymap_text:
+                        violations.append(
+                            f"{rel(path)}:{line_no}: shortcut {sequence!r} "
+                            f"normalizes to {display!r}, missing from {rel(keymap_path)}"
+                        )
             if args.assert_token_only:
                 if HEX_LITERAL_RE.search(code):
                     violations.append(f"{rel(path)}:{line_no}: hardcoded hex/color literal")
@@ -429,9 +562,21 @@ def cmd_nextgen_ui_lint(args: argparse.Namespace) -> None:
                 if MODAL_TRUE_RE.search(code):
                     violations.append(f"{rel(path)}:{line_no}: modal true")
 
+    seen_shortcuts: dict[str, tuple[Path, int, str]] = {}
+    for path, line_no, sequence, display in declared_shortcuts:
+        if display in seen_shortcuts:
+            first_path, first_line_no, first_sequence = seen_shortcuts[display]
+            violations.append(
+                f"{rel(path)}:{line_no}: duplicate QML shortcut {sequence!r} "
+                f"also declared as {first_sequence!r} at {rel(first_path)}:{first_line_no}"
+            )
+        else:
+            seen_shortcuts[display] = (path, line_no, sequence)
+
     if violations:
         raise JudgeError("\n  - " + "\n  - ".join(violations))
-    print(f"OK nextgen-ui lint files={len(files)}")
+    suffix = f" shortcuts={len(declared_shortcuts)}" if args.assert_keymap else ""
+    print(f"OK nextgen-ui lint files={len(files)}{suffix}")
 
 
 def extract_fixture_arg(argv: list[str]) -> tuple[list[str], str]:
@@ -460,12 +605,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tools/ng-judge")
     sub = parser.add_subparsers(dest="domain", required=True)
 
+    deck = sub.add_parser("deck")
+    deck_sub = deck.add_subparsers(dest="action", required=True)
+    clock = deck_sub.add_parser("clock-states")
+    clock.add_argument("--fixture", default=str(DEFAULT_DECK_CLOCK_FIXTURE), help="DeckClock fixture")
+
     nextgen = sub.add_parser("nextgen-ui")
     nextgen_sub = nextgen.add_subparsers(dest="action", required=True)
     lint = nextgen_sub.add_parser("lint")
     lint.add_argument("--path", default=str(NEXTGEN_QML), help="QML file or directory")
     lint.add_argument("--assert-token-only", action="store_true")
     lint.add_argument("--assert-no-blocking-modal", action="store_true")
+    lint.add_argument("--assert-keymap", action="store_true")
+    lint.add_argument("--keymap", default=str(KEYMAP), help="KEYMAP.md path")
 
     music = sub.add_parser("music-mode")
     music_sub = music.add_subparsers(dest="action", required=True)
@@ -517,6 +669,9 @@ def main(argv: list[str]) -> int:
         args = parser.parse_args(argv)
         if args.domain == "nextgen-ui" and args.action == "lint":
             cmd_nextgen_ui_lint(args)
+            return 0
+        if args.domain == "deck" and args.action == "clock-states":
+            cmd_deck_clock_states(args)
             return 0
 
         fx = load_fixture(Path(fixture_arg))

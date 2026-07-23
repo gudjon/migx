@@ -136,7 +136,11 @@ theme-check:
 
 # NextGen token/modal rulebook for QML below Theme.
 ng-ui-lint:
-    tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal
+    tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal --assert-keymap
+
+# NextGen deck bounded-context fixture judge.
+ng-deck-judge: ng-ui-lint
+    tools/ng-judge deck clock-states --fixture fixtures/deck-clock-states.json
 
 # NextGen ARRANGE / music-management module judge (offline fixture; no network).
 ng-music-judge: ng-ui-lint

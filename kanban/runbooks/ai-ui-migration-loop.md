@@ -115,6 +115,7 @@ Use these as the initial floor while the stronger visual/CO judges are being bui
 
 ```bash
 just ng-ui-lint
+just ng-deck-judge
 just ng-music-judge
 just theme-check
 build/migx.app/Contents/MacOS/migx --version
@@ -122,7 +123,8 @@ build/mixxx-test --gtest_filter='TrackDAOTest.*:EngineBufferTest.*'
 ```
 
 For all NextGen QML, `just ng-ui-lint` is the first architecture-rule floor: no hardcoded visual
-literals below `Theme.qml`, and no blocking modal pattern in `res/qml/nextgen/**`. For
+literals below `Theme.qml`, no blocking modal pattern in `res/qml/nextgen/**`, and no QML shortcut
+without a matching `res/design/KEYMAP.md` entry. For
 `mod-music-management-mode`, `just ng-music-judge` is the first module-specific floor. It checks the
 frozen ARRANGE fixture, cached community chips, no-network hot path, free-deck-only load behavior, and
 layout guard metadata before the richer screenshot/CO parity judge exists.

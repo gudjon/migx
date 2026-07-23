@@ -9,7 +9,7 @@ created_utc: "2026-07-23T03:30:11Z"
 severity: medium
 subject: "nextgen-judge-token-rulebook-landed"
 relates_to: []
-acceptance: "Claude can build NextGen modules against just ng-ui-lint and just ng-music-judge; token-only and non-modal checks are mechanical."
+acceptance: "Claude can build NextGen modules against just ng-ui-lint and just ng-music-judge; token-only, non-modal, and KEYMAP shortcut checks are mechanical."
 branch: "main"
 commit: "bcede7a"
 ---
@@ -18,15 +18,17 @@ commit: "bcede7a"
 
 ## Intent
 Unblock Claude's deck-shell and ARRANGE module work with a mechanical judge floor: fixture-runnable,
-token-only, no blocking modals, no network hot path, and safe free-deck loading semantics.
+token-only, no blocking modals, KEYMAP-covered shortcuts, no network hot path, and safe free-deck
+loading semantics.
 
 ## Context
 Codex consumed the ADR-007 scaffold request and the 2026-07-23 NextGen architecture request. The
 judge now covers both the music-management fixture contract and the architecture rule that QML below
-Theme must not carry hardcoded visual literals.
+Theme must not carry hardcoded visual literals. A follow-up keymap pass adds `res/design/KEYMAP.md`
+as the shortcut SSoT and makes QML `Shortcut` declarations fail when they are not declared there.
 
 ## Evidence
-- `tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal`
+- `tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal --assert-keymap`
   is wired as `just ng-ui-lint`.
 - `tools/ng-judge music-mode ...` is wired as `just ng-music-judge`.
 - `fixtures/music-mode-50/` has 51 tracks, 9 tags, 5 playlists, 31 cached community-signal rows,
@@ -36,12 +38,14 @@ Theme must not carry hardcoded visual literals.
   layout.
 - Current local checks pass: `just ng-ui-lint`, `just ng-music-judge`, `just theme-check`,
   `python3 -m py_compile tools/ng-judge tools/design/gen_theme_from_design.py`, and `git diff --check`.
+- `cmake --build build --target mixxx --parallel 10` passes after the keyboard fallback path fix.
 
 ## Requested Action
 Claude can build `deck-shell` and then `mod-music-management-mode` against this floor. For any new
-NextGen QML under `res/qml/nextgen/**`, use Theme tokens for visual values and keep recoverable errors
-on the non-modal surface. If a module needs a new size/color/motion/opacity value, add it to
-`res/design/DESIGN.md`, regenerate/check Theme, then make the judge pass.
+NextGen QML under `res/qml/nextgen/**`, use Theme tokens for visual values, keep recoverable errors
+on the non-modal surface, and declare every shortcut in `res/design/KEYMAP.md`. If a module needs a new
+size/color/motion/opacity value, add it to `res/design/DESIGN.md`, regenerate/check Theme, then make the
+judge pass.
 
 ## Blockers
 None. Note: `build/migx.app/Contents/MacOS/migx --version` prints `Mixxx 2.7.0-alpha` but still emits

@@ -1,0 +1,47 @@
+{
+  "threshold_sec": 30,
+  "states": [
+    {
+      "id": "no-track",
+      "track_loaded": 0,
+      "duration": 0,
+      "playposition": 0,
+      "expect": {
+        "elapsed": "--:--",
+        "remaining": "--:--",
+        "total": "--:--",
+        "ending": false,
+        "remaining_color": "Theme.midGray",
+        "context_color": "Theme.midGray"
+      }
+    },
+    {
+      "id": "playing",
+      "track_loaded": 1,
+      "duration": 300,
+      "playposition": 0.25,
+      "expect": {
+        "elapsed": "1:15",
+        "remaining": "-3:45",
+        "total": "5:00",
+        "ending": false,
+        "remaining_color": "Theme.textColor",
+        "context_color": "Theme.midGray"
+      }
+    },
+    {
+      "id": "ending",
+      "track_loaded": 1,
+      "duration": 300,
+      "playposition": 0.94,
+      "expect": {
+        "elapsed": "4:42",
+        "remaining": "-0:18",
+        "total": "5:00",
+        "ending": true,
+        "remaining_color": "Theme.red",
+        "context_color": "Theme.midGray"
+      }
+    }
+  ]
+}
