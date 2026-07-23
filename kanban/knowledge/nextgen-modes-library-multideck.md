@@ -6,12 +6,13 @@ status: proposal
 owner: gudjon
 authored_by: grok-signal
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/knowledge/nextgen-agent-dj-shadow-product.md
   - kanban/knowledge/nextgen-dj-needs-and-leader-ui-map.md
   - kanban/knowledge/nextgen-music-management-mode.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
+  - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
   - kanban/Strategy-Current.md
   - kanban/knowledge/world-model-experience-ontology.md
 related:
@@ -19,12 +20,14 @@ related:
   - initiative-ui-modernization
   - nextgen-music-management-mode
   - dj-shared-library-capability
+  - nextgen-cognitive-load-perform-arrange-library
 sources:
   - "X 2026: Serato crate search as workflow win; library UX = prep speed; Ora DJ prep canvas"
   - "Serato 4.0 library overhaul (crate search, colour, emoji ratings) — DDJT 2026"
   - "Lexicon DJ — external library mgmt, find mixable tracks"
   - "Owner thesis: arrangement/management is the hard problem; full-screen modes; multi-deck vertical; community signals"
   - "Discovery: AI silent setlist rejected; prep assist OK"
+  - "Research deepen 2026-07-23: CLT + Endsley SA + dual-task → modes (see cognitive-load knowledge)"
 ---
 
 # NextGen — modes, library, multi-deck, community graph
@@ -37,15 +40,18 @@ Performance decks stay necessary. The **differentiator surface** is the **music 
 
 ## 1. Cognitive model: busy club DJ
 
-| Load | What the brain is doing | UI implication |
-|---|---|---|
-| **Now** | Keep two (or N) channels musical | Perform mode: decks + mixer only, minimal chrome |
-| **Next 16–32 bars** | What loads when this phrase ends? | One-gesture **queue / stage** without leaving room awareness |
-| **Tonight’s arc** | Energy, genre, crowd read | Arrange mode: set flow + candidates |
-| **Library memory** | “Where did I put that remix?” | Visual recognition + tags + playlist membership |
-| **Trust** | Will this track land? | Community / chart / set-appearance signals (not silent AI play) |
+**Research SSoT (CLT / Endsley SA / dual-task / DJ HCI):**  
+`nextgen-cognitive-load-perform-arrange-library.md` — why PERFORM capacity depends on LIBRARY schemas + ARRANGE projection.
 
-**Product rule:** Never force the DJ to solve “next track” on a 12-row text table while also riding EQ. Give them a **mode switch** as fast as controller bank buttons (keyboard, pad, touch edge).
+| Load | What the brain is doing | UI implication | Science anchor |
+|---|---|---|---|
+| **Now** | Keep two (or N) channels musical | Perform mode: decks + mixer only, minimal chrome | Intrinsic load (CLT); dual-task continuous control |
+| **Next 16–32 bars** | What loads when this phrase ends? | One-gesture **queue / stage** without leaving room awareness | SA Level-3 projection → ARRANGE |
+| **Tonight’s arc** | Energy, genre, crowd read | Arrange mode: set flow + candidates | Goal-directed mental models |
+| **Library memory** | “Where did I put that remix?” | Visual recognition + tags + playlist membership | External memory; recognition > recall |
+| **Trust** | Will this track land? | Community / chart / set-appearance signals (not silent AI play) | Secondary chips only; honest sources |
+
+**Product rule:** Never force the DJ to solve “next track” on a 12-row text table while also riding EQ (split-attention). Give them a **mode switch** as fast as controller bank buttons (keyboard, pad, touch edge).
 
 ---
 

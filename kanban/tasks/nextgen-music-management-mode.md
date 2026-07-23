@@ -20,12 +20,14 @@ authored_by: codex-cli
 authored_kind: agent
 triggered_by: "2026-07-21 owner refinement: music arrangement and next-queue management may be the core NextGen mode"
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-07-23"
 acceptance: |
   A module contract exists for mod-music-management-mode; fixture data proves search, tags, playlist
   memberships, cached community signal chips, queue/load-to-free-deck, and fast return to performance
   mode; the judge proves no network dependency, no blocking modal, no deck-state loss, and no text
-  overlap at target laptop and wide desktop sizes.
+  overlap at target laptop and wide desktop sizes. Cognitive-load research SSoT
+  (nextgen-cognitive-load-perform-arrange-library) informs fixtures (function crates) and optional
+  dogfood probes (time-to-stage, TLX) without blocking the mechanical judge.
 ---
 
 # NextGen Music Management Mode
@@ -45,6 +47,9 @@ decks keep playing safely.
    and screenshot/pixel layout checks (MODULE §1 acceptance YAML).
 5. ~~Feed Grok's source/API feasibility brief into the signal-chip schema before implementation.~~ →
    MODULE §4 + `nextgen-community-signal-data-sourcing.md` (honest v1 kinds; setlist v2).
+6. ~~Land cognitive-load research into the loop.~~ →
+   `nextgen-cognitive-load-perform-arrange-library.md` + signal 2026-07-23 (CLT/SA/dual-task;
+   function crates in fixtures; measure probes for later judge/dogfood).
 
 ## Guardrails
 

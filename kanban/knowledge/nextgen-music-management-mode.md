@@ -56,14 +56,19 @@ draft machine contract and chip schema, defer to `mod-music-management-mode.md`.
 
 ## Cognitive-load rules
 
+**Deep research (CLT, Endsley SA, dual-task, DJ HCI, field):**  
+`nextgen-cognitive-load-perform-arrange-library.md`.
+
 | Rule | Product meaning |
 |---|---|
 | Recognition beats recall | Track cards need cover art, mini-waveform, key/BPM/energy, cue/vocal markers, tags, and playlist memberships |
 | Show a small decision set | Live focus should surface 3 to 5 strong candidates, not a giant ranked dump |
-| Deck state stays visible | Full-screen music mode still needs compact now-playing/free-deck context |
+| Deck state stays visible | Full-screen music mode still needs compact now-playing/free-deck context (SA Level-1 ribbon) |
 | Fast escape matters | One key/controller action returns to performance mode without changing playback |
 | Every action is explicit | Queue, pin, audition, or load to a free deck requires a visible user action |
 | Degraded is allowed | Missing external signal becomes a quiet badge, never a modal |
+| Function crates over genre-only | Role schemas (opener/peak/reset/closers) reduce live projection cost |
+| Extraneous load offline | Organize + enrich in LIBRARY/PREP; never mid-phrase |
 
 ## Multi-deck model
 

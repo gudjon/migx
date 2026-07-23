@@ -5,7 +5,7 @@ title: "NextGen DJ UX — full-screen modes, multi-deck flexibility, community s
 status: active
 owner: gudjon
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-07-23"
 evidence_kind: owner-DJ first-hand friction (DC-PDCL CustomerEvidenceCaptured)
 related:
   - nextgen-agent-dj-shadow-product.md
@@ -25,6 +25,9 @@ The hardest part of DJing at a **busy club is not the mixing mechanics — it is
 management under cognitive load**: deciding and finding *what to cue next*, fast, while performing. NG's
 UX exists to minimize that load. (This **confirms co-pilot open-assumption A4** — track selection *is*
 the job — see `copilot-product-assumptions`.)
+
+**Research deepen (2026-07-23):** frameworks + measure probes + anti-patterns live in  
+`nextgen-cognitive-load-perform-arrange-library.md` (CLT / Endsley SA / dual-task / DJ HCI / X field).
 
 ## Full-screen modes the DJ switches between (not one cluttered screen)
 Clear, purpose-built full-screen contexts, entered/exited fast, so nothing extraneous competes for

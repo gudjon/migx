@@ -6,15 +6,17 @@ status: draft
 owner: gudjon
 authored_by: grok-signal
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/knowledge/nextgen-music-management-mode.md
   - kanban/knowledge/nextgen-modes-library-multideck.md
   - kanban/knowledge/nextgen-community-signal-data-sourcing.md
+  - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
   - kanban/knowledge/nextgen-agent-dj-shadow-product.md
 related:
   - nextgen-music-management-mode
+  - nextgen-cognitive-load-perform-arrange-library
   - initiative-ui-modernization
   - initiative-ai-djing-product
 ---
@@ -278,11 +280,13 @@ Staging ≠ playable deck. Playable cap (4–6) is engine policy; stage list is 
 ## 8. Build order (Claude)
 
 1. Mode shell + ribbon + hotkey PERFORM↔ARRANGE (mock cards).  
-2. Fixture loader + search/filter.  
+2. Fixture loader + search/filter — include **function/role crates** (opener, peak, bridge, reset, closers) per cognitive-load research.  
 3. TrackCard with tags/playlists + chip renderer (schema §4).  
 4. Stage queue + load-free Ack path.  
 5. Judge scripts wired to acceptance YAML.  
 6. Wire real offline enrich later (tools/) — not blocking UI dogfood.
+
+**Cognitive-load probes (when judge exists):** time-to-stage under play; mode-switch preserves L1 SA ribbon; no-network; see `nextgen-cognitive-load-perform-arrange-library.md` §5.
 
 ---
 
