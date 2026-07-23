@@ -13,6 +13,7 @@ defers_to:
   - kanban/knowledge/nextgen-music-management-mode.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
   - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
+  - kanban/knowledge/rekordbox-7-ui-teardown.md
   - kanban/Strategy-Current.md
   - kanban/knowledge/world-model-experience-ontology.md
 related:
@@ -21,6 +22,7 @@ related:
   - nextgen-music-management-mode
   - dj-shared-library-capability
   - nextgen-cognitive-load-perform-arrange-library
+  - rekordbox-7-ui-teardown
 sources:
   - "X 2026: Serato crate search as workflow win; library UX = prep speed; Ora DJ prep canvas"
   - "Serato 4.0 library overhaul (crate search, colour, emoji ratings) — DDJT 2026"
@@ -28,6 +30,7 @@ sources:
   - "Owner thesis: arrangement/management is the hard problem; full-screen modes; multi-deck vertical; community signals"
   - "Discovery: AI silent setlist rejected; prep assist OK"
   - "Research deepen 2026-07-23: CLT + Endsley SA + dual-task → modes (see cognitive-load knowledge)"
+  - "rekordbox 7 UI teardown 2026-07-23 — steal PERFORM literacy; refuse docked library (see rekordbox-7-ui-teardown)"
 ---
 
 # NextGen — modes, library, multi-deck, community graph

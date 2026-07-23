@@ -6,22 +6,25 @@ status: active
 owner: gudjon
 authored_by: grok-signal
 created: "2026-07-19"
-lastUpdated: "2026-07-19"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/knowledge/nextgen-dj-needs-and-leader-ui-map.md
   - kanban/knowledge/nextgen-music-management-mode.md
   - kanban/knowledge/nextgen-ui-industry-trends-agent-design.md
   - kanban/knowledge/nextgen-agent-dj-shadow-product.md
+  - kanban/knowledge/rekordbox-7-ui-teardown.md
   - kanban/Strategy-Current.md
   - kanban/knowledge/world-model-experience-ontology.md
 related:
   - initiative-ai-djing-product
   - initiative-ui-modernization
   - design-md-ui-modernization
+  - rekordbox-7-ui-teardown
 sources:
   - "Serato display modes (vertical/horizontal/extended/stack)"
   - "Serato waveform: overview + main, frequency colour, hot-cue flags"
   - "rekordbox: vocal position on overview, cue culture, performance mode"
+  - "rekordbox-7-ui-teardown: steal overview+zoom+cues; refuse library dock under decks"
   - "djay Neural Mix / stem pads on deck; VirtualDJ AI prompt + lyrics-on-waveform"
   - "Strategy: co-pilot in the mix flow, not bolted chat; EXO explain+Ack"
   - "Discovery: AI setlist ads rejected; prep assist OK; silent live load not OK"

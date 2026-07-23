@@ -12,11 +12,13 @@ defers_to:
   - kanban/knowledge/nextgen-modes-library-multideck.md
   - kanban/knowledge/nextgen-community-signal-data-sourcing.md
   - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
+  - kanban/knowledge/rekordbox-7-ui-teardown.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
   - kanban/knowledge/nextgen-agent-dj-shadow-product.md
 related:
   - nextgen-music-management-mode
   - nextgen-cognitive-load-perform-arrange-library
+  - rekordbox-7-ui-teardown
   - initiative-ui-modernization
   - initiative-ai-djing-product
 ---
@@ -45,7 +47,7 @@ acceptance:
     community_signal_stub_coverage: ">=0.6"  # fraction of tracks with ≥1 chip stub
   checks:
     - id: nextgen-ui-rulebook
-      cmd: "tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal"
+      cmd: "tools/ng-judge nextgen-ui lint --path res/qml/nextgen --assert-token-only --assert-no-blocking-modal --assert-keymap"
       expect: exit 0
     - id: fixture-load
       cmd: "tools/ng-judge music-mode fixture-load --fixture fixtures/music-mode-50/"
@@ -90,7 +92,7 @@ Codex landed the first offline judge on 2026-07-23:
 
 - `tools/ng-judge` owns the `music-mode` acceptance checks above.
 - `fixtures/music-mode-50/` is the frozen v0 data pack: 51 tracks, 9 tags, 5 playlists, 31 cached community-signal rows, free/busy deck state, and layout guard metadata.
-- `tools/ng-judge nextgen-ui lint` fails QML below `res/qml/nextgen` on hardcoded visual literals or blocking modal patterns.
+- `tools/ng-judge nextgen-ui lint` fails QML below `res/qml/nextgen` on hardcoded visual literals, blocking modal patterns, or shortcuts missing from `res/design/KEYMAP.md`.
 - `just ng-music-judge` runs the full acceptance list in one command, including `just ng-ui-lint`.
 
 This is a fixture judge, not the final visual/CO parity judge. It exists so the ARRANGE module can be
@@ -304,6 +306,8 @@ Staging ≠ playable deck. Playable cap (4–6) is engine policy; stage list is 
 6. Wire real offline enrich later (tools/) — not blocking UI dogfood.
 
 **Cognitive-load probes (when judge exists):** time-to-stage under play; mode-switch preserves L1 SA ribbon; no-network; see `nextgen-cognitive-load-perform-arrange-library.md` §5.
+
+**Competitive UI:** ARRANGE must not recreate rekordbox “library dock under dual decks” — see `rekordbox-7-ui-teardown.md` §3–4 (refuse dock; steal mini-wave list + radar-as-assist).
 
 ---
 
