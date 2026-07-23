@@ -65,7 +65,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-hotcues | Playback | supporting | PERFORM | arch-engine-realtime (cue) | planned |
 | cap-loops | Playback | supporting | PERFORM | arch-engine-realtime (loop) | planned |
 | cap-tempo-sync | Playback | supporting | PERFORM | arch-engine-realtime | planned |
-| **cap-smartplay** | Playback | supporting (**signature**) | PERFORM | arch-engine-realtime/sync, arch-mixer-decks | draft (smartplay-onbeat) — owner-directed default-ON |
+| **cap-onbeat-play** | Playback | supporting (**signature**) | PERFORM | arch-engine-realtime/sync, arch-mixer-decks | research locked (research-onbeat-play-phase-snap) — owner-directed default-ON |
 | cap-mixer-eq | Mixing | supporting | PERFORM | arch-mixer-decks | planned |
 | cap-fx | Mixing | supporting | PERFORM | arch-effects-chain | planned |
 | cap-stems | Mixing | supporting | PERFORM | arch-engine-realtime, arch-analyzer | planned |
@@ -115,12 +115,13 @@ Metal-pinned — planned post-unpin. **Planned.**
 **cap-tempo-sync** — *owns*: pitch/tempo + beat-sync + master. *not*: EQ. *SSoT*: arch-engine-realtime;
 `[ChannelN],rate`/`sync_*`/`bpm`. *UX*: sync visible but not dominant; no oversized BPM (djworx critique). **Planned.**
 
-**cap-smartplay** — *owns*: the **one-touch beat-aligned play** behaviour — pressing PLAY while another
-deck plays auto-beatmatches + phase-aligns + starts on-beat, **default ON** (`smartplay-onbeat`). *not*:
-the sync engine itself (cap-tempo-sync) — it *composes* it into the PLAY action. *SSoT*: `smartplay-onbeat`
-draft; `DeckTransportModel.togglePlay` + `[ChannelN],quantize`/`beatsync`/`beatsync_phase`. *UX*: the
-accessibility magic — "anyone can DJ", zero setup, immediate reward; folds sync into the one button vs
-rivals' separate toggles; opt-out for purists. **Signature simplicity feature; owner-directed, draft.**
+**cap-onbeat-play** — *owns*: the **one-touch beat-aligned play** behaviour — pressing PLAY while another
+deck plays seeks to on-phase then plays now (Mode A), auto-tempo + phase-align, **default ON**. *not*:
+the sync engine itself (cap-tempo-sync) or track selection (Automix) — it *composes* sync into the PLAY
+edge. *SSoT*: Grok's `research-onbeat-play-phase-snap` (design/algorithm/`PS-OBP-01` acceptance) +
+`onbeat-play` build note; `DeckTransportModel.togglePlay` + `[ChannelN],quantize`/`beatsync`/`beatsync_phase`.
+*UX*: the accessibility magic — "anyone can DJ", zero setup, immediate reward; honest degrade (no false
+snap); raw-play escape; Ritual brand (not "Smart"/Automix). **Signature simplicity; owner-directed.**
 
 ### Mixing (PERFORM · supporting)
 **cap-mixer-eq** — *owns*: per-channel gain/HI-MID-LO/filter/fader/crossfader. *SSoT*: arch-mixer-decks;

@@ -23,6 +23,7 @@ Every load-bearing fact has exactly **one canonical home**. Everything else poin
 | A recurring approach / named failure | `kanban/patterns/` (`P-NN`/`AP-NN`) |
 | A path-pinning decision | `kanban/architecture/decisions/` (ADR) |
 | A bounded context / its invariants | `kanban/architecture/ddd/` + `src/<domain>/AGENTS.md` |
+| Durable technical/product research or synthesis | `kanban/knowledge/` |
 | A unit of work | a dossier in `kanban/planning/` |
 | Chronology / history | `git log` (no ledger files) |
 

@@ -88,6 +88,7 @@ product acceptance numbers. Roadmap: `kanban/planning/00-PORTFOLIO/migx-harness-
 | Cite or add a validated pattern / named failure mode | `kanban/patterns/` (`P-NN` / `AP-NN`) |
 | Record a path-pinning decision | `kanban/architecture/decisions/` (ADR) |
 | Add a backlog task not tied to a live dossier | `kanban/tasks/` |
+| Preserve durable technical/product research or synthesis | `kanban/knowledge/` |
 | See what fires on a cadence | `kanban/triggers/registry.yaml` |
 | Run multiple agents on this box without clobbering | `kanban/runbooks/multi-agent-parallel-sessions.md` |
 | Federate peers (Grok · Claude · Codex; AGY paused) | `kanban/federation/FEDERATION.md` + `./kanban/scripts/migx-fed` |

@@ -41,8 +41,11 @@ smaller than oz-platform's multi-repo `fed` maildir — same principles, Migx-si
 The failure this prevents: two peers doing the **same work in parallel** (e.g. two scoring docs for one
 module — which happened 2026-07-23, owner flagged "agents need better cooperation"). Before starting any
 non-trivial lane:
-1. **`just fed-sync` + poll your inbox** — see peer mail + active claims, and whether a peer already has a
-   brief/claim for this lane. **If they do, build from it — do not write a parallel one.**
+1. **`just fed-sync` + poll your inbox — AND grep `kanban/federation/signal/` + peer-authored
+   `kanban/knowledge/` for the topic.** See peer mail, active claims, *and recent research signals* on the
+   lane (fed-sync does NOT surface `signal/` — check it yourself). **If a peer already has a brief/research/
+   claim, build from it — do not write a parallel one.** *(2026-07-23: Claude twice drafted over Grok
+   research already landed in `signal/` — co-pilot scoring AND on-beat play — because it skipped this step.)*
 2. **Respect the operating split** (roles table above): `grok-signal` owns signal/research/**policy
    briefs**; `claude-code` owns the **implementation/build**; `codex-cli` owns **verification/judge**.
    Straying into a peer's lane duplicates work. *(2026-07-23: Claude wrote a scoring-policy note in Grok's
