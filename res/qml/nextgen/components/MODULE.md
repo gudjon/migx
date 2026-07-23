@@ -1,30 +1,40 @@
-# MODULE — deck-transport (first NextGen component uplift)
+# MODULE — deck (NextGen bounded context)
 
-The first real component built into the NextGen architecture: a deck's **transport** (play/pause),
-bound to the shared engine. Proves the full stack end-to-end — primitive → view → ViewModel → engine —
-token-only and fixture-runnable (nextgen-ui-architecture).
+The **deck** bounded context: the per-deck views bound to the shared engine. Built one component at a
+time, each proving the full stack — primitive → view → ViewModel → engine — token-only and
+fixture-runnable (nextgen-ui-architecture). Components live flat in `components/` while the deck is the
+only context; they migrate to `components/deck/` when a second context (mixer) lands.
+
+Components: **transport** (play/pause) · **clock** (elapsed/remaining/total).
 
 ## Files
 | File | Layer | Role |
 |---|---|---|
 | `../primitives/NgButton.qml` | primitive | token-only console button (no engine) |
 | `DeckTransport.qml` | component (view) | dumb: renders `deckLabel/playing/hasTrack`, emits `toggleRequested()` |
-| `DeckTransportModel.qml` | component (ViewModel) | the only engine touch: `Mixxx.ControlProxy` for `play` + `track_loaded` |
+| `DeckTransportModel.qml` | component (ViewModel) | engine touch: `Mixxx.ControlProxy` for `play` + `track_loaded` |
+| `DeckClock.qml` | component (view) | dumb: renders `elapsed/remaining/total/ending`; no engine touch |
+| `DeckClockModel.qml` | component (ViewModel) | read-only engine touch: derives time from `duration` + `playposition` |
 
 ## Engine bindings (CO/proxy)
 | ControlObject | Proxy | Direction |
 |---|---|---|
 | `[ChannelN],play` | `DeckTransportModel.playControl` | read (`playing`) + write (`togglePlay()`, sole writer — P-06) |
 | `[ChannelN],track_loaded` | `DeckTransportModel.loadedControl` | read (`hasTrack`) |
+| `[ChannelN],track_loaded` | `DeckClockModel.loadedControl` | read (`hasTrack`) |
+| `[ChannelN],duration` | `DeckClockModel.durationControl` | read (`total`, seconds) |
+| `[ChannelN],playposition` | `DeckClockModel.positionControl` | read (0..1 → `elapsed`/`remaining`) |
 
 ## States (all handled)
-- **no track** → button disabled, "no track loaded".
-- **paused** → "PLAY" button, "❚❚ paused".
-- **playing** → "PAUSE" button (green fill), "▶ playing".
+**Transport** — no track → button disabled, "no track loaded"; paused → "PLAY", "❚❚ paused";
+playing → "PAUSE" (green fill), "▶ playing".
+**Clock** — no track → "--:--"; loaded → `-mm:ss` remaining (loud) over `elapsed / total` (quiet);
+ending (≤30 s left) → remaining turns `red` (mix-out warning).
 
 ## Tokens used
-`space12`, `fontSizeSm/Md/Xs`, `opacityMuted/Full`, `green`, `textColor`, `midGray`, `knobBackgroundColor`,
-`darkGray2`, `sunkenBackgroundColor`, `space2`, `radius0`, `motionFastMs`. No hardcoded visual literal.
+`space2/3/12/16`, `fontSizeXs/Sm/Md/Xl`, `opacityMuted/Full`, `green`, `red`, `textColor`, `midGray`,
+`knobBackgroundColor`, `darkGray2`, `sunkenBackgroundColor`, `radius0`, `motionFastMs`. No hardcoded
+visual literal.
 
 ## Shortcuts (KEYMAP.md)
 Play/pause = the engine deck key (`D`/`L` per the current engine map); no NextGen-local shortcut added.
@@ -35,4 +45,6 @@ Play/pause = the engine deck key (`D`/`L` per the current engine map); no NextGe
   correctly (pixel via the CGL harness).
 - Live: `migx --nextgen`, load a track on Deck 1, the PLAY button toggles `[Channel1],play` and the
   state cue tracks it. Switching modes never disturbs playback (invariant #6).
+- Clock live: as the track plays, `remaining` counts down (`-mm:ss`), `elapsed`/`total` are correct,
+  and remaining turns `red` in the final 30 s. With no track it reads `--:--`.
 - Non-modal: no `QMessageBox` reachable.

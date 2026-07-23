@@ -121,9 +121,21 @@ ApplicationWindow {
                 id: deck1
                 group: "[Channel1]"
             }
+            DeckClockModel {
+                id: deck1Clock
+                group: "[Channel1]"
+            }
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: Theme.space16
+                DeckClock {
+                    Layout.alignment: Qt.AlignHCenter
+                    hasTrack: deck1Clock.hasTrack
+                    elapsed: deck1Clock.elapsed
+                    remaining: deck1Clock.remaining
+                    total: deck1Clock.total
+                    ending: deck1Clock.ending
+                }
                 DeckTransport {
                     Layout.alignment: Qt.AlignHCenter
                     deckLabel: "DECK 1"
@@ -133,7 +145,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "first uplifted component · the deck-shell grows here"
+                    text: "the deck-shell grows here · clock + transport (Deck 1)"
                     color: Theme.midGray
                     font.pixelSize: Theme.fontSizeXs
                 }
