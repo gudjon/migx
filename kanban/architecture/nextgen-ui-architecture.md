@@ -52,6 +52,10 @@ A layer may only import layers **below** it. No upward or sideways-hidden depend
 4. **Every module runs in a fixture mode.** A component renders headless against a **mock ViewModel**
    (fixture JSON) with no live engine — so the judge (pixel via the headless-CGL harness + CO-trace +
    non-modal check) runs in CI without a club rig. This is the "build the judge first" prerequisite.
+   For **live** testing there is also a **dev test base**: `just dev-fixtures` generates two demo tracks
+   with known BPM/key (`tools/dev/gen_fixture_tracks.py` → `res/dev-fixtures/`, gitignored) and
+   `NgDevBench.qml` auto-loads them onto Deck 1/2 at `--nextgen` startup — so the deck-shell always has
+   real data (verified: analyzer detects 128/125 BPM exactly). No-op in a release bundle.
 5. **Non-modal, always.** No component may raise a blocking modal reachable during a set; recoverable
    errors route to the shared non-modal surface (`ui-non-modal-error-ux`). A blocking dialog is a judge
    failure.

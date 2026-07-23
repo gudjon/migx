@@ -59,8 +59,19 @@ app:
     @echo "Launching Migx (also on your Desktop as Migx.app)…"
     open dist/migx.app
 
+# ---- NextGen dev test base: two demo tracks (known BPM/key) auto-loaded onto Deck 1/2 ----
+# Generates res/dev-fixtures/*.wav (gitignored) and copies them into the bundle so NgDevBench
+# auto-loads them at --nextgen startup — the fixture-mode base for testing the deck-shell.
+dev-fixtures:
+    python3 tools/dev/gen_fixture_tracks.py
+    @if [ -d dist/migx.app/Contents/Resources ]; then \
+      mkdir -p "dist/migx.app/Contents/Resources/dev-fixtures" && \
+      cp res/dev-fixtures/*.wav "dist/migx.app/Contents/Resources/dev-fixtures/" && \
+      echo "copied demo tracks into the bundle"; \
+    else echo "(no bundle yet — run 'just app' first, or use 'just app-ng')"; fi
+
 # ---- Run the NextGen shadow shell (ADR-007): the new agent-first UI on the shared engine ----
-app-ng: app
+app-ng: app dev-fixtures
     @echo "Launching Migx NextGen shell (--nextgen)…"
     open dist/migx.app --args --nextgen
 

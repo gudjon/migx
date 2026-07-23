@@ -19,6 +19,10 @@ ApplicationWindow {
     title: "Migx NextGen"
     color: Theme.sunkenBackgroundColor
 
+    // Dev test-bench: auto-loads demo tracks onto Deck 1/2 if res/dev-fixtures/ is present
+    // (just dev-fixtures). Quiet no-op in a release bundle. Gives the deck-shell real data.
+    NgDevBench {}
+
     // Full-screen modes the DJ switches between (nextgen-dj-ux-modes-and-signal).
     readonly property var modeNames: ["PERFORM", "ARRANGE", "LIBRARY"]
     readonly property var modeColors: [Theme.modePerform, Theme.modeArrange, Theme.modeLibrary]
