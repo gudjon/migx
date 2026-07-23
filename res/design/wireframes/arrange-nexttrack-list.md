@@ -16,21 +16,24 @@ playing, lead with the co-pilot's pick, and show the *reason*** — so the choic
 │ NOW ▸ DECK 1 · 128.0 BPM · Am ▎8A            crate: [ House ▾ ]     │  context that drives the ranking
 │                                                                    │
 │ ┌─ ★ NEXT ─ co-pilot pick ───────────────────────────────────────┐ │
-│ │ [art]  Rise Up                 128.0 ▎Am·8A    ✓ perfect match  │ │  HERO: top pick + why
-│ │        Nicole                  ±0.0 BPM        ▲ 2.4M · 38 sets │ │
+│ │ [art] Rise Up          128.0 ▎Am·8A  ★ played after in 38 sets │ │  HERO: pick + WHICH signal drove it
+│ │       Nicole           ±0.0 BPM      ✓ perfect key   ▲ 2.4M    │ │
 │ └────────────────────────────────────────────────────────────────┘ │
 │ ── ranked candidates ──────────────────────────────────────────    │
 │ [art] Oscillation      125.0 ▎Cm·5A   ✓ +1 key · −2%   ▲ 1.2M · 21 │  each row: identity + mixability + signal
-│ [art] All Nighter      123.0 ▎Fm·4A   ~ energy lift    ▲ 900k · 14  │
+│ [art] All Nighter      123.0 ▎Fm·4A   ★ 12 sets·~energy ▲ 900k     │  crowd-proven can outrank pure-harmonic
 │ [art] Ghetto Funk      129.0 ▎Fm·4A   ⚠ +1 BPM         ▲ 400k · 9   │
 │ [art] Badge            125.0 ▎Em·9A   ✗ key clash      ▲ 220k · 3   │  clash → greyed, sorts last
 │ ...                                                                 │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 Row anatomy (reuses the deck's badges): art · title/artist · **BPM badge** · **colour-key badge** ·
-**mixability tag** (the differentiator) · **community-signal chip** (later). The mixability tag is scored
-vs the NOW deck: `✓ perfect` (same/adjacent Camelot + ≤±3% tempo) · `✓ +1 key` · `~ energy` · `⚠ tempo` ·
-`✗ clash`. Ranked best-first; clashes de-emphasized.
+**reason tag** · **community-signal chip**. The pick is a **blend of signals** and the tag names *which one
+drove it* (`copilot-transition-intelligence`): `★ played after this in N sets` (crowd-proven transition —
+the moat), `✓ perfect / +1 key` (harmonic, scored vs the NOW deck), `~ energy`, `⚠ tempo`, `✗ clash`,
+`▲ trending`. A **crowd-proven transition can outrank a merely-harmonic one**; ranked best-first, clashes
+de-emphasized. **v1 ships harmonic+tempo scoring**; the transition/trending signals layer on as the corpus
+lands ([[copilot-transition-intelligence]], A6 open).
 
 ## Value-creation case
 - Hits the **one friction the whole product is about** — choosing the next track fast. Nothing else we

@@ -72,6 +72,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model, arch-analyzer | **draft, in review** (arrange-nexttrack-list) |
 | **cap-harmonic-key** | **Intelligence** | **core** | ARRANGE/LIBRARY | arch-analyzer, arch-track-model | partial — colour-coded KEY badge **built**; compatibility scoring planned |
 | cap-energy-structure | Intelligence | core | ARRANGE | arch-analyzer | planned |
+| **cap-transition-intelligence** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model + EXO corpus | planned (copilot-transition-intelligence) — **the moat** |
 | cap-community-signal | Intelligence | core | ARRANGE | arch-musicbrainz, arch-library-db, arch-track-model | planned (Grok sourcing) |
 | cap-library-crates | Collection | supporting | LIBRARY | arch-library-db | planned |
 | cap-analysis-prep | Collection | supporting | LIBRARY | arch-analyzer, arch-sources-decode | planned |
@@ -131,6 +132,14 @@ arch-engine-realtime. *UX*: 2024–25 trend (rekordbox 7, Traktor 4, VirtualDJ);
 raw library CRUD. *SSoT*: `tools/exo/` (copilot_why_next, set_planner, ontology_from_sidecar) + arch-library-db.
 *UX*: **the recommendation is the hero** — we score mixability (tempo + Camelot) and surface the call, vs
 rivals who show key and leave the DJ to compute. Non-modal, glanceable chips. **The core bet.** **Planned.**
+
+**cap-transition-intelligence** — *owns*: "what plays next" learned from a **corpus of real ordered
+setlists** — P(next=Y | cur=X) co-occurrence + trending, blended into the pick with the reason surfaced.
+*not*: the harmonic maths (cap-harmonic-key) or the raw popularity chips (cap-community-signal) — it
+*consumes* both. *SSoT*: `copilot-transition-intelligence` + EXO ontology corpus (extends
+`copilot_why_next.py` edge_index from session to corpus scale). *UX*: the pick names its driving signal
+(harmonic vs proven-transition vs trending); cached/offline hot path; degrades to local scoring (never
+empty, non-modal). **The network-effect moat (ADR-005); planned.**
 
 **cap-harmonic-key** — *owns*: key detection → Camelot/Open-Key + **compatibility scoring**. *SSoT*:
 arch-analyzer + `tools/exo` key→Camelot. *UX*: **colour-coded key** everywhere (Traktor) — deck badge,

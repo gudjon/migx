@@ -30,6 +30,7 @@ require. Revisit trigger for all of them: the **first real DJ evidence** capture
 | A3 | DJs want a **proposed re-order** (plan_order) | DJs may want to keep their creative order and only get **warnings** (audit_order), not a machine re-sort | Which mode real DJs use / trust — audit vs plan |
 | A4 | "Next track / set order" is the useful co-pilot job | The real friction may be **transition timing / cue points** ("where do I mix out?"), not track selection | DJ interview: what they actually want the agent to do mid-set |
 | A5 | Harmonic + tempo + energy is enough signal | Ignores vocal clashes, phrasing/bar alignment, intra-track key drift, crowd read — things DJs weight heavily | DJ evidence on rejected-but-"compatible" suggestions |
+| A6 | Learning transitions from a corpus of real setlists (+ trending) improves the pick over local scoring — the [[copilot-transition-intelligence]] bet | DJs prize originality (crowd picks may feel derivative); corpus coverage of an individual crate may be low; setlist-corpus licensing/ToS unresolved; trending can push untested tracks | Real-DJ accept/override on transition-driven vs mixability-only picks; Grok feasibility on obtainable ordered-setlist corpora |
 
 **Scoring posture:** these co-pilot commits are recorded as **technical progress with product
 assumptions open**, not product wins. When the customer-evidence loop produces its first captures, this
