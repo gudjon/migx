@@ -12,15 +12,28 @@ depends_on:
   - migx-brand-positioning-experience-designer
 acceptance: |
   Owner marks BRND-P1.4 canvas rows accepted or edited; one-liner + elevator locked in
-  migx-brand-positioning-experience-designer.md; top-2 name vibes chosen; no package rename.
+  migx-brand-positioning-experience-designer.md; consumer mark path chosen; no package rename
+  until trademark/domain clear for Ritual (or backup).
 ---
 
 # Brand DIY lock
 
 Process: `kanban/playbook/branding/BRND-playbook.md` (**BRND-DIY-1**, **BRND-DIY-2**).
 
-1. Edit filled Dunford canvas if alternatives/value wrong.  
-2. Lock one-liner + elevator.  
-3. Pick two name vibes (or two compounds).  
-4. Decide AI loudness on homepage.  
-5. Optional: 5 DJ interviews on “experience designer / night design” language (DC-PDCL).
+## Progress
+
+| Step | Status |
+|---|---|
+| 1. Dunford canvas draft | filled (playbook P1.4) — owner accept/edit still open |
+| 2. One-liner + elevator | **Ritual kit drafted** in brand knowledge §2.1 — owner lock still open |
+| 3. Name vibe | **Ritual preferred** (owner 2026-07-23); backup Resonance / Pulsecraft |
+| 4. AI loudness | still open (recommend: invisible on hero, co-pilot secondary) |
+| 5. DJ interviews on language | optional |
+| 6. Trademark / domain for Ritual | **required before public mark** |
+
+## Next
+
+1. Accept or tweak Ritual taglines in §2.1.  
+2. Quick mark/domain check (`ritual` + DJ context).  
+3. Decide AI loudness on homepage.  
+4. Do **not** rename packages until legal/domain clear.

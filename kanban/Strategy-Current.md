@@ -33,8 +33,9 @@ dev public, later house it under Agora — and put the moat in the product + Int
 sidebar plugin.**
 
 **Brand / market voice (proposal):** DJ as **experience designer** — design nights, shape arcs, serve
-judgment not autopilot. Category language and name shortlist live in
-`kanban/knowledge/migx-brand-positioning-experience-designer.md` (does not rename eng `migx` until owner locks).
+judgment not autopilot. Preferred consumer mark: **Ritual** (owner 2026-07-23). Full kit in
+`kanban/knowledge/migx-brand-positioning-experience-designer.md` §2.1. Eng/repo stays **migx** until
+trademark + ship lock.
 
 ---
 

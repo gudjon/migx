@@ -100,10 +100,11 @@ Narrow category power: *audience intelligence / journey design for DJs who desig
 | **Best-fit customer** | Working club/residency DJs under booth load who curate crates and reject silent Automix; high-stakes private/festival secondary | draft — interview |
 | **Category** | Primary: **Audience intelligence + journey design for DJs** · Voice: night design / experience design | draft |
 | **Enemy / no** | Automix cosplay; AI that steals artistry; skinny library-as-afterthought; “ChatGPT for tracks” | locked (Strategy) |
+| **Consumer mark** | **Ritual** (owner preferred 2026-07-23); eng **migx** until trademark lock | preferred |
 
-**Internal positioning statement (draft):**
+**Internal positioning statement (Ritual draft):**
 
-> For **working DJs who design nights under cognitive load**, **[ConsumerBrand/Migx]** is the **journey-design instrument** that **helps them plan arcs, steer energy, and keep the room breathing** because it **combines battle-tested deck depth with intelligence that serves judgment — never replaces it**.
+> For **working DJs who design nights under cognitive load**, **Ritual** is the **journey-design instrument** that **helps them plan arcs, steer energy, and keep the room breathing** because it **combines battle-tested deck depth with intelligence that serves judgment — never replaces it**.
 
 Live narrative detail → `migx-brand-positioning-experience-designer.md`.
 

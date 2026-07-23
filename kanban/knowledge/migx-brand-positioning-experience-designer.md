@@ -7,6 +7,10 @@ owner: gudjon
 authored_by: grok-signal
 created: "2026-07-23"
 lastUpdated: "2026-07-23"
+preferred_consumer_mark: Ritual
+note_name: >
+  Owner preference 2026-07-23: "Ritual" as primary consumer brand direction.
+  Eng/repo stays migx until trademark + lock.
 defers_to:
   - kanban/Strategy-Current.md
   - kanban/playbook/branding/BRND-playbook.md
@@ -117,6 +121,67 @@ Aligns with Strategy: **Automix is anti-identity**; co-pilot explains + Ack; Nex
 
 ---
 
+## 2.1 Owner name preference — **Ritual** (2026-07-23)
+
+**Status:** preferred consumer mark (not legal lock). **Repo/binary stay `migx` until trademark + ship decision.**
+
+### Why Ritual fits our spine
+
+| Test | Ritual |
+|---|---|
+| Identity | Night as **ceremony**, not a playlist dump |
+| Artist | DJ runs the ritual — tool serves the rite |
+| Arc | Ritual implies structure: open → peak → close → memory |
+| Hoodie | Short, strong, one word |
+| Field X | Aligns with craft/curation culture better than “AI DJ” |
+| Enemy | Autopilot feels like the opposite of a ritual |
+
+### Edge to manage
+
+| Risk | Mitigation |
+|---|---|
+| Religious / occult over-read | Visuals: booth, light, arc, ember — **not** temple kitsch or heavy occult |
+| Crowding (wellness apps, cafes named Ritual) | Qualify in product: **Ritual DJ**, or own domain; trademark search before public |
+| Soft / non-pro | Voice stays **pro craft** (BRND-P2.3), not spa |
+
+### Ritual messaging kit (working)
+
+| Layer | Line |
+|---|---|
+| **One-liner** | Design unforgettable nights. |
+| **With name** | Ritual — design unforgettable nights. |
+| **Elevator** | Ritual is the instrument for DJs who design nights. Prep the arc, steer the room, learn what landed — intelligence that serves your judgment, never takes the decks. |
+| **Identity** | For DJs who treat the night as a ritual. |
+| **POV** | A night is not a playlist. It’s a ritual. |
+| **Investor category** | Audience intelligence + journey design for DJs (product still Cursor-path depth). |
+
+### Taglines that carry Ritual
+
+- Every night is a ritual.  
+- Keep the ritual. Keep the decks.  
+- Shape the arc. Honor the room.  
+- Craft the night.  
+- Design unforgettable nights.  
+
+### Product naming pattern (optional later)
+
+| Product piece | Possible |
+|---|---|
+| App | Ritual |
+| Modes | Ritual Perform / Arrange / Library *(or keep PERFORM labels)* |
+| Co-pilot | Ritual Cue / Steer *(not “AI DJ”)* |
+| Eng / git | **migx** forever ok |
+
+### Positioning statement (Ritual draft)
+
+> For **working DJs who design nights under cognitive load**, **Ritual** is the **journey-design instrument** that **helps them plan arcs, steer energy, and keep the room breathing** because it **combines battle-tested deck depth with intelligence that serves judgment — never replaces it**.
+
+### Backup if Ritual fails trademark / domain
+
+**Resonance** or **Pulsecraft** (prior shortlist). Do not fall back to bare Arc/Pulse/Flow.
+
+---
+
 ## 3. Product story (sell the outcome, not the stack)
 
 Maps 1:1 to NextGen modes + EXO — brand language should *say* this even when UI says PERFORM/ARRANGE/LIBRARY.
@@ -180,7 +245,7 @@ Cursor-path instrument depth (engine, controllers, library) + intelligence in th
 | **Flowstate / Flow** | Cognitive flow | High (Flow apps) | Matches cognitive-load thesis; hard trademark |
 | **Craft** | Artistry | High as solo word | Better as **verb** in manifesto |
 | **Pulsecraft** | Compound, ownable | Lower | Hint audience + craft |
-| **Ritual** | Night as ceremony | Medium | Strong culture fit; check religion edge |
+| **Ritual** | Night as ceremony | Medium | **Owner preferred 2026-07-23** — see §2.1; trademark/domain before public |
 | **Ember / Afterglow** | Memory of the night | Lower–medium | Outcome names; soft as primary |
 | **Maestro / Conductor** | Role identity | Medium | “Conductor” role > product name |
 | **Prism / Forge / Canvas** | Artist tools | Medium | Studio-y; less “club” |
@@ -198,16 +263,15 @@ Cursor-path instrument depth (engine, controllers, library) + intelligence in th
 **Category-creating swing (owner idea, keep):**  
 Coin the role — *experience architect / night designer* — and become the default tool of that identity. Bigger swing; defines space if it sticks.
 
-### Working recommendation (for filter, not lock)
+### Working recommendation
 
 | Layer | Proposal | Why |
 |---|---|---|
-| **Consumer brand (TBD)** | Shortlist: **Pulsecraft**, **Nightarc**, **Resonance**, **Ritual** | Ownable enough; say craft/journey not “AI mixer” |
-| **Identity line** | “For DJs who design nights” | Hoodie-able; not tech |
+| **Consumer brand** | **Ritual** (owner preferred) | Ceremony / arc / craft; hoodie-strong |
+| **Backup** | Resonance, Pulsecraft | If mark/domain blocked |
+| **Identity line** | “For DJs who design nights” / “Every night is a ritual” | Field-native + Ritual |
 | **Repo / eng** | **Migx** stays | Strategy, git, agents unchanged |
 | **Avoid as solo global mark** | Arc, Pulse, Flow, Craft | Too crowded without modifier |
-
-Owner picks **two vibes** (e.g. poetic craft vs crowd intelligence) → narrow to one primary + one backup.
 
 ---
 
@@ -237,11 +301,12 @@ Owner picks **two vibes** (e.g. poetic craft vs crowd intelligence) → narrow t
 - Precision without compromise.  
 - The instrument that thinks with you.  
 
-**Homepage hero (composite draft):**
+**Homepage hero (Ritual draft):**
 
+> **Ritual**  
 > **Design unforgettable nights.**  
 > Prep the arc. Steer the room. Learn what landed.  
-> For DJs who conduct emotion — not autopilot playlists.
+> For DJs who keep the craft — not autopilot playlists.
 
 ---
 
