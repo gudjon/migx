@@ -1,6 +1,8 @@
 # Wireframe draft — deck-track-identity (deck bounded context)
 
-Status: **DRAFT — in review** (per-module design gate, `nextgen-ui-architecture`). No code until approved.
+Status: **APPROVED → BUILT** 2026-07-23 (per-module design gate, `nextgen-ui-architecture`). Shipped as
+`components/DeckIdentity{,Model}.qml` + `primitives/NgBadge.qml` + 12 DESIGN.md key-wheel tokens
+(commit 9a3890b). Owner approved all 3 open questions (both notations + wheel colour · art in v1 · reusable badge).
 Capability: `cap-track-identity` (+ `cap-harmonic-key` for the KEY badge) in the capability catalogue.
 
 ## Proposed module

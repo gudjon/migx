@@ -59,7 +59,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | id | subdomain | class | UI mode | engine context(s) | UI module (status) |
 |---|---|---|---|---|---|
 | cap-deck-transport | Playback | supporting | PERFORM | arch-engine-realtime, arch-mixer-decks | components deck-transport (**built**) |
-| cap-track-identity | Playback | supporting | PERFORM | arch-track-model | deck-track-identity (**draft, in review**) |
+| cap-track-identity | Playback | supporting | PERFORM | arch-track-model | components deck-identity (**built**) |
 | cap-deck-clock | Playback | supporting | PERFORM | arch-engine-realtime | components deck-clock (**built**) |
 | cap-waveform | Playback | supporting | PERFORM | arch-waveform-render, arch-rendergraph | planned (Metal-pinned) |
 | cap-hotcues | Playback | supporting | PERFORM | arch-engine-realtime (cue) | planned |
@@ -70,7 +70,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-stems | Mixing | supporting | PERFORM | arch-engine-realtime, arch-analyzer | planned |
 | cap-headphone-cue | Mixing | generic | PERFORM | arch-mixer-decks | planned |
 | **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model, arch-analyzer | planned (tools/exo/ exists) |
-| **cap-harmonic-key** | **Intelligence** | **core** | ARRANGE/LIBRARY | arch-analyzer, arch-track-model | planned (badge in deck-track-identity) |
+| **cap-harmonic-key** | **Intelligence** | **core** | ARRANGE/LIBRARY | arch-analyzer, arch-track-model | partial — colour-coded KEY badge **built**; compatibility scoring planned |
 | cap-energy-structure | Intelligence | core | ARRANGE | arch-analyzer | planned |
 | cap-community-signal | Intelligence | core | ARRANGE | arch-musicbrainz, arch-library-db, arch-track-model | planned (Grok sourcing) |
 | cap-library-crates | Collection | supporting | LIBRARY | arch-library-db | planned |
@@ -94,7 +94,7 @@ cue, no skeuomorphic platter (djworx: platters waste laptop real-estate). **Buil
 **cap-track-identity** — *owns*: "what's loaded / is it mixable" — art · title · artist · **BPM · KEY**.
 *not*: transport, waveform, suggestion. *SSoT*: `currentTrack.{title,artist,coverArtUrl}` + `[ChannelN],bpm`/`key`;
 `res/design/wireframes/deck-track-identity.md`. *UX*: universal anchor (3/3 apps); **KEY is colour-coded**
-(Traktor); compact + tileable for multi-deck; reusable KEY/BPM badge shared with ARRANGE. **Draft, in review.**
+(Traktor); compact + tileable for multi-deck; reusable KEY/BPM badge shared with ARRANGE. **Built.**
 
 **cap-deck-clock** — *owns*: elapsed/remaining/total time. *not*: transport, tempo. *SSoT*: `[ChannelN],duration`+`playposition`;
 deck MODULE.md. *UX*: **−remaining is the loud number** (rekordbox/Traktor both lead with it), red at mix-out. **Built.**
