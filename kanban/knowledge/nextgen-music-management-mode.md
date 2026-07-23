@@ -7,12 +7,13 @@ owner: gudjon
 authored_by: codex-cli
 authored_kind: agent
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-07-23"
 defers_to:
   - kanban/knowledge/nextgen-shadow-app-proposal.md
   - kanban/knowledge/nextgen-dj-needs-and-leader-ui-map.md
   - kanban/knowledge/nextgen-dj-ux-modes-and-signal.md
   - kanban/knowledge/nextgen-modes-library-multideck.md
+  - kanban/knowledge/nextgen-cognitive-load-perform-arrange-library.md
   - kanban/knowledge/mod-music-management-mode.md
   - kanban/knowledge/nextgen-community-signal-data-sourcing.md
   - kanban/knowledge/nextgen-bakeoff-deck-strip-copilot.md
@@ -22,6 +23,7 @@ related:
   - initiative-ui-modernization
   - initiative-ai-djing-product
   - nextgen-agent-dj-shadow-product
+  - nextgen-cognitive-load-perform-arrange-library
   - dj-shared-library-capability
   - filesystem-driven-architecture
 ---
@@ -51,6 +53,8 @@ tracks are playing. Music mode helps the DJ make the next selection faster and w
 For the broader field/signal treatment of PERFORM/ARRANGE/LIBRARY modes, vertical multi-deck, and
 community heat chips, defer to `nextgen-modes-library-multideck.md`; this note owns the Codex-readable
 product contract and judge.
+For cognitive-load science (CLT / SA / dual-task / measure probes), defer to
+`nextgen-cognitive-load-perform-arrange-library.md`.
 For the first-hand owner-DJ evidence capture, defer to `nextgen-dj-ux-modes-and-signal.md`. For the
 draft machine contract and chip schema, defer to `mod-music-management-mode.md`.
 
