@@ -19,6 +19,7 @@ related:
   - initiative-ui-modernization
   - nextgen-music-management-mode
   - nextgen-bakeoff-deck-strip-copilot
+  - research-onbeat-play-phase-snap
 sources:
   - "Sweller CLT — intrinsic / extraneous / germane load; split-attention; expertise reversal"
   - "Endsley (1995) Situation Awareness — perception / comprehension / projection in dynamic systems"
