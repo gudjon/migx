@@ -116,6 +116,13 @@ Drafts are the **pre-build SSoT** at `res/design/wireframes/<module>.md`; the `M
 written at build time from the approved draft. Choosing which module is worth building is an owner value
 judgment — **the loop produces the draft and holds for review; it does not auto-build past this gate.**
 
+## Every module realizes a capability
+Each NextGen module implements exactly one capability from the **capability catalogue**
+([`ddd/capability-catalogue.md`](ddd/capability-catalogue.md)) — the product domain map (bounded
+capabilities, their separation of concerns, SSoT, engine context, UI mode, and core/supporting/generic
+class). A module's draft cites its `cap-*` id; the catalogue is where "is this the right, well-bounded
+thing to build?" is answered before the design gate drafts *how* it looks.
+
 ## Build order (unchanged, now layered)
 `Theme/tokens → primitives → components → modes → deck-shell (first product module) → music-management
 mode → library → co-pilot → waveform (post-Metal unpin)`. Each lands behind its `MODULE.md` judge.

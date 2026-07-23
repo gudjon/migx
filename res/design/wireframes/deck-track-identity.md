@@ -1,6 +1,7 @@
 # Wireframe draft — deck-track-identity (deck bounded context)
 
 Status: **DRAFT — in review** (per-module design gate, `nextgen-ui-architecture`). No code until approved.
+Capability: `cap-track-identity` (+ `cap-harmonic-key` for the KEY badge) in the capability catalogue.
 
 ## Proposed module
 The per-deck **track-identity anchor**: album art · title · artist · **BPM · KEY**. Sits above the
@@ -15,8 +16,8 @@ readout — the head of every deck in every major DJ app.
 │   │        │   Arche                                        │  ← artist (quiet)
 │   │  art   │                                                │
 │   │  56²  │   ┌──────────┐  ┌──────────┐                   │
-│   └────────┘   │ 128.0 BPM│  │ Gm · 8A  │                   │  ← reusable BPM/KEY badges
-│                └──────────┘  └──────────┘                   │     (green when mixable vs other deck*)
+│   └────────┘   │ 128.0 BPM│  │▎Gm · 8A  │                   │  ← reusable BPM/KEY badges
+│                └──────────┘  └──────────┘                   │     KEY chip COLOUR-CODED by wheel*
 │                                                             │
 │                        −01:16                               │  ← DeckClock  (built)
 │                      04:15 / 05:31                          │
@@ -25,8 +26,11 @@ readout — the head of every deck in every major DJ app.
 │                        ▶ playing                            │
 └─────────────────────────────────────────────────────────────┘
    empty state →  [ ▢ ]  — no track —      -- BPM   -- KEY
+   compact + tileable: this header stacks for 2/4/N decks (Traktor multi-deck)
 ```
-\*mixability tint is a *later* enhancement (needs the other deck's key); v1 badges are neutral.
+\*Colour-coded key (Traktor learning): the KEY chip carries its Camelot/Open-Key **wheel colour**, so
+harmonically-compatible tracks are scannable by colour. A *second* mixability signal (compatible vs the
+**other** deck) is a later enhancement — v1 ships the wheel colour only; needs new DESIGN.md key-wheel tokens.
 
 ## Value-creation case (why this is the right next module)
 - Answers the deck's #1 question — **"what am I playing, and can I mix it?"** — at a glance, with zero
@@ -46,12 +50,22 @@ readout — the head of every deck in every major DJ app.
   a hero image (56², per "admin chrome is minimal").
 - **Fail-quiet**: no track → greyed placeholder, never a dialog (non-modal law).
 
-## Industry-trend grounding
-Rekordbox 7 (`res/design/references/rekordbox7-performance`) places exactly this row at the head of each
-deck: art · title · artist · **BPM · KEY** · time. Serato, Traktor, VirtualDJ and djay all do the same —
-it is the single most consistent element across DJ software. **BPM + KEY as the always-visible "lingua
-franca"** is the trend we adopt; we diverge by scoring mixability with the co-pilot rather than leaving the
-DJ to compute it, and by keeping the row uncluttered (no SYNC/MASTER/key-shift chrome on the PERFORM face).
+## Industry-trend grounding (4 references — `res/design/references/`)
+The track-identity anchor is the **single most consistent element across DJ software** — art · title ·
+artist · **BPM · KEY** · time appears on every deck in all four references:
+- **Rekordbox 7** — art · title · artist · BPM · **KEY (musical, `Gm`)** · time, at the deck head.
+- **Traktor Pro 4** — compact one-line header (title · −remaining · BPM), **KEY colour-coded** (Open-Key)
+  in the browser → the concrete upgrade we adopt: **colour the KEY chip by its wheel position**. Four-deck
+  grid → our header must be **compact + tileable**.
+- **Serato DJ Pro** — same anchor, **BPM-first**, clean flat aesthetic (no skeuomorph chrome); djworx
+  critiques its **big platters/BPM as wasted laptop real-estate** → we drop the platter, keep the row tight.
+- **djay Pro 5 / landscape** (digitaldjtips) — "visual simplicity + Apple aesthetics" is the UX trend;
+  and the roundup found **no competitor doing smart track suggestion** → our co-pilot is the whitespace.
+
+**We adopt:** BPM + KEY as the always-visible lingua franca, KEY **colour-coded** (Traktor), compact +
+tileable (Traktor), un-skeuomorphic/clean (Serato+djworx). **We diverge:** the co-pilot **scores
+mixability** (tempo + Camelot) rather than leaving the DJ to compute it, and PERFORM carries **no
+SYNC/MASTER/key-shift chrome** on the identity face (that's mode-scoped elsewhere).
 
 ## Engine bindings (proposed, verified feasible)
 | Field | Source | Notes |
@@ -64,8 +78,9 @@ Split (invariant #2): dumb `DeckIdentity.qml` view (props: title/artist/artUrl/b
 + read-only `DeckIdentityModel.qml` ViewModel + a reusable `NgKeyBpmBadge` (deck + ARRANGE). Fixture-runnable.
 
 ## Open questions for review (owner value judgments)
-1. **KEY notation** — show musical (`Gm`), Camelot (`8A`), or both (`Gm · 8A`)? Draft shows both;
-   co-pilot uses Camelot, rekordbox shows musical.
+1. **KEY notation + colour** — show musical (`Gm`), Camelot (`8A`), or both (`Gm · 8A`)? Draft shows both.
+   Recommend **both + the Traktor-style wheel colour** on the chip (adds 12/24 key-colour tokens to
+   DESIGN.md). co-pilot uses Camelot; rekordbox shows musical; Traktor colours it.
 2. **Album art in v1?** — needs the cover-art URL pipeline; cheap to defer to a placeholder if you'd
    rather ship title+BPM+KEY first.
 3. **Make BPM/KEY a reusable component now** (used again in ARRANGE), or inline for the deck first?

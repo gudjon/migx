@@ -27,6 +27,8 @@ botching Qt ownership.
 [`kanban/knowledge/architecture-apple-silicon-macos26-refactor-map.md`](../knowledge/architecture-apple-silicon-macos26-refactor-map.md).
 
 - Cards: `ddd/bounded-contexts/<id>.md` (template: `_TEMPLATE.md`)
+- **Product-capability view** (what Migx does for the DJ, mapped to these contexts + NextGen UI modules +
+  UI/UX guidelines): [`ddd/capability-catalogue.md`](ddd/capability-catalogue.md)
 - Seam docs: `ddd/boundaries/<slug>.md`
 - Context-relationship narrative: `ddd/context-map.md`
 - Buildout plan (format, full roster, lint): `DDD-BUILDOUT-PLAN.md`
