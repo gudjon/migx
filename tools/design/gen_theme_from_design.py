@@ -50,6 +50,18 @@ COLOR_MAP = {
     "modePerform": "modePerform",
     "modeArrange": "modeArrange",
     "modeLibrary": "modeLibrary",
+    "keyWheel1": "keyWheel1",
+    "keyWheel2": "keyWheel2",
+    "keyWheel3": "keyWheel3",
+    "keyWheel4": "keyWheel4",
+    "keyWheel5": "keyWheel5",
+    "keyWheel6": "keyWheel6",
+    "keyWheel7": "keyWheel7",
+    "keyWheel8": "keyWheel8",
+    "keyWheel9": "keyWheel9",
+    "keyWheel10": "keyWheel10",
+    "keyWheel11": "keyWheel11",
+    "keyWheel12": "keyWheel12",
 }
 
 TYPO_MAP = {

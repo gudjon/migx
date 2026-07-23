@@ -5,7 +5,8 @@ time, each proving the full stack — primitive → view → ViewModel → engin
 fixture-runnable (nextgen-ui-architecture). Components live flat in `components/` while the deck is the
 only context; they migrate to `components/deck/` when a second context (mixer) lands.
 
-Components: **transport** (play/pause) · **clock** (elapsed/remaining/total).
+Components: **transport** (play/pause) · **clock** (elapsed/remaining/total) · **identity** (art · title ·
+artist · BPM · colour-coded KEY).
 
 ## Files
 | File | Layer | Role |
@@ -15,6 +16,9 @@ Components: **transport** (play/pause) · **clock** (elapsed/remaining/total).
 | `DeckTransportModel.qml` | component (ViewModel) | engine touch: `Mixxx.ControlProxy` for `play` + `track_loaded` |
 | `DeckClock.qml` | component (view) | dumb: renders `elapsed/remaining/total/ending`; no engine touch |
 | `DeckClockModel.qml` | component (ViewModel) | read-only engine touch: derives time from `duration` + `playposition` |
+| `../primitives/NgBadge.qml` | primitive | token-only pill; `accent` = key-wheel colour (reused in ARRANGE) |
+| `DeckIdentity.qml` | component (view) | dumb: art · title · artist · BPM/KEY badges; KEY coloured via `Theme.keyWheelN` |
+| `DeckIdentityModel.qml` | component (ViewModel) | read-only: track (PlayerManager) + `bpm`/`key` COs; ChromaticKey→musical+Camelot |
 
 ## Engine bindings (CO/proxy)
 | ControlObject | Proxy | Direction |
@@ -24,6 +28,9 @@ Components: **transport** (play/pause) · **clock** (elapsed/remaining/total).
 | `[ChannelN],track_loaded` | `DeckClockModel.loadedControl` | read (`hasTrack`) |
 | `[ChannelN],duration` | `DeckClockModel.durationControl` | read (`total`, seconds) |
 | `[ChannelN],playposition` | `DeckClockModel.positionControl` | read (0..1 → `elapsed`/`remaining`) |
+| PlayerManager `getPlayer(group).currentTrack` | `DeckIdentityModel.currentTrack` | read (`title`/`artist`/`coverArtUrl`) |
+| `[ChannelN],bpm` | `DeckIdentityModel.bpmControl` | read (`bpmText`) |
+| `[ChannelN],key` | `DeckIdentityModel.keyControl` | read (ChromaticKey 1..24 → musical + Camelot + wheel colour) |
 
 ## States (all handled)
 **Transport** — no track → button disabled, "no track loaded"; paused → "PLAY", "❚❚ paused";

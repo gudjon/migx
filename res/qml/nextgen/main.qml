@@ -125,9 +125,23 @@ ApplicationWindow {
                 id: deck1Clock
                 group: "[Channel1]"
             }
+            DeckIdentityModel {
+                id: deck1Identity
+                group: "[Channel1]"
+            }
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: Theme.space16
+                DeckIdentity {
+                    Layout.alignment: Qt.AlignHCenter
+                    hasTrack: deck1Identity.hasTrack
+                    title: deck1Identity.title
+                    artist: deck1Identity.artist
+                    artUrl: deck1Identity.artUrl
+                    bpmText: deck1Identity.bpmText
+                    keyText: deck1Identity.keyText
+                    keyCamelot: deck1Identity.keyCamelot
+                }
                 DeckClock {
                     Layout.alignment: Qt.AlignHCenter
                     hasTrack: deck1Clock.hasTrack
@@ -145,7 +159,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "the deck-shell grows here · clock + transport (Deck 1)"
+                    text: "deck-shell (Deck 1) · identity + clock + transport"
                     color: Theme.midGray
                     font.pixelSize: Theme.fontSizeXs
                 }

@@ -99,6 +99,21 @@ QtObject {
     property color modeArrange: "#fca001"
     property color modeLibrary: "#9b7bf0"
 
+    // Camelot key-wheel colours (generated from DESIGN.md; cap-harmonic-key). One hue
+    // per Camelot number 1..12; index via Theme["keyWheel" + n]. Minor/major share the hue.
+    property color keyWheel1: "#d44949"
+    property color keyWheel2: "#d47e49"
+    property color keyWheel3: "#d4a949"
+    property color keyWheel4: "#d4d449"
+    property color keyWheel5: "#a9d449"
+    property color keyWheel6: "#49d449"
+    property color keyWheel7: "#49d4a9"
+    property color keyWheel8: "#49b4d4"
+    property color keyWheel9: "#4979d4"
+    property color keyWheel10: "#7e49d4"
+    property color keyWheel11: "#b449d4"
+    property color keyWheel12: "#d449a9"
+
     // NextGen layout/interaction tokens (generated from DESIGN.md; nextgen-ui-architecture)
     property int space0: 0
     property int space2: 2

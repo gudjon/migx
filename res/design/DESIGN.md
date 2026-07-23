@@ -39,6 +39,22 @@ colors:
   modePerform: "#01dcfc"
   modeArrange: "#fca001"
   modeLibrary: "#9b7bf0"
+  # Camelot/Lancelot key-wheel colours (cap-harmonic-key): one hue per Camelot number
+  # (1..12) around the wheel, so harmonically-compatible keys — same number, or the
+  # adjacent number — are scannable by colour (Traktor learning). Minor (A) and major
+  # (B) share the number's hue; the A/B letter is carried in text, not colour.
+  keyWheel1: "#d44949"
+  keyWheel2: "#d47e49"
+  keyWheel3: "#d4a949"
+  keyWheel4: "#d4d449"
+  keyWheel5: "#a9d449"
+  keyWheel6: "#49d449"
+  keyWheel7: "#49d4a9"
+  keyWheel8: "#49b4d4"
+  keyWheel9: "#4979d4"
+  keyWheel10: "#7e49d4"
+  keyWheel11: "#b449d4"
+  keyWheel12: "#d449a9"
 typography:
   fontFamily: "Open Sans"
   buttonFontPixelSize: 10
