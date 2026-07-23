@@ -107,6 +107,20 @@ Narrow category power: *audience intelligence / journey design for DJs who desig
 
 Live narrative detail → `migx-brand-positioning-experience-designer.md`.
 
+### BRND-P1.5 Field root (X trending — do not invent culture)
+
+**Refresh:** `kanban/federation/signal/2026-07-23-x-brand-dj-identity-field.md`
+
+| Field fact | Positioning move |
+|---|---|
+| Curation sacred on X | Category ≠ “AI jukebox” |
+| “Will AI replace DJs?” is live discourse | POV: assist, never replace |
+| Local/no-cloud AI tools get respect | Attribute: on-device option, no tracking as brand promise candidate |
+| Serato owns “instrument gold standard” in many scenes | File us as **night design + intelligence on deep instrument** |
+| Nightlife brands lead with energy/arc | Messaging/visual: room energy before SaaS |
+
+When drafting copy, **prefer field-native words** (curation, craft, room, energy) over pure workshop jargon until interviews validate “experience designer.”
+
 ---
 
 ## BRND-P2 Messaging
@@ -250,6 +264,7 @@ Checklist in P4.1 — tick boxes; store gaps as tasks.
 | Enemy test | Does Automix buyer feel unwelcome? (good) |
 | Mom-Test interviews | Past behavior: how they design nights today (DC-PDCL) |
 | Touchpoint audit | App, README, social — same voice? |
+| **X field check** | Re-read latest `signal-*-x-brand-dj-identity-field`; hero line must not sound like streaming AI DJ or “we replace you” |
 
 ---
 

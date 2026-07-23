@@ -21,11 +21,13 @@ related:
   - nextgen-agent-dj-shadow-product
   - world-model-experience-ontology
   - brand-diy-positioning-lock
+  - signal-2026-07-23-x-brand-dj-identity-field
 sources:
   - "Owner brand workshop notes 2026-07-23 (history → identity → names → category)"
   - "Strategy: Cursor-for-AI-DJing; Automix is anti-identity; co-pilot in the flow"
   - "Field: curation culture; function crates; next-track under load"
   - "BRND playbook (four pillars + Dunford method) processed into kanban 2026-07-23"
+  - "X 2026-07 field scan: curation sacred; AI-replace anxiety; local no-cloud auto-DJ; Serato category gold; nightlife energy brands"
 ---
 
 # Brand & positioning — the DJ as experience designer
@@ -34,6 +36,28 @@ sources:
 **Job of this note:** live **product brand claims** (spine, category, names, manifesto).  
 **Process / how to brand:** `kanban/playbook/branding/` (`BRND-*` pillars, DIY ladder, mistakes).  
 **Owner lock task:** `kanban/tasks/brand-diy-positioning-lock.md` (BRND-DIY-1/2).
+
+---
+
+## 0. X field root (trending reality — refresh via signal)
+
+**SSoT scan:** `kanban/federation/signal/2026-07-23-x-brand-dj-identity-field.md`  
+Brand claims that contradict field culture will fail BRND-DIY-5.
+
+| X trend (2025–26) | What it means for Migx brand |
+|---|---|
+| **Curation is identity** | “Value curation” / dug crates / real booking > random “tag a DJ” | Hero = craft + selection, not autopilot |
+| **AI will replace you?** | Industry panels (e.g. DJX education tracks) | Answer on homepage: intelligence **serves** judgment |
+| **Local / no online AI DJ** | Indie product rules: offline, deterministic, no tracking | Aligns Cursor-path privacy; don’t brand as cloud-AI-DJ |
+| **Spotify-style AI DJ** | Streaming companion chat — not club craft | Explicit **not that category** |
+| **Serato as gold standard** | Cultural lock-in, acquisition narrative, muscle memory | Compete on **journey/audience intelligence layer**, not “better Serato clone” |
+| **Nightlife brands sell energy/arc** | “4 nights, 4 energies”; motion for clubs | Visual/voice: arc, energy, night — booth dark, not SaaS purple |
+| **DJs buy personal brand help** | EPKs, “DJ brand that books” | We sell **tools that make nights**; they still own their face brand |
+| **Library/crate search as workflow** | Serato crate search love | Product proof for “design the night” |
+
+**Public vocabulary (field-native first):** curation, craft, reading the room, energy, crates, night, journey, keep the decks.  
+**Manifesto vocabulary (OK secondary):** experience designer, conductor, arc.  
+**Avoid as hero:** “AI DJ,” set-and-forget, we play for you.
 
 ---
 
