@@ -1,0 +1,243 @@
+{
+  "keymap": [
+    {
+      "key_id": 1,
+      "key_name": "C_MAJOR",
+      "camelot_number": 8,
+      "camelot_label": "8B",
+      "label": "C \u00b7 8B"
+    },
+    {
+      "key_id": 2,
+      "key_name": "D_FLAT_MAJOR",
+      "camelot_number": 3,
+      "camelot_label": "3B",
+      "label": "D\u266d \u00b7 3B"
+    },
+    {
+      "key_id": 3,
+      "key_name": "D_MAJOR",
+      "camelot_number": 10,
+      "camelot_label": "10B",
+      "label": "D \u00b7 10B"
+    },
+    {
+      "key_id": 4,
+      "key_name": "E_FLAT_MAJOR",
+      "camelot_number": 5,
+      "camelot_label": "5B",
+      "label": "E\u266d \u00b7 5B"
+    },
+    {
+      "key_id": 5,
+      "key_name": "E_MAJOR",
+      "camelot_number": 12,
+      "camelot_label": "12B",
+      "label": "E \u00b7 12B"
+    },
+    {
+      "key_id": 6,
+      "key_name": "F_MAJOR",
+      "camelot_number": 7,
+      "camelot_label": "7B",
+      "label": "F \u00b7 7B"
+    },
+    {
+      "key_id": 7,
+      "key_name": "F_SHARP_MAJOR",
+      "camelot_number": 2,
+      "camelot_label": "2B",
+      "label": "G\u266d \u00b7 2B"
+    },
+    {
+      "key_id": 8,
+      "key_name": "G_MAJOR",
+      "camelot_number": 9,
+      "camelot_label": "9B",
+      "label": "G \u00b7 9B"
+    },
+    {
+      "key_id": 9,
+      "key_name": "A_FLAT_MAJOR",
+      "camelot_number": 4,
+      "camelot_label": "4B",
+      "label": "A\u266d \u00b7 4B"
+    },
+    {
+      "key_id": 10,
+      "key_name": "A_MAJOR",
+      "camelot_number": 11,
+      "camelot_label": "11B",
+      "label": "A \u00b7 11B"
+    },
+    {
+      "key_id": 11,
+      "key_name": "B_FLAT_MAJOR",
+      "camelot_number": 6,
+      "camelot_label": "6B",
+      "label": "B\u266d \u00b7 6B"
+    },
+    {
+      "key_id": 12,
+      "key_name": "B_MAJOR",
+      "camelot_number": 1,
+      "camelot_label": "1B",
+      "label": "B \u00b7 1B"
+    },
+    {
+      "key_id": 13,
+      "key_name": "C_MINOR",
+      "camelot_number": 5,
+      "camelot_label": "5A",
+      "label": "Cm \u00b7 5A"
+    },
+    {
+      "key_id": 14,
+      "key_name": "C_SHARP_MINOR",
+      "camelot_number": 12,
+      "camelot_label": "12A",
+      "label": "C\u266fm \u00b7 12A"
+    },
+    {
+      "key_id": 15,
+      "key_name": "D_MINOR",
+      "camelot_number": 7,
+      "camelot_label": "7A",
+      "label": "Dm \u00b7 7A"
+    },
+    {
+      "key_id": 16,
+      "key_name": "E_FLAT_MINOR",
+      "camelot_number": 2,
+      "camelot_label": "2A",
+      "label": "E\u266dm \u00b7 2A"
+    },
+    {
+      "key_id": 17,
+      "key_name": "E_MINOR",
+      "camelot_number": 9,
+      "camelot_label": "9A",
+      "label": "Em \u00b7 9A"
+    },
+    {
+      "key_id": 18,
+      "key_name": "F_MINOR",
+      "camelot_number": 4,
+      "camelot_label": "4A",
+      "label": "Fm \u00b7 4A"
+    },
+    {
+      "key_id": 19,
+      "key_name": "F_SHARP_MINOR",
+      "camelot_number": 11,
+      "camelot_label": "11A",
+      "label": "F\u266fm \u00b7 11A"
+    },
+    {
+      "key_id": 20,
+      "key_name": "G_MINOR",
+      "camelot_number": 6,
+      "camelot_label": "6A",
+      "label": "Gm \u00b7 6A"
+    },
+    {
+      "key_id": 21,
+      "key_name": "G_SHARP_MINOR",
+      "camelot_number": 1,
+      "camelot_label": "1A",
+      "label": "G\u266fm \u00b7 1A"
+    },
+    {
+      "key_id": 22,
+      "key_name": "A_MINOR",
+      "camelot_number": 8,
+      "camelot_label": "8A",
+      "label": "Am \u00b7 8A"
+    },
+    {
+      "key_id": 23,
+      "key_name": "B_FLAT_MINOR",
+      "camelot_number": 3,
+      "camelot_label": "3A",
+      "label": "B\u266dm \u00b7 3A"
+    },
+    {
+      "key_id": 24,
+      "key_name": "B_MINOR",
+      "camelot_number": 10,
+      "camelot_label": "10A",
+      "label": "Bm \u00b7 10A"
+    }
+  ],
+  "states": [
+    {
+      "id": "no-track",
+      "track_loaded": 0,
+      "title": "",
+      "artist": "",
+      "art_url": "",
+      "bpm": 0,
+      "key": 0,
+      "expect": {
+        "has_track": false,
+        "title_text": "\u2014 no track \u2014",
+        "artist_visible": false,
+        "art_source": "",
+        "bpm_text": "--",
+        "bpm_badge": "-- BPM",
+        "key_text": "--",
+        "key_badge": "--",
+        "key_camelot": 0,
+        "key_color": "Theme.transparent",
+        "title_elides": false
+      }
+    },
+    {
+      "id": "loaded",
+      "track_loaded": 1,
+      "title": "Demo Deck A - 128 BPM Am",
+      "artist": "Migx Fixture",
+      "art_url": "file:///fixtures/art/demo-a.png",
+      "bpm": 128.0,
+      "key": 22,
+      "expect": {
+        "has_track": true,
+        "title_text": "Demo Deck A - 128 BPM Am",
+        "artist_text": "Migx Fixture",
+        "artist_visible": true,
+        "art_source": "file:///fixtures/art/demo-a.png",
+        "bpm_text": "128.0",
+        "bpm_badge": "128.0 BPM",
+        "key_text": "Am \u00b7 8A",
+        "key_badge": "Am \u00b7 8A",
+        "key_camelot": 8,
+        "key_color": "Theme.keyWheel8",
+        "title_elides": false
+      }
+    },
+    {
+      "id": "long-title",
+      "track_loaded": 1,
+      "title": "This Is A Very Long Track Title That Must Elide Inside The NextGen Deck Identity Strip",
+      "artist": "Long Title Artist",
+      "art_url": "",
+      "bpm": 125.456,
+      "key": 20,
+      "long_title_min_chars": 48,
+      "expect": {
+        "has_track": true,
+        "title_text": "This Is A Very Long Track Title That Must Elide Inside The NextGen Deck Identity Strip",
+        "artist_text": "Long Title Artist",
+        "artist_visible": true,
+        "art_source": "",
+        "bpm_text": "125.5",
+        "bpm_badge": "125.5 BPM",
+        "key_text": "Gm \u00b7 6A",
+        "key_badge": "Gm \u00b7 6A",
+        "key_camelot": 6,
+        "key_color": "Theme.keyWheel6",
+        "title_elides": true
+      }
+    }
+  ]
+}

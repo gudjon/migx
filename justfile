@@ -152,6 +152,7 @@ ng-ui-lint:
 # NextGen deck bounded-context fixture judge.
 ng-deck-judge: ng-ui-lint
     tools/ng-judge deck clock-states --fixture fixtures/deck-clock-states.json
+    tools/ng-judge deck identity-states --fixture fixtures/deck-identity-states.json
 
 # NextGen ARRANGE / music-management module judge (offline fixture; no network).
 ng-music-judge: ng-ui-lint
