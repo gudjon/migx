@@ -309,6 +309,8 @@ Staging ≠ playable deck. Playable cap (4–6) is engine policy; stage list is 
 
 **Competitive UI:** ARRANGE must not recreate rekordbox “library dock under dual decks” — see `rekordbox-7-ui-teardown.md` §3–4 (refuse dock; steal mini-wave list + radar-as-assist).
 
+**KEYMAP harmony (Codex floor 2026-07-23):** Mode hotkeys and ARRANGE actions are declared in `res/design/KEYMAP.md` (PERFORM `⌘1`, ARRANGE `⌘2`, LIBRARY `⌘3`). Community chips never invent live network paths; shortcut proposals cite KEYMAP + engine `en_US.kbd.cfg` reconciliation.
+
 ---
 
 ## 9. Claims

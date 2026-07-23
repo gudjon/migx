@@ -30,6 +30,8 @@ sources:
 
 UI implication (already in modes doc): chips are **sourced + dated**, secondary to local mixability; never rank only on YT views.
 
+**Coordination floor (2026-07-23 Codex):** ARRANGE/hot-path chips stay **cached/offline only** (`just ng-music-judge` no-network). Any new live **action or shortcut** from signal work must include a row in `res/design/KEYMAP.md` and state whether it is current engine map (`res/keyboard/en_US.kbd.cfg`) or a proposed alias.
+
 ---
 
 ## 1. Source matrix
