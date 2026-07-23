@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-07-23-003-verify-capability-catalogue
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: closed
 created: "2026-07-23"
 created_utc: "2026-07-23T06:49:20Z"
 severity: medium
@@ -42,3 +42,6 @@ digitaldjtips landscape). Core-domain bet = Intelligence/co-pilot (no rival ship
 
 ## Blockers
 None. Catalogue is committed; deck-track-identity module is in owner review, not yet built against it.
+
+## Resolution
+Verified by Codex: capability map shape is sound. Corrected pseudo arch-* mappings (arch-network, arch-engine-realtime/sync), clarified Intelligence boundaries, added cap-keyboard-shortcuts, and documented verification rules. P-06 remains enforced at module/CO boundary; no capability owns a second writer.

@@ -46,6 +46,15 @@ and shared kernel (`Theme` tokens + primitives). One writer per CO (P-06). A cap
 NextGen module (its own dir + `MODULE.md`); its truth (bindings, tokens, keymap, wireframe) lives at the
 SSoT paths named in its card — cited, never copied (MG-3).
 
+## Verification notes (Codex 2026-07-23)
+- Engine-context mappings name existing `arch-*` bounded contexts only. External feeds, EXO tools, and
+  future services can appear in SSoT notes, but not as invented context IDs.
+- The ControlObject bus is an implicit seam for QML modules. List `arch-control-messaging` only when the
+  capability owns input/binding semantics; otherwise name the context that owns the underlying product
+  truth.
+- Intelligence is core under ADR-005. Supporting/generic capabilities may feed Intelligence, but they do
+  not become core unless they create the co-pilot/session-planning advantage.
+
 ## Roster
 | id | subdomain | class | UI mode | engine context(s) | UI module (status) |
 |---|---|---|---|---|---|
@@ -55,21 +64,22 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-waveform | Playback | supporting | PERFORM | arch-waveform-render, arch-rendergraph | planned (Metal-pinned) |
 | cap-hotcues | Playback | supporting | PERFORM | arch-engine-realtime (cue) | planned |
 | cap-loops | Playback | supporting | PERFORM | arch-engine-realtime (loop) | planned |
-| cap-tempo-sync | Playback | supporting | PERFORM | arch-engine-realtime/sync | planned |
+| cap-tempo-sync | Playback | supporting | PERFORM | arch-engine-realtime | planned |
 | cap-mixer-eq | Mixing | supporting | PERFORM | arch-mixer-decks | planned |
 | cap-fx | Mixing | supporting | PERFORM | arch-effects-chain | planned |
 | cap-stems | Mixing | supporting | PERFORM | arch-engine-realtime, arch-analyzer | planned |
 | cap-headphone-cue | Mixing | generic | PERFORM | arch-mixer-decks | planned |
-| **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model + EXO | planned (tools/exo/ exists) |
+| **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model, arch-analyzer | planned (tools/exo/ exists) |
 | **cap-harmonic-key** | **Intelligence** | **core** | ARRANGE/LIBRARY | arch-analyzer, arch-track-model | planned (badge in deck-track-identity) |
 | cap-energy-structure | Intelligence | core | ARRANGE | arch-analyzer | planned |
-| cap-community-signal | Intelligence | core | ARRANGE | arch-musicbrainz/network + external | planned (Grok sourcing) |
+| cap-community-signal | Intelligence | core | ARRANGE | arch-musicbrainz, arch-library-db, arch-track-model | planned (Grok sourcing) |
 | cap-library-crates | Collection | supporting | LIBRARY | arch-library-db | planned |
 | cap-analysis-prep | Collection | supporting | LIBRARY | arch-analyzer, arch-sources-decode | planned |
-| cap-streaming | Collection | generic | LIBRARY | arch-library-db, arch-network | planned |
+| cap-streaming | Collection | generic | LIBRARY | arch-library-db, arch-sources-decode | planned |
 | cap-recording | Output | generic | chrome | broadcast+recording (cross-cutting) | planned |
 | cap-broadcast | Output | generic | chrome | broadcast+recording (cross-cutting) | planned (non-modal fix landed) |
 | cap-controllers-midi | Integration | generic | chrome | arch-controllers-mapping | planned |
+| cap-keyboard-shortcuts | Integration | generic | all | arch-controllers-mapping, arch-qml-ui | built (KEYMAP + ng-ui-lint) |
 | cap-sampler | Integration | generic | PERFORM | arch-engine-realtime (samplers) | planned |
 | cap-mode-shell | Chrome | supporting | all | arch-qml-ui | main.qml shell (**built**) |
 
@@ -100,7 +110,7 @@ Metal-pinned — planned post-unpin. **Planned.**
 **cap-loops** — *owns*: repeatable sections (auto + manual). *SSoT*: `[ChannelN],loop_*`; KEYMAP. *UX*: Traktor
 "industry-leading looping" is the bar; keep controls low-load, beat-quantised. **Planned.**
 
-**cap-tempo-sync** — *owns*: pitch/tempo + beat-sync + master. *not*: EQ. *SSoT*: arch-engine-realtime/sync;
+**cap-tempo-sync** — *owns*: pitch/tempo + beat-sync + master. *not*: EQ. *SSoT*: arch-engine-realtime;
 `[ChannelN],rate`/`sync_*`/`bpm`. *UX*: sync visible but not dominant; no oversized BPM (djworx critique). **Planned.**
 
 ### Mixing (PERFORM · supporting)
@@ -125,13 +135,18 @@ rivals who show key and leave the DJ to compute. Non-modal, glanceable chips. **
 **cap-harmonic-key** — *owns*: key detection → Camelot/Open-Key + **compatibility scoring**. *SSoT*:
 arch-analyzer + `tools/exo` key→Camelot. *UX*: **colour-coded key** everywhere (Traktor) — deck badge,
 ARRANGE rows, co-pilot chips; compatible = scannable by colour. **Planned (badge in deck-track-identity).**
+Boundary: harmonic-key owns the reusable key representation and pairwise compatibility primitive; the
+co-pilot owns ranked recommendations that consume it.
 
 **cap-energy-structure** — *owns*: energy/vibe + song structure (intro/drop/break). *SSoT*: arch-analyzer.
 *UX*: feeds structural hot cues + set-arc planning. **Planned.**
+Boundary: energy-structure owns derived track facts; the co-pilot owns set-level choices that consume
+those facts.
 
-**cap-community-signal** — *owns*: external popularity/heat (YT listens, Mixcloud/SoundCloud/Beatport setlist
-appearances). *SSoT*: arch-network + external feeds; EVD notes. *UX*: signal chips per track; v1 fetchable vs
-v2 licensed (Grok sourcing). **Planned.**
+**cap-community-signal** — *owns*: cached external popularity/heat chips with provenance. *SSoT*:
+offline sidecars/cache + arch-library-db/track-model persistence + arch-musicbrainz-style async worker
+patterns; Grok sourcing notes. *UX*: signal chips per track; v1 YT/BP/SC/local heuristics only, true
+setlist appearances require licensed v2 feed. **Planned.**
 
 ### Collection (LIBRARY · supporting/generic)
 **cap-library-crates** — *owns*: collection/playlists/crates browse + organize. *SSoT*: arch-library-db.
@@ -140,8 +155,9 @@ v2 licensed (Grok sourcing). **Planned.**
 **cap-analysis-prep** — *owns*: pre-gig analysis (BPM/key/beatgrid/waveform/energy). *SSoT*: arch-analyzer.
 *UX*: rekordbox's "unrivalled prep" is the bar; run ahead-of-time, never mid-set. **Planned.**
 
-**cap-streaming** — *owns*: streaming-service tracks. *SSoT*: arch-library-db + arch-network. *UX*: uniform
-with local rows. **Planned (generic).**
+**cap-streaming** — *owns*: streaming-service tracks. *SSoT*: arch-library-db + arch-sources-decode adapters. *UX*: uniform
+with local rows. **Planned (generic).** Boundary: when streaming grows beyond source/decode + library
+adapters, create a real network-services bounded context instead of reusing an unnamed pseudo-context.
 
 ### Output · Integration · Chrome (generic)
 **cap-recording** / **cap-broadcast** — *owns*: set capture / live stream. *SSoT*: broadcast+recording
@@ -150,6 +166,10 @@ cross-cutting. *UX*: **non-modal** status only — the broadcast modal-error was
 
 **cap-controllers-midi** — *owns*: hardware mapping. *SSoT*: arch-controllers-mapping + `res/keyboard/`+KEYMAP
 (one binding, two surfaces). **Planned.**
+
+**cap-keyboard-shortcuts** — *owns*: keyboard action declarations, collision hygiene, and QML shortcut
+coverage. *SSoT*: `res/design/KEYMAP.md` + `res/keyboard/en_US.kbd.cfg` + `just ng-ui-lint`. *not*:
+hardware MIDI/HID mapping. **Built.**
 
 **cap-sampler** — *owns*: one-shot/loop sample slots. *SSoT*: arch-engine-realtime samplers. **Planned.**
 
