@@ -6,7 +6,8 @@ fixture-runnable (nextgen-ui-architecture). Components live flat in `components/
 only context; they migrate to `components/deck/` when a second context (mixer) lands.
 
 Components: **transport** (play/pause) · **clock** (elapsed/remaining/total) · **identity** (art · title ·
-artist · BPM · colour-coded KEY).
+artist · BPM · colour-coded KEY) · **strip** (composes the three into one horizontal deck row; PERFORM
+tiles N strips vertically — perform-multideck-layout).
 
 ## Files
 | File | Layer | Role |

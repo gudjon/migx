@@ -23,6 +23,9 @@ ApplicationWindow {
     // (just dev-fixtures). Quiet no-op in a release bundle. Gives the deck-shell real data.
     NgDevBench {}
 
+    // The decks PERFORM tiles (dual-deck default; flexible to N — perform-multideck-layout).
+    readonly property var performDecks: ["[Channel1]", "[Channel2]"]
+
     // Full-screen modes the DJ switches between (nextgen-dj-ux-modes-and-signal).
     readonly property var modeNames: ["PERFORM", "ARRANGE", "LIBRARY"]
     readonly property var modeColors: [Theme.modePerform, Theme.modeArrange, Theme.modeLibrary]
@@ -111,7 +114,7 @@ ApplicationWindow {
         anchors.fill: parent
         currentIndex: root.mode
 
-        // 0 · PERFORM — first uplifted component: deck transport (Deck 1)
+        // 0 · PERFORM — vertical stack of deck strips (dual-deck default, flexible to N)
         Rectangle {
             color: Theme.sunkenBackgroundColor
             Rectangle { // mode accent bar
@@ -121,52 +124,21 @@ ApplicationWindow {
                 height: Theme.space3
                 color: Theme.modePerform
             }
-            DeckTransportModel {
-                id: deck1
-                group: "[Channel1]"
-            }
-            DeckClockModel {
-                id: deck1Clock
-                group: "[Channel1]"
-            }
-            DeckIdentityModel {
-                id: deck1Identity
-                group: "[Channel1]"
-            }
             ColumnLayout {
-                anchors.centerIn: parent
-                spacing: Theme.space16
-                DeckIdentity {
-                    Layout.alignment: Qt.AlignHCenter
-                    hasTrack: deck1Identity.hasTrack
-                    title: deck1Identity.title
-                    artist: deck1Identity.artist
-                    artUrl: deck1Identity.artUrl
-                    bpmText: deck1Identity.bpmText
-                    keyText: deck1Identity.keyText
-                    keyCamelot: deck1Identity.keyCamelot
+                anchors.fill: parent
+                anchors.margins: Theme.space18
+                spacing: Theme.space12
+                Repeater {
+                    model: root.performDecks
+                    delegate: DeckStrip {
+                        required property int index
+                        required property string modelData
+                        Layout.fillWidth: true
+                        group: modelData
+                        deckLabel: "DECK " + (index + 1)
+                    }
                 }
-                DeckClock {
-                    Layout.alignment: Qt.AlignHCenter
-                    hasTrack: deck1Clock.hasTrack
-                    elapsed: deck1Clock.elapsed
-                    remaining: deck1Clock.remaining
-                    total: deck1Clock.total
-                    ending: deck1Clock.ending
-                }
-                DeckTransport {
-                    Layout.alignment: Qt.AlignHCenter
-                    deckLabel: "DECK 1"
-                    playing: deck1.playing
-                    hasTrack: deck1.hasTrack
-                    onToggleRequested: deck1.togglePlay()
-                }
-                Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "deck-shell (Deck 1) · identity + clock + transport"
-                    color: Theme.midGray
-                    font.pixelSize: Theme.fontSizeXs
-                }
+                Item { Layout.fillHeight: true } // keep strips top-aligned
             }
         }
         // 1 · ARRANGE — the differentiator: find the next track, fast
