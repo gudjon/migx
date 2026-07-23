@@ -69,7 +69,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-fx | Mixing | supporting | PERFORM | arch-effects-chain | planned |
 | cap-stems | Mixing | supporting | PERFORM | arch-engine-realtime, arch-analyzer | planned |
 | cap-headphone-cue | Mixing | generic | PERFORM | arch-mixer-decks | planned |
-| **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model, arch-analyzer | planned (tools/exo/ exists) |
+| **cap-copilot-suggestion** | **Intelligence** | **core** | ARRANGE | arch-library-db, arch-track-model, arch-analyzer | **draft, in review** (arrange-nexttrack-list) |
 | **cap-harmonic-key** | **Intelligence** | **core** | ARRANGE/LIBRARY | arch-analyzer, arch-track-model | partial — colour-coded KEY badge **built**; compatibility scoring planned |
 | cap-energy-structure | Intelligence | core | ARRANGE | arch-analyzer | planned |
 | cap-community-signal | Intelligence | core | ARRANGE | arch-musicbrainz, arch-library-db, arch-track-model | planned (Grok sourcing) |
