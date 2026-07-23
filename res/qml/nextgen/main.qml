@@ -1,12 +1,14 @@
-// Migx NextGen — shadow UI shell (ADR-007). Loaded via QmlApplication with
-// `--nextgen`, reusing the shared engine + ControlObject bus; NO legacy skin/
-// widget chrome. This scaffold (module step 0) proves the shell + the full-screen
-// mode model + the DESIGN.md aesthetic. Real modules (deck-shell, music-management)
-// land in the mode panels per the ADR-007 build order. Non-modal by construction:
-// modes are modes, never blocking dialogs; nothing here interrupts playback.
+// Migx NextGen — shadow UI shell (ADR-007 · nextgen-ui-architecture).
+// The shell owns the active mode and hosts the three full-screen modes. Every
+// visual value is a DESIGN.md token via `Theme` (invariant #1: no hardcoded
+// literals). Modes are modes, never blocking dialogs; nothing here interrupts
+// playback (invariant #5, ui-non-modal-error-ux). Real modules land in the mode
+// panels per the ADR-007 build order.
 import QtQuick 2.12
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../Theme"
+import "primitives"
 
 ApplicationWindow {
     id: root
@@ -14,30 +16,24 @@ ApplicationWindow {
     width: 1280
     height: 800
     title: "Migx NextGen"
+    color: Theme.sunkenBackgroundColor
 
-    // DESIGN.md tokens (scaffold; res/design/DESIGN.md → Theme.qml generation lands
-    // as the design-system module — kept inline here so the shell is self-contained
-    // and carries no legacy Theme dependency).
-    readonly property color surface: "#1e1e1e"
-    readonly property color sunken: "#0c0c0c"
-    readonly property color textPrimary: "#ededed"
-    readonly property color textMuted: "#8a8a8a"
-    readonly property color accent: "#3b82f6"
-
-    // The DJ switches between full-screen modes (nextgen-dj-ux-modes-and-signal).
-    property int mode: 0 // 0 PERFORM · 1 ARRANGE · 2 LIBRARY
-
-    color: sunken
+    // Full-screen modes the DJ switches between (nextgen-dj-ux-modes-and-signal).
+    readonly property var modeNames: ["PERFORM", "ARRANGE", "LIBRARY"]
+    readonly property var modeColors: [Theme.modePerform, Theme.modeArrange, Theme.modeLibrary]
+    property int mode: 0
+    readonly property color currentModeColor: modeColors[mode]
 
     header: ToolBar {
         padding: 0
         background: Rectangle {
-            color: root.surface
+            color: Theme.backgroundColor
+            // The active mode's identity color, as a thin bottom seam.
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
-                height: 1
-                color: "#000000"
+                height: 2
+                color: root.currentModeColor
             }
         }
         RowLayout {
@@ -45,14 +41,15 @@ ApplicationWindow {
             spacing: 0
             Label {
                 text: "◆ Migx NextGen"
-                color: root.accent
+                color: root.currentModeColor
                 font.pixelSize: 15
                 font.bold: true
                 leftPadding: 18
                 rightPadding: 28
+                Behavior on color { ColorAnimation { duration: 120 } }
             }
             Repeater {
-                model: ["PERFORM", "ARRANGE", "LIBRARY"]
+                model: root.modeNames
                 delegate: Button {
                     required property int index
                     required property string modelData
@@ -63,18 +60,28 @@ ApplicationWindow {
                     onClicked: root.mode = index
                     contentItem: Label {
                         text: modelData
-                        color: parent.checked ? root.accent : root.textPrimary
+                        color: parent.checked ? root.modeColors[index] : Theme.textColor
+                        opacity: parent.checked ? 1.0 : 0.7
                         font.pixelSize: 13
                         font.bold: parent.checked
                         verticalAlignment: Text.AlignVCenter
                     }
-                    background: Rectangle { color: "transparent" }
+                    background: Rectangle {
+                        color: "transparent"
+                        Rectangle { // active-tab underline in the mode's color
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            height: 2
+                            color: root.modeColors[index]
+                            visible: parent.parent.checked
+                        }
+                    }
                 }
             }
             Item { Layout.fillWidth: true }
             Label {
                 text: "engine: shared · non-modal"
-                color: root.textMuted
+                color: Theme.midGray
                 font.pixelSize: 11
                 rightPadding: 16
             }
@@ -86,38 +93,22 @@ ApplicationWindow {
         currentIndex: root.mode
 
         // 0 · PERFORM — the live multi-deck mix surface
-        Rectangle {
-            color: root.sunken
-            Label {
-                anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                color: root.textMuted
-                font.pixelSize: 15
-                text: "PERFORM\nmulti-deck mix surface — the deck-shell module lands here\n(dual-deck default · vertical N-deck · ~4–6 playable)"
-            }
+        NgModePlaceholder {
+            accent: Theme.modePerform
+            title: "PERFORM"
+            body: "multi-deck mix surface — the deck-shell module lands here\n(dual-deck default · vertical N-deck · ~4–6 playable)"
         }
-
         // 1 · ARRANGE — the differentiator: find the next track, fast
-        Rectangle {
-            color: root.sunken
-            Label {
-                anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                color: root.textMuted
-                font.pixelSize: 15
-                text: "ARRANGE\nmusic management under cognitive load — find the next track\n(artwork · key/bpm/energy · tags · playlists · community-signal chips)"
-            }
+        NgModePlaceholder {
+            accent: Theme.modeArrange
+            title: "ARRANGE"
+            body: "music management under cognitive load — find the next track\n(artwork · key/bpm/energy · tags · playlists · community-signal chips)"
         }
-
         // 2 · LIBRARY
-        Rectangle {
-            color: root.sunken
-            Label {
-                anchors.centerIn: parent
-                color: root.textMuted
-                font.pixelSize: 15
-                text: "LIBRARY"
-            }
+        NgModePlaceholder {
+            accent: Theme.modeLibrary
+            title: "LIBRARY"
+            body: "browse the collection"
         }
     }
 }

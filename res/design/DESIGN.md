@@ -33,6 +33,11 @@ colors:
   libraryPanelSplitterHandleActive: "#7a7a7a"
   deckInfoBarBackground: "#0e0e0e"
   deckEmptyCoverArt: "#3F3F3F"
+  # NextGen mode identity colors (nextgen-ui-architecture): each full-screen mode
+  # has its own accent so the DJ always knows the context at a glance.
+  modePerform: "#01dcfc"
+  modeArrange: "#fca001"
+  modeLibrary: "#9b7bf0"
 typography:
   fontFamily: "Open Sans"
   buttonFontPixelSize: 10

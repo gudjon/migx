@@ -45,6 +45,9 @@ COLOR_MAP = {
     "libraryPanelSplitterHandleActive": "libraryPanelSplitterHandleActive",
     "deckInfoBarBackground": "deckInfoBarBackgroundColor",
     "deckEmptyCoverArt": "deckEmptyCoverArt",
+    "modePerform": "modePerform",
+    "modeArrange": "modeArrange",
+    "modeLibrary": "modeLibrary",
 }
 
 TYPO_MAP = {

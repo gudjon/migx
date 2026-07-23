@@ -87,4 +87,9 @@ QtObject {
     property color waveformPrerollColor: midGray
     property color white: "#D9D9D9"
     property color yellow: "#fca001"
+
+    // NextGen mode identity colors (generated from DESIGN.md; nextgen-ui-architecture)
+    property color modePerform: "#01dcfc"
+    property color modeArrange: "#fca001"
+    property color modeLibrary: "#9b7bf0"
 }
