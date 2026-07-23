@@ -84,6 +84,22 @@ shortcut hints) — takes **minimum space and visual weight**; the content (deck
 the room. Shortcut hints are **on-demand** (hover/help), never permanent clutter. A DJ learns these once;
 the UI must not keep spending their attention on them. Every component is scored on this in its judge.
 
+## Module sizing & agent-coding guidelines (the loop's rules)
+Built one module at a time, each **strategic** — a bounded DDD unit, not a feature dump:
+- **No source file exceeds ~25k tokens.** Split before it grows; every file must be fully legible in a
+  single agent read. A file approaching the cap is a smell — extract a primitive/component/ViewModel.
+- **Small modules, one responsibility.** A module = one directory + one `MODULE.md`, one bounded
+  context (deck, mixer, arrange/library, co-pilot). No god-components; no cross-module reach-in — modules
+  compose via props/signals and the ControlObject bus, never by importing each other's internals.
+- **DDD boundaries.** The **shared kernel** = `Theme` tokens + `primitives/`. Each product area is its
+  own context under `components/`+`modes/`; contexts depend only on the shared kernel and the engine
+  proxies, not on each other.
+- **SSoT, cite don't copy.** Tokens → `DESIGN.md`; keymap → `KEYMAP.md`; each concept has one home;
+  `MODULE.md` references them, never duplicates.
+- **Agent-optimized by construction.** One component per file, declarative, token-only, fixture-runnable,
+  `MODULE.md` contract, judge-verified. An agent moves one module with zero global context; compiler +
+  theme-check + `ng-ui-lint` + the module judge are the referees.
+
 ## Build order (unchanged, now layered)
 `Theme/tokens → primitives → components → modes → deck-shell (first product module) → music-management
 mode → library → co-pilot → waveform (post-Metal unpin)`. Each lands behind its `MODULE.md` judge.
