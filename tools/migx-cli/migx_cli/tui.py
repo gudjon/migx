@@ -25,9 +25,18 @@ import os
 from pathlib import Path
 from typing import Any
 
-from . import config, layout, quality, resolve, sidecar, spark, tags
+from . import (
+    config,
+    layout,
+    mixing,
+    quality,
+    resolve,
+    sidecar,
+    spark,
+    tags,
+)
 
-PANES = ("Overview", "Library", "Arrange", "Prep", "Track")
+PANES = ("Overview", "Library", "Arrange", "Prep", "Track", "Deck")
 
 
 def _mirrors(mirror_root: Path) -> list[dict[str, Any]]:
@@ -74,7 +83,10 @@ def _collection(root: Path) -> list[dict[str, Any]]:
                 "artist": meta.get("artist") or "",
                 "tier": probe.get("tier") or "",
                 "bpm": meta.get("bpm") or side.get("bpm"),
-                "camelot": meta.get("camelot"),
+                # Same fallback as bpm: analysis lands in the sidecar,
+                # and only tags were being consulted here.
+                "camelot": meta.get("camelot") or side.get("camelot"),
+                "key": meta.get("key") or side.get("key"),
                 "duration_s": probe.get("duration_s"),
                 "energy": (side.get("energy_curve") or {}).get("all") or [],
                 "notes": side.get("notes") or "",
@@ -144,6 +156,8 @@ def snapshot() -> dict[str, Any]:
         "tiers": config.get(cfg, "quality.allow_tiers"),
         "linked_ok": config.get(cfg, "spotify.client_id") not in (None, ""),
         "selected": 0,
+        "deck_a": 0,
+        "deck_b": 1 if len(collection) > 1 else 0,
     }
 
 
@@ -209,6 +223,63 @@ def _selected(snap: dict[str, Any]) -> dict[str, Any] | None:
     return collection[max(0, min(index, len(collection) - 1))]
 
 
+def deck_view(
+    a: dict[str, Any] | None, b: dict[str, Any] | None, width: int = 64
+) -> list[tuple[str, list[int] | None]]:
+    """Two tracks stacked, with the transition between them.
+
+    Plans the move; it does not perform it. There is no deck or engine here,
+    so what this can honestly show is whether the pair works and which
+    technique the data supports.
+    """
+    if not a or not b:
+        return [("(pick two tracks: a/b in Library)", None)]
+
+    out: list[tuple[str, list[int] | None]] = []
+    for label, track in (("A", a), ("B", b)):
+        bpm = f"{round(track['bpm'])}" if track.get("bpm") else "--"
+        out.append((f"[{label}] {track['name'][:52]}", None))
+        out.append(
+            (
+                f"    {bpm} BPM  {track.get('camelot') or '--'}  "
+                f"{sidecar.fmt_position(track.get('duration_s'))}",
+                None,
+            )
+        )
+        energy = track.get("energy") or []
+        if energy:
+            for row, heats in spark.waveform(energy, width, 3):
+                out.append((row, heats))
+            for line in spark.cue_ruler(
+                track.get("cues") or [],
+                track.get("duration_s") or 0,
+                width,
+                labels=False,
+            ):
+                out.append((line, None))
+        else:
+            out.append(("    (not analysed)", None))
+        if label == "A":
+            out.append(("", None))
+
+    plan = mixing.plan(a, b)
+    out.append(("", None))
+    out.append(("-- transition A -> B " + "-" * max(0, width - 21), None))
+    out.append((f"  {plan['tempo']['note']}", None))
+    out.append((f"  {plan['harmonic']['note']}", None))
+    out.append(("", None))
+    for technique in plan["techniques"]:
+        bar = "#" * max(0, min(10, technique["score"] // 10))
+        out.append(
+            (
+                f"  {bar:<10} {technique['name']:<15} "
+                f"{'; '.join(technique['why'])[:width - 30]}",
+                None,
+            )
+        )
+    return out
+
+
 def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
     """Render one pane as plain lines — also what the tests assert on."""
     if pane == "Overview":
@@ -243,6 +314,11 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
                 f" {(g.get('title') or '')[:34]}"
             )
         return out or ["(no gaps — run library.missing)"]
+    if pane == "Deck":
+        collection = snap.get("collection") or []
+        a = collection[snap.get("deck_a", 0)] if collection else None
+        b = collection[snap.get("deck_b", 0)] if collection else None
+        return [text for text, _ in deck_view(a, b, 64)]
     if pane == "Track":
         return [text for text, _ in track_view(_selected(snap), 64, 6)]
     if pane == "_Notes":
@@ -381,7 +457,7 @@ def run() -> int:  # pragma: no cover - needs a terminal
             footer = (
                 f" {PANES[pane]}  {top + 1}-"
                 f"{min(len(rows), top + view)} of {len(rows)}"
-                "   j/k move  1-5 mode  t track  r refresh  q quit"
+                "   j/k move  1-6 mode  a/b deck  t track  d deck  q quit"
             )
             stdscr.addnstr(height - 1, 0, footer, width - 1, curses.A_REVERSE)
             stdscr.refresh()
@@ -414,7 +490,13 @@ def run() -> int:  # pragma: no cover - needs a terminal
                 snap = snapshot()
             elif key == ord("\t"):
                 pane, top = (pane + 1) % len(PANES), 0
-            elif ord("1") <= key <= ord("5"):
+            elif key == ord("a") and PANES[pane] == "Library":
+                snap["deck_a"] = snap.get("selected", 0)
+            elif key == ord("b") and PANES[pane] == "Library":
+                snap["deck_b"] = snap.get("selected", 0)
+            elif key == ord("d"):
+                pane, top = PANES.index("Deck"), 0
+            elif ord("1") <= key <= ord("6"):
                 pane, top = key - ord("1"), 0
 
     curses.wrapper(draw)
