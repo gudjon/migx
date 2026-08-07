@@ -2,7 +2,7 @@
 id: arcflow-utf8-panic-blocks-graph-load
 type: task
 title: "ArcFlow 0.11.9 panics on non-ASCII during relationship CREATE — blocks the mirror graph"
-status: blocked
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-ai-djing-product
@@ -82,7 +82,22 @@ tests; a Nordic/CJK fixture would have caught this.
 - **Strip accents before loading** — corrupts the data to suit the bug; the
   graph would no longer match the mirrors. Rejected.
 
-Blocked pending the upstream fix. The loader is committed and ready.
+**Resolved.** Fixed in the arcflow-core checkout; verified the 3-line repro
+exits 0 with the relationship created and `Ysée` intact, while the installed
+`~/.arcflow/bin/arcflow` still exits 134.
+
+Because the released binary lags the fix, the loader takes `--arcflow`
+(or `$MIGX_ARCFLOW_BIN`) so it can drive a patched build. Pointing at a build
+is reversible; overwriting the installed binary is not, so that is left to the
+owner.
+
+Full load against the patched build:
+
+```text
+83 mirrors -> 3727 tracks, 2961 artists, 83 playlists (14k statements), 3:27
+graph: 3720 Track · 2961 Artist · 83 Playlist · 5066 BY · 4416 ON
+non-ASCII intact: Ysée, trentemøller
+```
 
 ## Related
 
