@@ -12,11 +12,22 @@ PKCE/auth needs a live account and is not covered here.
 Run: python3 tools/migx-cli/test_migx_cli.py   (exit 0 = pass)
 """
 
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from migx_cli import mirror, naming, quality, resolve, tags  # noqa: E402
+from migx_cli import (  # noqa: E402
+    ingest,
+    layout,
+    mirror,
+    naming,
+    quality,
+    resolve,
+    tags,
+)
 
 
 def _id3(frames: dict[str, str], txxx: dict[str, str] | None = None) -> bytes:
@@ -222,7 +233,6 @@ def main() -> int:
     )
 
     # ---- quality gate: the bar is a contract on the file, not the pipeline
-    import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -378,11 +388,125 @@ def main() -> int:
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
 
+    # ---- DJ naming: the prefix appears only once the track is analysed
+    analysed = {
+        "artists": ["Amelie Lens"],
+        "title": "Feel It",
+        "bpm": 128,
+        "camelot": "8A",
+    }
+    check(
+        naming.render(analysed, template=naming.TEMPLATE_DJ)
+        == "128 8A - Amelie Lens - Feel It.mp3",
+        "dj template renders BPM and key",
+    )
+    check(
+        naming.render(
+            {"artists": ["X"], "title": "Y"}, template=naming.TEMPLATE_DJ
+        )
+        == "X - Y.mp3",
+        "unanalysed track drops the BPM/key prefix instead of writing 000 --",
+    )
+    check(
+        naming.render(
+            {"artists": ["X"], "title": "Y", "bpm": 99, "camelot": "1A"},
+            template=naming.TEMPLATE_DJ,
+        )
+        == "099 1A - X - Y.mp3",
+        "BPM zero-pads to 3 so 099 sorts before 128",
+    )
+
+    # ---- layout: shelves, symlinks, and the SSoT invariant
+    check(layout.alpha_bucket("Burial") == "B", "letter shelf")
+    check(layout.alpha_bucket("2 Bad Mice") == "0-9", "digit shelf")
+    check(layout.alpha_bucket("") == "#", "unknown shelf")
+    check(layout.alpha_bucket("Ólafur Arnalds") == "#", "non-ASCII initial")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        track = layout.collection_dir(root) / "R" / "Rick - Never.mp3"
+        track.parent.mkdir(parents=True)
+        track.write_bytes(_id3({"TIT2": "Never"}) + _mp3(14))
+
+        crate = layout.crate_dir(root, "Night - Club X")
+        link = layout.link_into_crate(track, crate)
+        check(link.is_symlink(), "crate entry is a symlink, never a copy")
+        check(link.resolve() == track.resolve(), "symlink points at the file")
+        check(
+            not str(os.readlink(link)).startswith("/"),
+            "symlink is relative so the tree stays movable",
+        )
+
+        # Re-linking must be a no-op so crate.sync is safe to re-run.
+        again = layout.link_into_crate(track, crate)
+        check(again == link, "re-linking is idempotent")
+
+        # Deleting a crate must never cost audio — the whole invariant.
+        shutil.rmtree(crate)
+        check(track.is_file(), "deleting a crate leaves the audio intact")
+
+        m3u = layout.write_m3u8(
+            layout.playlist_path(root, "Peak"),
+            [
+                {
+                    "path": str(track),
+                    "title": "Never",
+                    "artists": ["Rick"],
+                    "duration_ms": 213000,
+                }
+            ],
+            root=root,
+        )
+        body = m3u.read_text()
+        check(body.startswith("#EXTM3U"), "m3u8 header")
+        check("#EXTINF:213,Rick - Never" in body, "EXTINF line")
+
+    # ---- ingest: gate first, never overwrite, dry-run touches nothing
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        incoming = root / "incoming"
+        incoming.mkdir()
+        good = incoming / "good.mp3"
+        good.write_bytes(
+            _id3(
+                {"TIT2": "Feel It", "TPE1": "Amelie Lens"},
+                txxx={"ISRC": "GBAAA1111111"},
+            )
+            + _mp3(14)
+        )
+        low = incoming / "low.mp3"
+        low.write_bytes(_id3({"TIT2": "Weak", "TPE1": "Someone"}) + _mp3(9))
+
+        lib = root / "Library"
+        dry = ingest.ingest([good, low], lib, dry_run=True)
+        check(dry["filed_count"] == 1, "dry run counts the eligible file")
+        check(dry["refused_count"] == 1, "dry run refuses the low file")
+        check(
+            not layout.collection_dir(lib).exists(),
+            "dry run writes nothing to disk",
+        )
+
+        real = ingest.ingest([good, low], lib)
+        check(real["filed_count"] == 1, "one file filed")
+        filed = Path(real["filed"][0]["destination"])
+        check(filed.is_file(), "the file actually landed")
+        check(
+            tags.read(filed).get("isrc") == "GBAAA1111111",
+            "ISRC is written through so resolve matches exactly later",
+        )
+
+        rerun = ingest.ingest([good, low], lib)
+        check(rerun["filed_count"] == 0, "re-ingest files nothing")
+        check(
+            rerun["duplicate_count"] == 1,
+            "an existing Collection path is reported, never overwritten",
+        )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
         f"{'FAILED' if failures else 'ok'} — migx-cli naming + mirror"
-        f" + quality gate + tags + resolver "
+        f" + quality + tags + resolver + layout + ingest "
         f"({len(failures)} failure(s))"
     )
     return 1 if failures else 0

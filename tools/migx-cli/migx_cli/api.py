@@ -10,14 +10,20 @@ audio is DRM-protected and app-bound, and ripping it violates their ToS
 from __future__ import annotations
 
 import json
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Iterator
 
+from . import ratelimit
+
 API_BASE = "https://api.spotify.com/v1"
-MAX_RETRIES = 4
+MAX_RETRIES = 5
+
+# Identifies the client honestly. Spotify asks for a real User-Agent, and a
+# recognisable one is the opposite of the evasion that actually gets clients
+# blocked.
+USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx)"
 
 
 class ApiError(RuntimeError):
@@ -25,8 +31,12 @@ class ApiError(RuntimeError):
 
 
 class SpotifyRead:
-    def __init__(self, token: str) -> None:
+    def __init__(
+        self, token: str, pacer: ratelimit.Pacer | None = None
+    ) -> None:
         self._token = token
+        self.pacer = pacer or ratelimit.Pacer()
+        self.requests = 0
 
     def get(self, path: str, **params: Any) -> dict[str, Any]:
         url = path if path.startswith("http") else f"{API_BASE}{path}"
@@ -34,18 +44,29 @@ class SpotifyRead:
             url = f"{url}?{urllib.parse.urlencode(params)}"
 
         for attempt in range(MAX_RETRIES):
+            # Pace *before* every attempt, including retries: a burst is what
+            # trips the rolling window, not the total request count.
+            self.pacer.wait()
+            self.requests += 1
             req = urllib.request.Request(
-                url, headers={"Authorization": f"Bearer {self._token}"}
+                url,
+                headers={
+                    "Authorization": f"Bearer {self._token}",
+                    "User-Agent": USER_AGENT,
+                    "Accept": "application/json",
+                },
             )
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     return json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 if exc.code == 429:
-                    # Spotify's documented backpressure signal —
-                    # always honour it.
-                    wait = int(exc.headers.get("Retry-After", "2")) + 1
-                    time.sleep(wait)
+                    # Spotify telling us exactly what it wants. Honour it.
+                    retry_after = exc.headers.get("Retry-After")
+                    self.pacer.backoff(
+                        attempt,
+                        float(retry_after) if retry_after else None,
+                    )
                     continue
                 if exc.code == 401:
                     raise ApiError(
@@ -67,12 +88,12 @@ class SpotifyRead:
                         f" account: {url}"
                     ) from exc
                 if 500 <= exc.code < 600 and attempt < MAX_RETRIES - 1:
-                    time.sleep(2**attempt)
+                    self.pacer.backoff(attempt)
                     continue
                 raise ApiError(f"HTTP {exc.code} for {url}") from exc
             except urllib.error.URLError as exc:
                 if attempt < MAX_RETRIES - 1:
-                    time.sleep(2**attempt)
+                    self.pacer.backoff(attempt)
                     continue
                 raise ApiError(
                     f"network error for {url}: {exc.reason}"

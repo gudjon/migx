@@ -26,6 +26,8 @@ import urllib.request
 import webbrowser
 from typing import Any
 
+from . import ratelimit
+
 AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 REDIRECT_HOST = "127.0.0.1"
@@ -244,22 +246,30 @@ def login(
 
 
 def access_token(cid: str | None = None) -> str:
-    """Exchange the stored refresh token for a fresh access token."""
-    refresh = _keychain_read("refresh_token")
-    if not refresh:
-        raise AuthError("not logged in — run `migx spotify.login` first")
-    cid = cid or _keychain_read("client_id") or client_id()
+    """Exchange the stored refresh token for a fresh access token.
 
-    tok = _post_token(
-        {
-            "grant_type": "refresh_token",
-            "refresh_token": refresh,
-            "client_id": cid,
-        }
-    )
-    # Spotify rotates refresh tokens; persist the new one when present.
-    if tok.get("refresh_token"):
-        _keychain_write("refresh_token", tok["refresh_token"])
+    Serialised across processes: Spotify rotates refresh tokens and the old one
+    dies as soon as a new one is issued, so two migx commands refreshing at the
+    same time would leave one of them holding a dead token — a silent logout
+    with no obvious cause. The lock makes the read-refresh-write atomic.
+    """
+    with ratelimit.RefreshLock():
+        refresh = _keychain_read("refresh_token")
+        if not refresh:
+            raise AuthError("not logged in — run `migx spotify.login` first")
+        cid = cid or _keychain_read("client_id") or client_id()
+
+        tok = _post_token(
+            {
+                "grant_type": "refresh_token",
+                "refresh_token": refresh,
+                "client_id": cid,
+            }
+        )
+        # Persist the rotated token *inside* the lock, before anyone
+        # else reads.
+        if tok.get("refresh_token"):
+            _keychain_write("refresh_token", tok["refresh_token"])
     if "access_token" not in tok:
         raise AuthError(
             "refresh did not return an access token — try logging in again"

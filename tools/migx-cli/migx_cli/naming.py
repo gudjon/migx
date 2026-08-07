@@ -20,6 +20,9 @@ import unicodedata
 
 TEMPLATE_LIBRARY = "{album-artist}/{album}/{track-number} - {title}.{ext}"
 TEMPLATE_FLAT = "{artist} - {title}.{ext}"
+# The DJ-sortable convention: sorting a folder by name shows tempo and key at a
+# glance, the way a vinyl crate is sorted. Unknown BPM/key sort last.
+TEMPLATE_DJ = "{bpm} {camelot} - {artist} - {title}.{ext}"
 
 # Reserved on macOS/HFS+ and Windows alike; `/` and `:` matter most on macOS.
 _ILLEGAL = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -40,6 +43,15 @@ def sanitize(value: str, *, fallback: str = "Unknown") -> str:
     if len(value) > _MAX_COMPONENT:
         value = value[:_MAX_COMPONENT].rstrip(" .-")
     return value or fallback
+
+
+def _bpm(value: object) -> str:
+    """Zero-padded to 3 so 099 sorts before 128 in a plain listing."""
+    try:
+        rounded = round(float(value))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return "000"
+    return f"{max(0, min(999, rounded)):03d}"
 
 
 def render(
@@ -68,10 +80,19 @@ def render(
         "disc-number": f"{disc_no:d}" if isinstance(disc_no, int) else "1",
         "year": date[:4] if len(date) >= 4 else "0000",
         "isrc": sanitize(entry.get("isrc") or "", fallback="NOISRC"),
+        "bpm": _bpm(entry.get("bpm")),
+        "camelot": sanitize(entry.get("camelot") or "", fallback="--"),
         "ext": ext.lstrip("."),
     }
 
+    # The DJ prefix earns its place only once the track is analysed. Until BPM
+    # and key are known it is pure noise ("000 -- - Artist - Title"), so drop
+    # the prefix rather than write a placeholder into every filename.
     out = template
+    if "{bpm}" in template and "{camelot}" in template:
+        if values["bpm"] == "000" and values["camelot"] == "--":
+            out = out.replace("{bpm} {camelot} - ", "", 1)
+
     for key, value in values.items():
         out = out.replace("{" + key + "}", value)
     # A leading separator would make this absolute; strip defensively.

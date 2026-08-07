@@ -21,7 +21,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import api, auth, mirror, naming, quality, resolve
+from . import (
+    api,
+    auth,
+    ingest,
+    layout,
+    mirror,
+    naming,
+    quality,
+    ratelimit,
+    resolve,
+)
 
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_MIRROR_ROOT = (
@@ -116,6 +126,45 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.want-list/1",
         "note": "ISRC-keyed so store lookup is exact. Owning a file below"
         " the bar is an upgrade, never a re-buy.",
+    },
+    {
+        "id": "library.ingest",
+        "kind": "command",
+        "summary": "File audio into Collection/ with correct name and tags.",
+        "args": {
+            "paths": "files or directories to ingest",
+            "--library": "the Music/ root (Collection lives under it)",
+            "--mirror": "optional mirror to take canonical identity from",
+            "--template": "dj | library | flat",
+            "--move": "move instead of copy",
+            "--dry-run": "report without touching the filesystem",
+        },
+        "emits": "migx.ingest-report/1",
+        "note": "Normalises files you already have; it does not acquire"
+        " anything. Every file passes the quality gate first, and an existing"
+        " Collection path is never overwritten.",
+    },
+    {
+        "id": "crate.sync",
+        "kind": "command",
+        "summary": "Build a crate of symlinks from a playlist mirror.",
+        "args": {
+            "mirror": "a migx.playlist-mirror/1 document",
+            "--library": "the Music/ root",
+            "--crate": "crate name (defaults to the playlist name)",
+            "--m3u8": "also write a playlist file",
+        },
+        "emits": "migx.crate-report/1",
+        "note": "Crates contain symlinks only — every unique track stays"
+        " exactly one file in Collection/. Deleting a crate never"
+        " costs audio.",
+    },
+    {
+        "id": "library.dedupe",
+        "kind": "query",
+        "summary": "Find tracks present more than once in Collection/.",
+        "args": {"--library": "the Music/ root"},
+        "emits": "migx.dedupe-report/1",
     },
     {
         "id": "system.capabilities",
@@ -237,8 +286,20 @@ def cmd_playlist_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _unchanged_since(path: Path, snapshot_id: str | None) -> bool:
+    """True when an existing mirror already has this exact snapshot."""
+    if not snapshot_id or not path.is_file():
+        return False
+    try:
+        prior = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return prior.get("snapshot_id") == snapshot_id
+
+
 def cmd_playlist_pull(args: argparse.Namespace) -> int:
-    client = api.SpotifyRead(auth.access_token())
+    pacer = ratelimit.Pacer(args.min_interval)
+    client = api.SpotifyRead(auth.access_token(), pacer=pacer)
 
     if args.id == "liked":
         doc = mirror.build(
@@ -250,11 +311,44 @@ def cmd_playlist_pull(args: argparse.Namespace) -> int:
     else:
         pid = _extract_id(args.id)
         meta = client.playlist(pid)
+        snapshot = meta.get("snapshot_id")
+        head = mirror.build(
+            source_id=pid,
+            source_name=meta.get("name") or pid,
+            owner=(meta.get("owner") or {}).get("display_name"),
+            snapshot_id=snapshot,
+            items=[],
+        )
+
+        # The cheapest request is the one never made: an unchanged snapshot_id
+        # means every track page would be identical. This is worth more for
+        # staying inside the rate limit than any amount of backoff.
+        root = (
+            Path(args.root).expanduser() if args.root else DEFAULT_MIRROR_ROOT
+        )
+        target = (
+            Path(args.out).expanduser()
+            if args.out
+            else mirror.default_path(root, head)
+        )
+        if args.if_changed and _unchanged_since(target, snapshot):
+            _out(
+                {
+                    "schema": "migx.playlist-mirror/1",
+                    "path": str(target),
+                    "skipped": True,
+                    "reason": "snapshot_id unchanged",
+                },
+                args.json,
+                f"unchanged (snapshot {snapshot}) — kept {target}",
+            )
+            return 0
+
         doc = mirror.build(
             source_id=pid,
             source_name=meta.get("name") or pid,
             owner=(meta.get("owner") or {}).get("display_name"),
-            snapshot_id=meta.get("snapshot_id"),
+            snapshot_id=snapshot,
             items=client.playlist_items(pid),
         )
 
@@ -272,6 +366,9 @@ def cmd_playlist_pull(args: argparse.Namespace) -> int:
         "track_count": doc["track_count"],
         "skipped": doc["skipped_count"],
         "captured_week": doc["captured_week"],
+        "requests": client.requests,
+        "throttled": client.pacer.throttled,
+        "paced_seconds": round(client.pacer.waited_s, 2),
     }
     _out(
         result,
@@ -404,6 +501,124 @@ def cmd_library_missing(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_ingest(args: argparse.Namespace) -> int:
+    sources: list[Path] = []
+    for raw in args.paths:
+        p = Path(raw).expanduser()
+        if p.is_dir():
+            sources += sorted(
+                f
+                for f in p.rglob("*")
+                if f.suffix.lower() in AUDIO_EXTS and not f.is_symlink()
+            )
+        else:
+            sources.append(p)
+
+    doc = _load_mirror(args.mirror) if args.mirror else None
+    allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+    report = ingest.ingest(
+        sources,
+        Path(args.library).expanduser(),
+        mirror=doc,
+        template=args.template,
+        move=args.move,
+        dry_run=args.dry_run,
+        allow_tiers=allow,
+    )
+
+    if args.json:
+        _out(report, True)
+    else:
+        verb = "would file" if args.dry_run else "filed"
+        print(
+            f"{verb} {report['filed_count']} · "
+            f"refused {report['refused_count']} · "
+            f"already present {report['duplicate_count']}"
+        )
+        for row in report["filed"]:
+            rel = Path(row["destination"]).relative_to(report["collection"])
+            print(f"  + [{row['matched']}] {rel}")
+        for row in report["refused"]:
+            print(
+                f"  ! {row['tier']:14} {Path(row['source']).name}"
+                f"  ({row.get('reason', '')})"
+            )
+    return 0 if report["refused_count"] == 0 else 1
+
+
+def cmd_crate_sync(args: argparse.Namespace) -> int:
+    root = Path(args.library).expanduser()
+    # A crate is built out of the Collection, so that is what we scan unless
+    # the caller points somewhere else explicitly.
+    if not args.root:
+        args.root = [str(layout.collection_dir(root))]
+    report = _run_resolve(args)
+    crate_name = args.crate or report.get("source_name") or "crate"
+    crate = layout.crate_dir(root, crate_name)
+
+    linked = []
+    for row in report["resolved"]:
+        link = layout.link_into_crate(Path(row["path"]), crate)
+        linked.append({**row, "link": str(link)})
+
+    playlist = None
+    if args.m3u8:
+        playlist = str(
+            layout.write_m3u8(
+                layout.playlist_path(root, crate_name),
+                report["resolved"],
+                root=root,
+            )
+        )
+
+    doc = {
+        "schema": "migx.crate-report/1",
+        "crate": str(crate),
+        "crate_name": crate_name,
+        "playlist": playlist,
+        "linked_count": len(linked),
+        "missing_count": report["missing_count"],
+        "below_bar_count": report["below_bar_count"],
+        "linked": linked,
+        "missing": report["missing"],
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        print(
+            f"crate {crate_name}: {len(linked)} symlinked, "
+            f"{report['missing_count']} missing, "
+            f"{report['below_bar_count']} below bar"
+        )
+        print(f"  {crate}")
+        if playlist:
+            print(f"  {playlist}")
+        print(
+            "\nSymlinks only — the audio stays one file in Collection/.",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_library_dedupe(args: argparse.Namespace) -> int:
+    dupes = layout.find_duplicates(Path(args.library).expanduser())
+    doc = {
+        "schema": "migx.dedupe-report/1",
+        "groups": len(dupes),
+        "duplicates": dupes,
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        if not dupes:
+            print("no duplicates — every track is exactly one file")
+        for key, paths in dupes.items():
+            print(f"{key}")
+            for p in paths:
+                print(f"  {p}")
+    return 0 if not dupes else 1
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -476,6 +691,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--preview", action="store_true", help="show rendered filenames"
     )
+    p.add_argument(
+        "--if-changed",
+        action="store_true",
+        help="skip the pull when snapshot_id matches the existing mirror",
+    )
+    p.add_argument(
+        "--min-interval",
+        type=float,
+        default=ratelimit.DEFAULT_MIN_INTERVAL_S,
+        help="minimum seconds between API calls (pacing)",
+    )
     p.set_defaults(fn=cmd_playlist_pull)
 
     p = sub.add_parser(
@@ -516,6 +742,41 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
     )
     p.set_defaults(fn=cmd_library_missing)
+
+    p = sub.add_parser("library.ingest", help="file audio into Collection/")
+    p.add_argument("paths", nargs="+")
+    p.add_argument("--library", required=True, help="the Music/ root")
+    p.add_argument("--mirror", default=None)
+    p.add_argument(
+        "--template", default="dj", choices=sorted(ingest.TEMPLATES)
+    )
+    p.add_argument("--move", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_library_ingest)
+
+    p = sub.add_parser("crate.sync", help="symlink a mirror into a crate")
+    p.add_argument("mirror")
+    p.add_argument("--library", required=True)
+    p.add_argument("--crate", default=None)
+    p.add_argument("--m3u8", action="store_true")
+    p.add_argument("--root", action="append", default=[])
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_crate_sync)
+
+    p = sub.add_parser("library.dedupe", help="find duplicated tracks")
+    p.add_argument("--library", required=True)
+    p.set_defaults(fn=cmd_library_dedupe)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"
