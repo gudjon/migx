@@ -391,6 +391,88 @@ def main() -> int:
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
 
+    # ---- smart_split: boundary-aware truncation (spotDL-adapted)
+    long_name = (
+        "Blue Monday - Halo Varga Vocal Extended Club Remix "
+        "Special Edition Version"
+    )
+    check(
+        naming.smart_split("Short", 40) == "Short",
+        "short strings pass through untouched",
+    )
+    check(
+        naming.smart_split(long_name, 40)
+        == "Blue Monday - Halo Varga Vocal Extended",
+        f"cuts on a boundary: got {naming.smart_split(long_name, 40)!r}",
+    )
+    check(
+        len(naming.smart_split(long_name, 25)) <= 25,
+        "never exceeds the budget",
+    )
+    check(
+        not naming.smart_split(long_name, 40).endswith((" ", "-", ",")),
+        "no dangling separator",
+    )
+    check(
+        naming.smart_split("A" * 50, 20) == "A" * 20,
+        "falls back to a hard slice when there is no separator",
+    )
+    # The whole point: keep more than the first fragment.
+    check(
+        len(naming.smart_split(long_name, 40)) > len("Blue Monday"),
+        "keeps the longest fitting result, not the first separator's",
+    )
+
+    # ---- curated template tokens (only what the mirror carries)
+    set_entry = {
+        "artists": ["Amelie Lens"],
+        "title": "Feel It",
+        "position": 4,
+        "list_name": "Peak Time",
+        "spotify_id": "abc123",
+        "duration_ms": 321000,
+    }
+    check(
+        naming.render(set_entry, template=naming.TEMPLATE_SET)
+        == "005 - Amelie Lens - Feel It.mp3",
+        "list-position is 1-based and zero-padded for sort order",
+    )
+    check(
+        naming.render(set_entry, template="{duration}.{ext}") == "5-21.mp3",
+        "duration renders mm-ss (colon shows as / in Finder)",
+    )
+    check(
+        naming.render(set_entry, template="{spotify-id}.{ext}")
+        == "abc123.mp3",
+        "spotify-id token",
+    )
+    check(
+        naming.render(
+            {},
+            template="{list-position}|{list-name}" "|{spotify-id}|{duration}",
+        )
+        == "000|Playlist|nospotifyid|0-00",
+        "every new token degrades instead of raising",
+    )
+
+    # ---- resolver registry: discoverable by name, unknown names fail loudly
+    check(
+        resolve.available() == ["local-files"],
+        f"core ships one resolver: got {resolve.available()}",
+    )
+    check(
+        isinstance(
+            resolve.get_resolver("local-files", []),
+            resolve.LocalFilesResolver,
+        ),
+        "registry builds the local resolver",
+    )
+    try:
+        resolve.get_resolver("youtube", [])
+        check(False, "unknown resolver must raise")
+    except ValueError as exc:
+        check("known:" in str(exc), "unknown resolver lists the known names")
+
     # ---- scoring: the DJ inversion of spotDL's variant handling
     check(
         resolve.variants("Song (Extended Mix)")

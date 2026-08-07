@@ -119,6 +119,7 @@ CAPABILITIES: list[dict[str, Any]] = [
             "--allow-tier": "accept an extra quality tier",
         },
         "emits": "migx.resolution-report/1",
+        "resolvers": resolve.available(),
         "note": "Ships the local-files resolver only. Every hit is gated on"
         " the quality bar, so no resolver self-certifies.",
     },
@@ -501,7 +502,9 @@ def _run_resolve(args: argparse.Namespace) -> dict[str, Any]:
         return doc  # already resolved; reuse rather than rescan
     cfg = config.load()
     roots = args.root or _config_roots(cfg)
-    resolver = resolve.LocalFilesResolver(roots)
+    resolver = resolve.get_resolver(
+        getattr(args, "resolver", None) or "local-files", roots
+    )
     resolver.scan()
     allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
     return resolve.resolve_mirror(doc, resolver, allow_tiers=allow)
@@ -844,6 +847,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", action="append", default=[])
     p.add_argument("--out", default=None)
     p.add_argument(
+        "--resolver",
+        default=None,
+        choices=resolve.available(),
+        help="which resolver to use (core ships local-files)",
+    )
+    p.add_argument(
         "--allow-tier",
         action="append",
         default=[],
@@ -855,6 +864,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("mirror")
     p.add_argument("--root", action="append", default=[])
     p.add_argument("--out", default=None)
+    p.add_argument(
+        "--resolver",
+        default=None,
+        choices=resolve.available(),
+        help="which resolver to use (core ships local-files)",
+    )
     p.add_argument(
         "--allow-tier",
         action="append",

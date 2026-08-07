@@ -261,6 +261,28 @@ class LocalFilesResolver:
         }
 
 
+# Resolvers are addressed by name so `system.capabilities` can advertise what
+# exists and an agent can pick one without reading the source. Core registers
+# exactly one. A resolver registered at the edge still passes the quality gate
+# in `resolve_mirror` — registration buys discovery, never trust.
+REGISTRY: dict[str, type] = {LocalFilesResolver.name: LocalFilesResolver}
+
+
+def available() -> list[str]:
+    return sorted(REGISTRY)
+
+
+def get_resolver(name: str, roots: Iterable[Path]):
+    """Build a resolver by name, or fail with the list of known names."""
+    try:
+        factory = REGISTRY[name]
+    except KeyError:
+        raise ValueError(
+            f"unknown resolver {name!r}; known: {', '.join(available())}"
+        ) from None
+    return factory(roots)
+
+
 def resolve_mirror(
     doc: dict[str, Any],
     resolver: LocalFilesResolver,
