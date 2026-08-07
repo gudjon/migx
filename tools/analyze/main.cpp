@@ -105,11 +105,15 @@ QJsonObject analyzeOne(const QString& path, UserSettingsPointer pConfig) {
                         mixxx::IndexRange::forward(frameIndex, framesToRead),
                         mixxx::SampleBuffer::WritableSlice(
                                 buffer.data(), buffer.size())));
-        const SINT framesRead = readable.readableLength();
+        // readableLength() is in SAMPLES (interleaved), frameLength() is in
+        // FRAMES. Treating one as the other feeds processSamples twice the
+        // real count and advances the cursor twice as fast — which a periodic
+        // click survives and real music does not.
+        const SINT sampleCount = readable.readableLength();
+        const SINT framesRead = sampleCount / channelCount;
         if (framesRead <= 0) {
             break;
         }
-        const SINT sampleCount = framesRead * channelCount;
         for (Analyzer* pAnalyzer : active) {
             pAnalyzer->processSamples(
                     readable.readableData(), sampleCount);
