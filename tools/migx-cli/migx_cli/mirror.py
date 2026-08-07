@@ -67,7 +67,9 @@ def build(
     entries: list[dict[str, Any]] = []
     skipped = 0
     for item in items:
-        track = item.get("track") or {}
+        # `/playlists/{id}/items` (2026-03 migration) calls it `item`;
+        # `/me/tracks` still calls it `track`. Accept either.
+        track = item.get("item") or item.get("track") or {}
         entry = _entry(track, item.get("added_at"), len(entries))
         if entry is None:
             skipped += 1

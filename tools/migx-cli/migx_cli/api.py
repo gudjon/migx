@@ -73,14 +73,21 @@ class SpotifyRead:
                         "access token rejected — run `migx spotify.login`"
                     ) from exc
                 if exc.code == 403:
+                    # Surface Spotify's own words first; a guessed cause sent
+                    # a real diagnosis down the wrong path once already.
+                    detail = exc.read().decode("utf-8", "replace")[:200]
                     raise ApiError(
                         f"403 for {url}\n"
-                        "Spotify-owned playlists (Discover Weekly,"
-                        " Release Radar, Daylist) "
-                        "are unavailable to apps without a"
-                        " pre-2024-11-27 quota extension. "
-                        "Duplicate the playlist inside Spotify, then"
-                        " pull your copy."
+                        f"Spotify said: {detail}\n"
+                        "Common causes, most likely first:\n"
+                        "  1. Development-mode apps can only read items from"
+                        " playlists you created or collaborate on.\n"
+                        "  2. Spotify-owned playlists (Discover Weekly,"
+                        " Release Radar, Daylist, and the 37i9dQZF1... family)"
+                        " need a pre-2024-11-27 quota extension. Duplicate"
+                        " into a playlist you own, then pull that.\n"
+                        "  3. Liked Songs is not a playlist — use"
+                        " `playlist.pull liked`."
                     ) from exc
                 if exc.code == 404:
                     raise ApiError(
@@ -125,10 +132,14 @@ class SpotifyRead:
         return self.get(f"/playlists/{playlist_id}")
 
     def playlist_items(self, playlist_id: str) -> Iterator[dict[str, Any]]:
-        yield from self.paged(
-            f"/playlists/{playlist_id}/tracks",
-            additional_types="track",
-        )
+        """Playlist contents via `/items`.
+
+        The old `/playlists/{id}/tracks` endpoint was removed in the
+        2026-03-09 API migration and now 403s for every playlist. `/items`
+        replaces it and renames `track` -> `item` in each row; `mirror.build`
+        accepts both shapes so `/me/tracks` (still `track`) keeps working.
+        """
+        yield from self.paged(f"/playlists/{playlist_id}/items")
 
     def saved_tracks(self) -> Iterator[dict[str, Any]]:
         """Liked Songs."""
