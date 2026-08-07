@@ -133,9 +133,8 @@ Normalisation applies to *matching only*, never to naming.
 
 ### Own-but-low is an upgrade, not “missing”
 
-A file that fails the quality bar is **not** absent. It lands in `below_bar` and the
-want-list marks it `upgrade` so you can replace a weak encode without treating it
-as a brand-new gap.
+A file that fails the quality bar is **not** absent. It lands in `below_bar` and
+`library.missing` marks it `upgrade` so a weak encode is not treated as a brand-new gap.
 
 ISRC also survives tagger disagreement: it is read from the standard `TSRC`
 frame *and* from `TXXX:ISRC`, which is where ffmpeg and several taggers actually

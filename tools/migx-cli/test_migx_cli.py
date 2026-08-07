@@ -3,7 +3,7 @@
 
 Pins what a later change could silently break:
   - the output naming convention (P-07, one writer per artifact family)
-  - the `migx.playlist-mirror/1` and `migx.want-list/1` shapes agents parse
+  - the `migx.playlist-mirror/1` and `migx.gap-list/1` shapes agents parse
   - the quality bar, which is a contract on the file not the pipeline
   - ISRC reading from both TSRC and TXXX, the strongest match key
 
@@ -341,7 +341,7 @@ def main() -> int:
         meta_b = tags.read(lib / "b.mp3")
         check(meta_b.get("isrc") == "GBZZZ1111111", "TSRC is read")
 
-        # ---- resolver: ISRC wins, and below-bar is an upgrade not a re-buy
+        # ---- resolver: ISRC wins; below-bar is upgrade, not missing
         resolver = resolve.LocalFilesResolver([lib])
         resolver.scan()
         check(resolver.scanned == 2, f"scanned {resolver.scanned} != 2")
@@ -384,14 +384,16 @@ def main() -> int:
             "scored match used when ISRC differs",
         )
 
-        want = resolve.want_list(report)
-        wants = {i["title"]: i["want"] for i in want["items"]}
-        check(wants.get("Not Owned") == "acquire", "absent track -> acquire")
+        gaps = resolve.gap_list(report)
+        statuses = {i["title"]: i["status"] for i in gaps["items"]}
         check(
-            wants.get("Blue Monday") == "upgrade",
-            "owned-but-low track -> upgrade, never a re-buy",
+            statuses.get("Not Owned") == "missing", "absent track -> missing"
         )
-        check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+        check(
+            statuses.get("Blue Monday") == "upgrade",
+            "owned-but-low track -> upgrade, not a second missing entry",
+        )
+        check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
 
     # ---- TUI: the snapshot is pure data, so it is testable without a screen
     snap = tui.snapshot()
@@ -399,7 +401,7 @@ def main() -> int:
         "library_root",
         "mirror_count",
         "collection_count",
-        "want_acquire",
+        "missing_count",
         "template",
     ):
         check(field in snap, f"snapshot carries {field}")
@@ -413,14 +415,14 @@ def main() -> int:
         **snap,
         "collection": [],
         "mirrors": [],
-        "want": [],
+        "gaps": [],
         "crates": [],
         "collection_count": 0,
         "mirror_count": 0,
         "mirror_tracks": 0,
         "analysed_count": 0,
-        "want_acquire": 0,
-        "want_upgrade": 0,
+        "missing_count": 0,
+        "upgrade_count": 0,
     }
     for pane in tui.PANES:
         rows = tui._rows(pane, blank)
@@ -588,6 +590,33 @@ def main() -> int:
         )
         is None,
         "same title, wrong artist is rejected",
+    )
+    # A store may credit the featured artist as `artist` and the headliner as
+    # `album_artist`. Beatport did exactly that for Jon Hopkins / Imogen Heap,
+    # and scoring only `artist` rejected a track bought off the want-list.
+    check(
+        resolve.score_candidate(
+            {"title": "Reckoning", "artists": ["Jon Hopkins"]},
+            {
+                "title": "Reckoning",
+                "artist": "Imogen Heap",
+                "album_artist": "Jon Hopkins",
+            },
+        )
+        is not None,
+        "matches when the headliner is only in album_artist",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Reckoning", "artists": ["Jon Hopkins"]},
+            {
+                "title": "Reckoning",
+                "artist": "Someone Else",
+                "album_artist": "Nobody At All",
+            },
+        )
+        is None,
+        "both artist fields wrong is still rejected",
     )
     check(
         resolve.score_candidate(

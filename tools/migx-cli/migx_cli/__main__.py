@@ -126,15 +126,15 @@ CAPABILITIES: list[dict[str, Any]] = [
     {
         "id": "library.missing",
         "kind": "query",
-        "summary": "The want-list: what to acquire, and what to upgrade.",
+        "summary": "Missing tracks and quality upgrades vs Collection.",
         "args": {
             "mirror": "mirror document, or a resolution report",
             "--root": "library root to scan (repeatable)",
-            "--out": "write the want-list here",
+            "--out": "write the gap list here",
         },
-        "emits": "migx.want-list/1",
-        "note": "ISRC-keyed so store lookup is exact. Owning a file below"
-        " the bar is an upgrade, never a re-buy.",
+        "emits": "migx.gap-list/1",
+        "note": "ISRC-keyed. A file below the bar is an upgrade, not a"
+        " second missing entry.",
     },
     {
         "id": "library.ingest",
@@ -198,7 +198,7 @@ CAPABILITIES: list[dict[str, Any]] = [
     {
         "id": "track.pull",
         "kind": "query",
-        "summary": "Resolve Spotify track links into an actionable sheet.",
+        "summary": "Resolve Spotify track links into an identity sheet.",
         "args": {
             "links": "track URLs, URIs, ids, or - to read stdin",
             "--out": "write a TSV here (opens in Numbers/Excel)",
@@ -549,30 +549,26 @@ def cmd_library_resolve(args: argparse.Namespace) -> int:
 
 
 def cmd_library_missing(args: argparse.Namespace) -> int:
-    want = resolve.want_list(_run_resolve(args))
+    gaps = resolve.gap_list(_run_resolve(args))
     if args.out:
         out = Path(args.out).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(
-            json.dumps(want, indent=2, ensure_ascii=False) + "\n",
+            json.dumps(gaps, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
 
     if args.json:
-        _out(want, True)
+        _out(gaps, True)
     else:
         print(
-            f"acquire {want['acquire_count']} · "
-            f"upgrade {want['upgrade_count']}"
+            f"missing {gaps['missing_count']} · "
+            f"upgrade {gaps['upgrade_count']}"
         )
-        for item in want["items"]:
-            tag = "BUY " if item["want"] == "acquire" else "UPGR"
+        for item in gaps["items"]:
+            tag = "UPGR" if item.get("status") == "upgrade" else "MISS"
             isrc = item.get("isrc") or "-"
-            print(f"{tag} {isrc:14} {item['store_query']}")
-        print(
-            "\nISRC is exact — search it at your store before the text query.",
-            file=sys.stderr,
-        )
+            print(f"{tag} {isrc:14} {item.get('label') or ''}")
     return 0
 
 
@@ -929,7 +925,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(fn=cmd_library_resolve)
 
-    p = sub.add_parser("library.missing", help="the ISRC-keyed want-list")
+    p = sub.add_parser("library.missing", help="missing + upgrade gap list")
     p.add_argument("mirror")
     p.add_argument("--root", action="append", default=[])
     p.add_argument("--out", default=None)

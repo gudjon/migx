@@ -129,14 +129,23 @@ def score_candidate(
     cand_title = record.get("title") or ""
     name = similarity(normalise(target_title), normalise(cand_title))
 
-    target_artist = _artist_key(entry.get("artists") or [])
-    cand_artist = normalise(record.get("artist") or "")
+    # Compare every credited artist on both sides and keep the best pair.
+    #
+    # Stores disagree about who the "artist" is on a collaboration. Beatport
+    # sold "Jon Hopkins - Reckoning (feat. Imogen Heap)" with artist="Imogen
+    # Heap" and album_artist="Jon Hopkins", while the catalogue credits Jon
+    # Hopkins. Scoring only artists[0] against only `artist` scored that 27.3
+    # and rejected a track bought straight off the want-list.
+    target_names = [normalise(a) for a in (entry.get("artists") or [])]
+    cand_names = [
+        normalise(record.get(field) or "")
+        for field in ("artist", "album_artist")
+    ]
+    pairs = [
+        similarity(t, c) for t in target_names if t for c in cand_names if c
+    ]
     # An untagged file cannot disprove the artist; lean on name + duration.
-    artist = (
-        similarity(target_artist, cand_artist)
-        if cand_artist and target_artist
-        else None
-    )
+    artist = max(pairs) if pairs else None
 
     if variants(target_title) != variants(cand_title):
         name -= VARIANT_MISMATCH_PENALTY
@@ -193,6 +202,7 @@ class LocalFilesResolver:
             "path": str(path),
             "title": meta.get("title") or path.stem,
             "artist": meta.get("artist"),
+            "album_artist": meta.get("album_artist"),
             "album": meta.get("album"),
             "isrc": meta.get("isrc"),
             "duration_s": probe.get("duration_s"),
@@ -316,8 +326,8 @@ def resolve_mirror(
             "eligible": verdict["eligible"],
             "reason": verdict.get("reason"),
         }
-        # A file you own but that fails the bar is NOT "missing" — you would
-        # re-buy something you already have. It is a separate upgrade list.
+        # A file on disk that fails the bar is NOT "missing" — it is an
+        # upgrade candidate so the gap list stays exact.
         (resolved if verdict["eligible"] else refused).append(row)
 
     return {
@@ -337,10 +347,10 @@ def resolve_mirror(
     }
 
 
-def want_list(report: dict[str, Any]) -> dict[str, Any]:
-    """The buy list: what you do not own, plus what you own below the bar."""
+def gap_list(report: dict[str, Any]) -> dict[str, Any]:
+    """Missing from Collection, plus on-disk files below the quality bar."""
 
-    def _query(item: dict[str, Any]) -> str:
+    def _label(item: dict[str, Any]) -> str:
         artist = (item.get("artists") or [""])[0]
         return f"{artist} {item.get('title') or ''}".strip()
 
@@ -349,8 +359,8 @@ def want_list(report: dict[str, Any]) -> dict[str, Any]:
         items.append(
             {
                 **item,
-                "want": "acquire",
-                "store_query": _query(item),
+                "status": "missing",
+                "label": _label(item),
                 "isrc": item.get("isrc"),
             }
         )
@@ -361,18 +371,18 @@ def want_list(report: dict[str, Any]) -> dict[str, Any]:
                 "title": item.get("title"),
                 "artists": item.get("artists"),
                 "isrc": item.get("isrc"),
-                "want": "upgrade",
+                "status": "upgrade",
                 "have_path": item.get("path"),
                 "have_tier": item.get("tier"),
-                "store_query": _query(item),
+                "label": _label(item),
             }
         )
 
     return {
-        "schema": "migx.want-list/1",
+        "schema": "migx.gap-list/1",
         "source_name": report.get("source_name"),
         "captured_week": report.get("captured_week"),
-        "acquire_count": report.get("missing_count", 0),
+        "missing_count": report.get("missing_count", 0),
         "upgrade_count": report.get("below_bar_count", 0),
         "items": items,
     }

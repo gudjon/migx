@@ -52,8 +52,12 @@ def _identify(path: Path, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
         hit = index.get(f"isrc:{isrc}")
     if hit is None:
         title = resolve.normalise(meta.get("title") or path.stem)
-        artist = resolve.normalise(meta.get("artist") or "")
-        hit = index.get(f"at:{artist}|{title}")
+        # Try both credits: a store may file a collaboration under either.
+        for field in ("artist", "album_artist"):
+            artist = resolve.normalise(meta.get(field) or "")
+            hit = index.get(f"at:{artist}|{title}")
+            if hit is not None:
+                break
 
     if hit:
         # Mirror wins on identity (it is the canonical catalogue record), but

@@ -2,7 +2,7 @@
 
 Deliberately split in two:
 
-* `snapshot()` is pure — it reads config, mirrors, Collection and want-list and
+* `snapshot()` is pure — it reads config, mirrors, Collection and gap list and
   returns plain dicts. Testable offline, no terminal involved.
 * `run()` is a thin `curses` layer that draws a snapshot.
 
@@ -27,7 +27,7 @@ from typing import Any
 
 from . import config, layout, quality, tags
 
-PANES = ("Overview", "Playlists", "Want-list", "Collection")
+PANES = ("Overview", "Playlists", "Gaps", "Collection")
 
 
 def _mirrors(mirror_root: Path) -> list[dict[str, Any]]:
@@ -75,8 +75,9 @@ def _collection(root: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _wantlist(root: Path) -> list[dict[str, Any]]:
-    path = Path(root) / "_wantlist.json"
+def _gaps(root: Path) -> list[dict[str, Any]]:
+    """Load a gap list written by library.missing --out (if present)."""
+    path = Path(root) / "_gaps.json"
     if not path.is_file():
         return []
     try:
@@ -84,6 +85,10 @@ def _wantlist(root: Path) -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError):
         return []
     return doc.get("items", [])
+
+
+def _item_status(item: dict[str, Any]) -> str:
+    return item.get("status") or "missing"
 
 
 def snapshot() -> dict[str, Any]:
@@ -94,7 +99,7 @@ def snapshot() -> dict[str, Any]:
 
     mirrors = _mirrors(mirror_root)
     collection = _collection(root)
-    want = _wantlist(root)
+    gaps = _gaps(root)
     crates = []
     crate_root = root / layout.CRATES
     if crate_root.is_dir():
@@ -116,9 +121,9 @@ def snapshot() -> dict[str, Any]:
         "collection_count": len(collection),
         "analysed_count": analysed,
         "crates": crates,
-        "want": want,
-        "want_acquire": sum(1 for w in want if w.get("want") == "acquire"),
-        "want_upgrade": sum(1 for w in want if w.get("want") == "upgrade"),
+        "gaps": gaps,
+        "missing_count": sum(1 for g in gaps if _item_status(g) == "missing"),
+        "upgrade_count": sum(1 for g in gaps if _item_status(g) == "upgrade"),
         "template": config.get(cfg, "library.template"),
         "tiers": config.get(cfg, "quality.allow_tiers"),
         "linked_ok": config.get(cfg, "spotify.client_id") not in (None, ""),
@@ -128,7 +133,6 @@ def snapshot() -> dict[str, Any]:
 def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
     """Render one pane as plain lines — also what the tests assert on."""
     if pane == "Overview":
-        gap = snap["want_acquire"]
         return [
             f"library     {snap['library_root']}"
             f"{'' if snap['library_exists'] else '   (NOT MOUNTED)'}",
@@ -140,8 +144,8 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             f"collection  {snap['collection_count']:>6}  files"
             f"   ({snap['analysed_count']} with BPM+key)",
             f"crates      {len(snap['crates']):>6}",
-            f"want-list   {gap:>6}  to acquire"
-            f"   ({snap['want_upgrade']} to upgrade)",
+            f"gaps        {snap['missing_count']:>6}  missing"
+            f"   ({snap['upgrade_count']} to upgrade)",
             "",
             f"spotify     {'linked' if snap['linked_ok'] else 'not linked'}",
         ]
@@ -150,16 +154,16 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             f"{m['tracks']:>5}  {m['week']:9}  {m['name'][:52]}"
             for m in snap["mirrors"]
         ] or ["(no mirrors — run playlist.pull)"]
-    if pane == "Want-list":
+    if pane == "Gaps":
         out = []
-        for w in snap["want"]:
-            artist = (w.get("artists") or [""])[0]
-            tag = "UPGR" if w.get("want") == "upgrade" else "BUY "
+        for g in snap["gaps"]:
+            artist = (g.get("artists") or [""])[0]
+            tag = "UPGR" if _item_status(g) == "upgrade" else "MISS"
             out.append(
-                f"{tag} {w.get('isrc') or '-':14} {artist[:24]:26}"
-                f" {(w.get('title') or '')[:34]}"
+                f"{tag} {g.get('isrc') or '-':14} {artist[:24]:26}"
+                f" {(g.get('title') or '')[:34]}"
             )
-        return out or ["(no want-list — run library.missing)"]
+        return out or ["(no gaps — run library.missing)"]
     rows = []
     for c in snap["collection"]:
         secs = int(c["duration_s"] or 0)
