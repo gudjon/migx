@@ -113,7 +113,10 @@ def statements(mirror_dir: Path, limit: int | None) -> tuple[list[str], dict]:
 
 
 def run_repl(stmts: list[str], data_dir: Path) -> int:
-    """Feed every statement to one REPL process — 14k subprocesses is absurd."""
+    """Feed every statement to one REPL process.
+
+    14k subprocesses would be absurd; one process handles the batch.
+    """
     proc = subprocess.run(
         [str(ARCFLOW), "--data-dir", str(data_dir)],
         input="\n".join(stmts) + "\n",
