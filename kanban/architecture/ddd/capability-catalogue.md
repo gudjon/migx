@@ -15,6 +15,8 @@ related:
   - res/design/references/rekordbox7-performance.md
   - res/design/references/serato-djpro-performance.md
   - res/design/references/traktor-pro4-performance.md
+  - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
+  - kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md
 ---
 
 # Capability Catalogue — Migx product domain map
