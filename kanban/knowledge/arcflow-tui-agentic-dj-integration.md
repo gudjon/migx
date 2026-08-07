@@ -61,9 +61,17 @@ Evidence captured on 2026-08-07 from the installed macOS command:
 | Release | `arcflow v0.11.9`; identity source revision `6168ed04322040c7735473093b625e5dc20d18bd` | This is the runtime evaluated here, not the current `arcflow-core` checkout |
 | Local workspace | `workspace init`, persistence, content-addressed snapshot IDs | Suitable for isolated prototypes; not yet a Migx production store |
 | Migx-shaped proof | Three `Track` nodes, two `COMPATIBLE_WITH` edges, ordered JSON query | World Graph + Query Engine are directly useful now |
+| Mirror loader | `tools/migx-cli/mirrors-to-graph` maps Track/Artist/Playlist and BY/ON edges | Loader is landed but cannot complete the real corpus on `v0.11.9` |
 | Query/runtime surface | `db.capabilities()` reported CPU backend, delta engine, e-graph rules, and Z-set operators | Confirms a substantial shipped query/incremental surface, not production performance |
 | Service boundary | Daemon help exposes Unix-socket JSON-RPC plus optional HTTP/SSE and durability controls | Unix socket is the preferred first integration seam |
 | Health ambiguity | `doctor --json` returned `status: ok` but `workspace_valid: false` after init | Must be resolved before relying on doctor as a release gate |
+
+The real 83-playlist loader exposed a deterministic ArcFlow `v0.11.9` runtime
+panic when a multibyte character crosses an internal fixed byte boundary during
+relationship creation. The three-statement `Ysee`/`Ysée` reproduction and expected
+fix live in `kanban/tasks/arcflow-utf8-panic-blocks-graph-load.md`. The ASCII
+compatibility proof above and the UTF-8 blocker are both true: the graph/query
+route works, but it is not production-safe for this Icelandic/Nordic corpus yet.
 
 The installed binary, `agent-context`, `paths`, source README, and procedure catalogue report different
 crate/procedure/algorithm counts. The current `arcflow-core` checkout is also ahead of the installed
@@ -121,8 +129,12 @@ must never overwrite a measured or source-supplied fact without provenance.
 
 ## Integration contract
 
-Start with the ArcFlow daemon over a local Unix socket. It gives the Python TUI/CLI process isolation
-and a concrete JSON-RPC boundary while preserving the option of a native Rust/C++ integration later.
+Use the existing one-process REPL loader only for the offline A0 corpus proof;
+ArcFlow `v0.11.9` rejects the bulk forms the loader needs, so spawning one process
+per statement is not viable. For ongoing product integration, prefer the local
+daemon over a Unix socket once the UTF-8 blocker and daemon contract are proved.
+That gives the Python TUI/CLI process isolation while preserving the option of a
+native Rust/C++ integration later.
 
 - Migx defines versioned request, event, observation, proposal, and receipt schemas.
 - Migx publishes domain events only after its authoritative state transition is accepted.
@@ -139,12 +151,14 @@ and a concrete JSON-RPC boundary while preserving the option of a native Rust/C+
 
 ### A0 - contract proof
 
-Define the minimal `Track`/`Observation`/`SetSession` graph mapping and a reproducible fixture loader.
-Prove query results, snapshot persistence, export/rebuild, and identity pinning in an isolated
-workspace. No engine connection.
+Extend the landed Track/Artist/Playlist loader with the minimal
+`Observation`/`SetSession` mapping after ArcFlow's UTF-8 panic is fixed. Prove
+query results, snapshot persistence, export/rebuild, and identity pinning in an
+isolated workspace. No engine connection.
 
-**Gate:** one command creates the fixture world; one JSON query returns ranked candidates with evidence;
-rebuild produces the same semantic result.
+**Gate:** the UTF-8 reproduction is green; the loader imports all 83 mirrors,
+3,727 tracks, and 2,102 artists with zero errors; one JSON query returns ranked
+candidates with evidence; rebuild produces the same semantic result.
 
 ### A1 - PREP workspace world model
 
@@ -191,7 +205,9 @@ disconnect takeover, and audio-underrun acceptance all pass.
 
 ## Next concrete dossier
 
-The first implementation dossier should be **A0 only**: a disposable ArcFlow fixture loader, pinned
-runtime identity, five bounded queries, export/rebuild proof, and a decision record on whether the
-Unix-socket daemon contract is stable enough for A1. It must not touch the engine, ControlObjects, or
-Grok's active `api.py` / `auth.py` / `ratelimit.py` lane.
+The next implementation dossier should remain **A0 only**: fix and test the
+UTF-8 boundary in `arcflow-core`, rerun the landed mirror loader against all 83
+mirrors, pin runtime identity, add five bounded queries, prove export/rebuild,
+and decide whether the Unix-socket daemon contract is stable enough for A1. It
+must not touch the engine, ControlObjects, or Grok's active `api.py` / `auth.py`
+/ `ratelimit.py` lane.

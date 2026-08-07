@@ -44,10 +44,12 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Codex long verifier harness | `AGENTS.md` + `kanban/federation/roles/codex-cli.md` + `runbooks/codex-long-harness-loop.md` |
 | Antigravity co-implementer | **Paused** (no tokens). See `AGY.md` re-enable checklist when available |
 | Claude implementer with federation live | `CLAUDE.md` §Multi-agent + `roles/claude-code.md` + `migx-fed sync` + `migx-fed poll` |
-| Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + `runbooks/go-private-and-git-posture.md` |
+| Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + ADR-008 + `runbooks/go-private-and-git-posture.md` |
 | TUI / CLI / JSON / agent product work | `kanban/Strategy-Current.md` + ADR-008 + `knowledge/tui-first-agentic-dj-workstation.md` + `architecture/ddd/bounded-contexts/arch-cli-commands.md` |
 | ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + `knowledge/world-model-experience-ontology.md` |
+| Native graphical performance adapter | ADR-004 + ADR-007 + `src/qml/AGENTS.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
+| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` + `2026-08-07-dev-practices-agent-native-x.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),
 `kanban/architecture/decisions/` (ADRs), `kanban/triggers/registry.yaml` (cadence).

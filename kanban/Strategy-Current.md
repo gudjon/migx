@@ -20,11 +20,12 @@ related:
   - kanban/knowledge/arcflow-tui-agentic-dj-integration.md
   - kanban/runbooks/go-private-and-git-posture.md
   - kanban/federation/signal/2026-07-17-deep-x-community-alignment.md
+  - kanban/federation/signal/2026-08-07-strategy-ui-adr-x-alignment.md
 note: >
   Operating model: treat the forked base as MIT-equivalent (Cursor path). Proprietary app +
   in-process AI allowed (ADR-003 accepted). Early public OK; later under agora.
-  Field alignment (X mid-2026): signal-2026-07-17-deep-x-community-alignment — no strategy
-  rewrite; elevate Layer B visibility; Automix is anti-identity.
+  Field alignment (X mid-2026): signal-2026-07-17 + 2026-08-07 — no strategy rewrite;
+  elevate Layer B + ADR-008 CLI spine; Automix is anti-identity; accept ADR-004.
 ---
 
 # Migx strategy — “Cursor for AI-DJing”
@@ -174,20 +175,21 @@ Gigs + agents. Word-of-mouth from M4 performance + a co-pilot that understands a
 
 ## 6. Near-term posture (now → 90 days)
 
-*X field alignment 2026-07-17 does **not** reorder this stack; it sharpens **Layer B urgency** and
-**anti-Automix messaging**. Full brief:
-[`federation/signal/2026-07-17-deep-x-community-alignment.md`](federation/signal/2026-07-17-deep-x-community-alignment.md).*
+*X field alignment 2026-07-17 and 2026-08-07 does **not** reorder this stack; it sharpens
+**Layer B urgency**, **ADR-008 CLI spine**, and **anti-Automix messaging**. Briefs:
+[`signal-2026-07-17`](federation/signal/2026-07-17-deep-x-community-alignment.md) ·
+[`signal-2026-08-07`](federation/signal/2026-08-07-strategy-ui-adr-x-alignment.md).*
 
 | Priority | Action | Why |
 | --- | --- | --- |
 | **0** | Keep public on `gudjon/migx` while early | Owner decision |
 | **1** | Strategy + ADR-003/005 MIT model (this stack) | One map |
 | **2** | Freeze TUI/CLI/JSON/agent command, event, capability, and receipt contracts (ADR-008) | Prevent human/agent drift |
-| **3** | Ship the TUI preparation workspace over today's metadata/library commands | First usable human product |
+| **3** | Harden the shipped curses dashboard into the TUI preparation workspace | First usable human product |
 | **4** | Add JSONL `--agent`, resumable sessions, cancellation, and record/replay | Claude Code/Codex become first-class DJs |
 | **5** | Drive deterministic two-deck simulation through the same agent intents | Safe RED/GREEN gate before live authority |
 | **6** | Build the single-writer application/engine bridge plus live events | Real decks without a second control plane |
-| **7** | Maintain MTL/RT trust and EXO/FSL world-model work in parallel | Agent decisions cannot glitch audio |
+| **7** | Maintain MTL/RT trust and EXO/FSL/ArcFlow world-model work in parallel | Agent decisions cannot glitch audio |
 | **8** | Treat QML/graphical work as a later adapter, not the first product surface | Preserve option without splitting semantics |
 | **9** | Plan agora transfer, freemium, and privacy product shape | Org home + growth |
 
@@ -252,3 +254,5 @@ validate, execute, receipt, and yield instantly to the human.
 | (later) | Transfer under agora | planned |
 | (later) | Align on-disk LICENSE/notices with operating model if needed | optional cleanup |
 | 2026-07-17 | Grok 4.5 long harness = disk loops + federation (Claude-Code-shaped properties) | active — `knowledge/grok-long-harness-and-loops.md` |
+| 2026-08-07 | CLI core as product spine; UI + agents equal clients | **accepted** (ADR-008) |
+| 2026-08-07 | X alignment refresh — amplify Layer B/ADR-008; accept ADR-004 recommended | signal-2026-08-07 |

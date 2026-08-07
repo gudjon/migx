@@ -67,8 +67,10 @@ able to act as the DJ through the public surface without special in-process acce
 | `migx --agent` | Long-lived JSONL request/event/receipt stream on stdin/stdout |
 | `migx mcp-server` | Optional tool adapter over the same command core |
 
-Only the conventional CLI and `--json` subset exist today. The TUI, `--agent`, events, receipts,
-MCP adapter, and engine command bridge are product commitments, not current implementation claims.
+The conventional CLI, `--json` subset, and an initial read-only stdlib curses dashboard exist today.
+The dashboard is launched by `tools/migx-cli/migx-tui`; it renders Overview, Playlists, Want-list, and
+Collection from a pure snapshot. The no-command `migx` launch, three-column PREP/LIVE workspace,
+`--agent`, events, receipts, MCP adapter, and engine command bridge remain product commitments.
 
 ## Interaction synthesis
 
@@ -166,7 +168,8 @@ single writer (`P-06`); commands cross to the engine through the sanctioned lock
 
 ## Product sequence
 
-1. TUI workspace over today's metadata/library commands, with session and job receipts.
+1. Grow the shipped curses dashboard into the PREP workspace over today's metadata/library commands,
+   with session and job receipts.
 2. `--agent` JSONL discovery, request, event, completion, cancellation, and record/replay contract.
 3. Deterministic two-deck simulation that external agents can drive and verify.
 4. Guarded load/cue/play/schedule/crossfade command surface against simulation.

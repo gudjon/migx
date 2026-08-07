@@ -1,13 +1,9 @@
-"""Ingest — the intake valve that keeps the Collection clean.
+"""Ingest — file on-disk audio into Collection/.
 
-One job: take audio files that are already on disk and file them into
-`Collection/` with the right name, the right tags, and no duplicates. It does
-not acquire anything; it normalises what you bring it, whatever the source —
-a CD you ripped, a Bandcamp or Beatport purchase, a promo.
-
-Every file passes the quality gate before it is filed (`quality.py`), and every
-filed file carries its ISRC when one is known, so a later `library.resolve`
-matches it exactly instead of guessing.
+One job: take audio files already on disk and place them under `Collection/`
+with the right name, tags, and no duplicates. Every file passes the quality
+gate first (`quality.py`); ISRC is preserved when present so later
+`library.resolve` can match exactly.
 """
 
 from __future__ import annotations

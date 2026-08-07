@@ -29,15 +29,17 @@ Today this context is **metadata only**. It reads Spotify identities, matches
 them against local files, and files audio into the Collection. It holds no
 `ControlObject`, touches no audio callback, and decodes no audio.
 
-The TUI, long-lived `--agent` stream, receipts, events, MCP adapter, and engine
-bridge are planned. This bounded context records their contract; it does not
-claim they ship today.
+An initial read-only curses dashboard is built over a pure snapshot. The richer
+PREP/LIVE TUI, long-lived `--agent` stream, receipts, events, MCP adapter, and
+engine bridge are planned. This bounded context records their contract without
+claiming those later capabilities ship today.
 
 ## Key aggregates / classes
 
 | Class | File | Role |
 | --- | --- | --- |
 | command registry | `migx_cli/__main__.py` | the surface: id, kind, args, emitted schema |
+| TUI snapshot/renderer | `migx_cli/tui.py` | pure metadata snapshot + thin curses dashboard |
 | `SpotifyRead` | `migx_cli/api.py` | read-only Web API client, paced + 429-aware |
 | PKCE flow | `migx_cli/auth.py` | OAuth without a client secret; Keychain token store |
 | mirror builder | `migx_cli/mirror.py` | playlist → `migx.playlist-mirror/1` snapshot |

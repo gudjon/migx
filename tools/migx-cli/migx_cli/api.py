@@ -1,24 +1,13 @@
-"""Thin Spotify Web API client — stdlib only, read-only, ban-safe by design.
+"""Thin Spotify Web API client — stdlib only, read-only.
 
-Hard invariants (never violate these — they are how we stay off Spotify's
-bad side):
+Engineering constraints for a reliable client:
 
-1. **Official hosts only.** Every request is to `api.spotify.com` (or the
-   accounts host for auth, which lives in `auth.py`). No embed pages, no
-   `spclient`, no SpotipyFree, no reverse-engineered clients.
-2. **User OAuth only.** Bearer tokens come from the user-authorized PKCE
-   flow. No anonymous/client-credentials scraping of personal libraries.
-3. **Metadata only.** This client never requests, decodes, or stores audio.
-   No streaming, no audio-analysis for rip assist, no libreSpot.
-4. **Read-only scopes.** Callers must never request modify/stream scopes
-   (enforced in `auth.SCOPES`).
-5. **Be a polite client.** Pace before every attempt, honour `Retry-After`,
-   circuit-break after repeated 429s, skip work via `snapshot_id`, and
-   request only the fields we need.
-
-Rate limits and quota are *not* the same as an account ban. Hammering the
-API gets temporary 429s; circumventing DRM / unofficial clients is what
-gets products and accounts in real trouble. We do neither.
+1. **Documented hosts only** — `api.spotify.com` (auth lives in `auth.py`).
+2. **User OAuth bearer** — PKCE access tokens only.
+3. **Metadata endpoints** — playlist/library identity; no audio stream handling here.
+4. **Read-only scopes** — enforced in `auth.SCOPES`.
+5. **Polite client** — pace, honour `Retry-After`, circuit-break on repeated 429s,
+   sticky `fields=` across pagination, skip work via `snapshot_id` when possible.
 """
 
 from __future__ import annotations
@@ -44,16 +33,20 @@ MAX_CONSECUTIVE_429 = 3
 
 # Identifies the client honestly. A real User-Agent is the opposite of the
 # evasion pattern that gets clients blocked.
-USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx; metadata-only)"
+USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx)"
 
 # Sparse field filters on *stable* endpoints only. We deliberately do not
 # field-filter `/items` or `/me/tracks` body rows: the 2026-03 migration
 # renamed nested keys (`track` → `item` on some paths), and a wrong filter
 # would silently return empty mirrors. Meta + playlist index shapes are
 # stable and worth filtering.
-_PLAYLIST_META_FIELDS = "id,name,snapshot_id,owner(display_name)"
+#
+# owner.id is load-bearing for development-mode ownership checks (display_name
+# alone is not unique). tracks(total) was dropped: /me/playlists no longer
+# returns a tracks object even without a fields filter (2026 Web API).
+_PLAYLIST_META_FIELDS = "id,name,snapshot_id,owner(display_name,id)"
 _PLAYLIST_LIST_FIELDS = (
-    "next,items(id,name,owner(display_name),tracks(total),snapshot_id)"
+    "next,items(id,name,owner(display_name,id),snapshot_id)"
 )
 
 
@@ -85,6 +78,33 @@ def _parse_429_body(raw: bytes) -> dict[str, Any]:
         return json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return {}
+
+
+def reapply_query_params(url: str, sticky: dict[str, Any]) -> str:
+    """Merge sticky query params onto a pagination `next` URL.
+
+    Spotify's `next` links preserve offset/limit but **drop** `fields=`.
+    Following them raw yields page 1 sparse and page 2+ full-shape — silent
+    misclassification (e.g. ownership surveys keyed on owner.id). Always
+    re-apply filters that must stay stable across the whole walk.
+    """
+    if not sticky:
+        return url
+    parts = urllib.parse.urlsplit(url)
+    query = dict(urllib.parse.parse_qsl(parts.query, keep_blank_values=True))
+    for key, value in sticky.items():
+        if value is None:
+            continue
+        query[key] = str(value)
+    return urllib.parse.urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            urllib.parse.urlencode(query),
+            parts.fragment,
+        )
+    )
 
 
 class SpotifyRead:
@@ -213,8 +233,18 @@ class SpotifyRead:
         self.pacer.backoff(attempt, retry_s)
 
     def paged(self, path: str, **params: Any) -> Iterator[dict[str, Any]]:
-        """Yield every item across a paging object, following `next` links."""
+        """Yield every item across a paging object, following `next` links.
+
+        Sticky params (`fields`, and any other non-paging keys the caller
+        passed) are re-applied on every page. Spotify's `next` omits them.
+        """
         params.setdefault("limit", 50)
+        # Params that must not change mid-walk. offset is owned by `next`.
+        sticky = {
+            k: v
+            for k, v in params.items()
+            if k not in ("offset", "limit") and v is not None
+        }
         page = self.get(path, **params)
         while True:
             for item in page.get("items", []):
@@ -222,8 +252,8 @@ class SpotifyRead:
             nxt = page.get("next")
             if not nxt:
                 return
-            # `next` is a full URL — still must pass the host allowlist.
-            page = self.get(nxt)
+            # Full URL + host allowlist + sticky fields (never drop mid-walk).
+            page = self.get(reapply_query_params(nxt, sticky))
 
     # ------------------------------------------------------------ surfaces
 

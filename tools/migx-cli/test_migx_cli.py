@@ -31,6 +31,7 @@ from migx_cli import (  # noqa: E402
     ratelimit,
     resolve,
     tags,
+    tui,
 )
 
 
@@ -392,6 +393,39 @@ def main() -> int:
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
 
+    # ---- TUI: the snapshot is pure data, so it is testable without a screen
+    snap = tui.snapshot()
+    for field in (
+        "library_root",
+        "mirror_count",
+        "collection_count",
+        "want_acquire",
+        "template",
+    ):
+        check(field in snap, f"snapshot carries {field}")
+    check(isinstance(snap["mirrors"], list), "mirrors is a list")
+    for pane in tui.PANES:
+        rows = tui._rows(pane, snap)
+        check(isinstance(rows, list), f"{pane} renders a list of lines")
+        check(all(isinstance(r, str) for r in rows), f"{pane} rows are str")
+    # An empty library must render guidance, never a traceback.
+    blank = {
+        **snap,
+        "collection": [],
+        "mirrors": [],
+        "want": [],
+        "crates": [],
+        "collection_count": 0,
+        "mirror_count": 0,
+        "mirror_tracks": 0,
+        "analysed_count": 0,
+        "want_acquire": 0,
+        "want_upgrade": 0,
+    }
+    for pane in tui.PANES:
+        rows = tui._rows(pane, blank)
+        check(len(rows) > 0, f"{pane} renders something when empty")
+
     # ---- key notation: every tagger's spelling folds to one Camelot value
     for raw, want in [
         ("Am", "8A"),
@@ -627,20 +661,37 @@ def main() -> int:
 
         crate = layout.crate_dir(root, "Night - Club X")
         link = layout.link_into_crate(track, crate)
-        check(link.is_symlink(), "crate entry is a symlink, never a copy")
-        check(link.resolve() == track.resolve(), "symlink points at the file")
+
+        # Hardlink by default: a symlink is 49 bytes on disk, and DJ software
+        # that does not dereference it reads those 49 bytes as a broken track.
+        check(not link.is_symlink(), "crate entry is not a symlink by default")
+        check(link.samefile(track), "crate entry is the same inode")
         check(
-            not str(os.readlink(link)).startswith("/"),
-            "symlink is relative so the tree stays movable",
+            link.stat().st_size == track.stat().st_size,
+            "crate entry reports the real size, not a link's 49 bytes",
         )
+        check(link.stat().st_nlink >= 2, "two names, one inode")
 
         # Re-linking must be a no-op so crate.sync is safe to re-run.
         again = layout.link_into_crate(track, crate)
         check(again == link, "re-linking is idempotent")
+        check(link.samefile(track), "re-link did not break the identity")
 
         # Deleting a crate must never cost audio — the whole invariant.
         shutil.rmtree(crate)
         check(track.is_file(), "deleting a crate leaves the audio intact")
+
+        # Symlink mode stays available and stays relative (portable tree).
+        crate2 = layout.crate_dir(root, "Sym Night")
+        slink = layout.link_into_crate(track, crate2, mode=layout.SYMLINK)
+        check(slink.is_symlink(), "symlink mode still produces a symlink")
+        check(
+            not str(os.readlink(slink)).startswith("/"),
+            "symlink is relative so the tree stays movable",
+        )
+        check(slink.resolve() == track.resolve(), "symlink points at the file")
+        shutil.rmtree(crate2)
+        check(track.is_file(), "removing a symlink crate is also safe")
 
         m3u = layout.write_m3u8(
             layout.playlist_path(root, "Peak"),
@@ -699,7 +750,7 @@ def main() -> int:
             "an existing Collection path is reported, never overwritten",
         )
 
-    # ---- Spotify ban-safety rails (offline)
+    # ---- Spotify Web API client rails (offline)
     try:
         api.assert_allowed_url("https://evil.example/v1/me")
         check(False, "non-API host must be refused")
@@ -739,6 +790,21 @@ def main() -> int:
         "default pacing is conservative (≥0.25s)",
     )
     check(api.MAX_CONSECUTIVE_429 >= 2, "circuit breaker is armed")
+
+    # Pagination next links drop fields= — sticky re-apply must restore them.
+    nxt = "https://api.spotify.com/v1/me/playlists?offset=50&limit=50"
+    fixed = api.reapply_query_params(
+        nxt, {"fields": "next,items(id,name,owner(display_name,id))"}
+    )
+    check(
+        "fields=" in fixed and "offset=50" in fixed and "limit=50" in fixed,
+        "sticky fields re-applied on pagination next without dropping offset",
+    )
+    check(
+        "owner(display_name,id)" in api._PLAYLIST_LIST_FIELDS
+        and "tracks(total)" not in api._PLAYLIST_LIST_FIELDS,
+        "playlist list fields keep owner.id; drop dead tracks(total)",
+    )
 
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)

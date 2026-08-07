@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Interactive dashboard over the migx library. Needs a real terminal.
+
+    ./tools/migx-cli/migx-tui           browse
+    ./tools/migx-cli/migx-tui --json    the same snapshot, machine-readable
+
+The `--json` form exists so the TUI is never the only way to see something —
+`ADR-008` makes the human and agent clients equal, and a dashboard that hides
+state from an agent would break that.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from migx_cli import tui  # noqa: E402
+
+if __name__ == "__main__":
+    if "--json" in sys.argv:
+        json.dump(tui.snapshot(), sys.stdout, indent=2, ensure_ascii=False)
+        sys.stdout.write("\n")
+        sys.exit(0)
+    if "--plain" in sys.argv:
+        snap = tui.snapshot()
+        for pane in tui.PANES:
+            print(f"\n=== {pane} ===")
+            for line in tui._rows(pane, snap):
+                print(f"  {line}")
+        sys.exit(0)
+    sys.exit(tui.run())

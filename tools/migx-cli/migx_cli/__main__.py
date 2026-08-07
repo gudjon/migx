@@ -33,6 +33,7 @@ from . import (
     quality,
     ratelimit,
     resolve,
+    tracklist,
 )
 
 REPO = Path(__file__).resolve().parents[3]
@@ -58,8 +59,7 @@ CAPABILITIES: list[dict[str, Any]] = [
         "summary": "Report whether an account is linked, and with"
         " which scopes.",
         "emits": "migx.auth-status/1",
-        "note": "policy=official-oauth-pkce-readonly-metadata-only;"
-        " hosts limited to accounts.spotify.com + api.spotify.com.",
+        "note": "OAuth PKCE read-only; hosts accounts.spotify.com + api.spotify.com.",
     },
     {
         "id": "spotify.logout",
@@ -164,7 +164,8 @@ CAPABILITIES: list[dict[str, Any]] = [
             "--m3u8": "also write a playlist file",
         },
         "emits": "migx.crate-report/1",
-        "note": "Crates contain symlinks only — every unique track stays"
+        "note": "Crates contain links only (hardlink by default) — every"
+        " unique track stays"
         " exactly one file in Collection/. Deleting a crate never"
         " costs audio.",
     },
@@ -193,6 +194,19 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.config/1",
         "note": "Precedence is flag > env > file > default, so an explicit"
         " flag can never be silently overridden by a config file.",
+    },
+    {
+        "id": "track.pull",
+        "kind": "query",
+        "summary": "Resolve Spotify track links into an actionable sheet.",
+        "args": {
+            "links": "track URLs, URIs, ids, or - to read stdin",
+            "--out": "write a TSV here (opens in Numbers/Excel)",
+        },
+        "emits": "migx.track-sheet/1",
+        "note": "Mirror-first: reads your local mirrors, so it needs no API"
+        " call and works offline. /v1/tracks is 403 for development-mode"
+        " apps anyway.",
     },
     {
         "id": "system.capabilities",
@@ -619,12 +633,19 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
     if not args.root:
         args.root = [str(layout.collection_dir(root))]
     report = _run_resolve(args)
+    cfg_crate = config.load()
     crate_name = args.crate or report.get("source_name") or "crate"
     crate = layout.crate_dir(root, crate_name)
 
     linked = []
     for row in report["resolved"]:
-        link = layout.link_into_crate(Path(row["path"]), crate)
+        link = layout.link_into_crate(
+            Path(row["path"]),
+            crate,
+            mode=config.get(
+                cfg_crate, "library.crate_link_mode", layout.HARDLINK
+            ),
+        )
         linked.append({**row, "link": str(link)})
 
     playlist = None
@@ -652,7 +673,7 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
         _out(doc, True)
     else:
         print(
-            f"crate {crate_name}: {len(linked)} symlinked, "
+            f"crate {crate_name}: {len(linked)} linked, "
             f"{report['missing_count']} missing, "
             f"{report['below_bar_count']} below bar"
         )
@@ -660,7 +681,7 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
         if playlist:
             print(f"  {playlist}")
         print(
-            "\nSymlinks only — the audio stays one file in Collection/.",
+            "\nLinks only — the audio stays one file in Collection/.",
             file=sys.stderr,
         )
     return 0
@@ -739,6 +760,54 @@ def cmd_config_show(args: argparse.Namespace) -> int:
             f"  quality.allow_tiers    "
             f"{', '.join(doc['quality']['allow_tiers'])}"
         )
+    return 0
+
+
+def cmd_track_pull(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    raw = args.links
+    if raw == ["-"] or not raw:
+        raw = sys.stdin.read().split()
+    ids = tracklist.extract_ids(raw)
+    if not ids:
+        print("error: no Spotify track ids found in input", file=sys.stderr)
+        return 2
+
+    roots = _config_roots(cfg)
+    resolver = resolve.get_resolver("local-files", roots)
+    resolver.scan()
+    sheet = tracklist.build(
+        ids, Path(config.get(cfg, "spotify.mirror_root")), resolver
+    )
+
+    if args.out:
+        out = Path(args.out).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(tracklist.to_tsv(sheet), encoding="utf-8")
+
+    if args.json:
+        _out(sheet, True)
+    else:
+        print(
+            f"{sheet['resolved']}/{sheet['requested']} resolved from "
+            f"mirrors · {sheet['owned']} already owned"
+        )
+        for r in sheet["tracks"]:
+            ms = r.get("duration_ms") or 0
+            mark = "OWNED" if r["owned"] else f"x{len(r['on_playlists'])}"
+            print(
+                f"  {mark:>6} {r.get('isrc') or '-':14} "
+                f"{(r['artists'] or [''])[0][:20]:22} "
+                f"{(r.get('title') or '')[:34]:36} "
+                f"{ms // 60000}:{(ms // 1000) % 60:02d}"
+            )
+        for sid in sheet["unresolved"]:
+            print(
+                f"  {'?':>6} not on any mirrored playlist: {sid}",
+                file=sys.stderr,
+            )
+        if args.out:
+            print(f"\nsheet -> {args.out}", file=sys.stderr)
     return 0
 
 
@@ -922,6 +991,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "config.show", help="resolved settings and their origin"
     ).set_defaults(fn=cmd_config_show)
+
+    p = sub.add_parser("track.pull", help="resolve Spotify links to a sheet")
+    p.add_argument("links", nargs="*", default=[])
+    p.add_argument("--out", default=None)
+    p.set_defaults(fn=cmd_track_pull)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

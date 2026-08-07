@@ -40,6 +40,9 @@ DEFAULTS: dict[str, Any] = {
         "default_ext": "mp3",
         # Extra places to look for tracks you already own, beyond Collection/.
         "extra_roots": [],
+        # hardlink | symlink. Hardlinks look like real files to DJ software;
+        # symlinks are 49 bytes and some tools read that instead.
+        "crate_link_mode": "hardlink",
     },
     "quality": {
         # Tiers eligible for the library index. Add "mp3-vbr-high" to accept

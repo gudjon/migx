@@ -34,6 +34,7 @@ related:
   - ADR-004
   - tui-first-agentic-dj-workstation
   - arcflow-tui-agentic-dj-integration
+  - ADR-008
 ---
 
 # Initiative — AI-DJing product (Cursor strategy)
@@ -57,8 +58,8 @@ permission. We take the **Cursor path**: fork the base, ship a **proprietary pro
 | **S2 World model** | Song/session ontology with durable provenance and live derived views | EXO, FSL, ArcFlow evaluation |
 | **S3 Agent seams (B)** | Shared command/query/event/capability core | ADR-008, control bus |
 | **S4 Product surface** | TUI first; CLI/JSON/agent parity; later native graphical adapter | ADR-008, ADR-004 |
-| **S5 Intelligence (C)** | Multi-model co-pilot (in-process OK) | ADR-005 |
-| **S6 Growth** | Freemium, privacy mode | product notes |
+| **S5 Intelligence (C)** | Multi-model co-pilot (in-process OK); Predict → Ask → Explain | ADR-005 |
+| **S6 Growth** | Freemium; **local-first free tier** / privacy mode | product notes; signal-2026-08-07 |
 
 ## Closed loop
 
