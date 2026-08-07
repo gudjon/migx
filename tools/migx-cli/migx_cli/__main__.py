@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import api, auth, mirror, naming, quality
+from . import api, auth, mirror, naming, quality, resolve
 
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_MIRROR_ROOT = (
@@ -89,6 +89,33 @@ CAPABILITIES: list[dict[str, Any]] = [
         "note": "The bar is a contract on the FILE, not on where it"
         " came from: "
         "true 320 CBR or lossless passes, everything else is refused.",
+    },
+    {
+        "id": "library.resolve",
+        "kind": "command",
+        "summary": "Match a mirror against files you already own.",
+        "args": {
+            "mirror": "path to a migx.playlist-mirror/1 document",
+            "--root": "library root to scan (repeatable)",
+            "--out": "write the report here",
+            "--allow-tier": "accept an extra quality tier",
+        },
+        "emits": "migx.resolution-report/1",
+        "note": "Ships the local-files resolver only. Every hit is gated on"
+        " the quality bar, so no resolver self-certifies.",
+    },
+    {
+        "id": "library.missing",
+        "kind": "query",
+        "summary": "The want-list: what to acquire, and what to upgrade.",
+        "args": {
+            "mirror": "mirror document, or a resolution report",
+            "--root": "library root to scan (repeatable)",
+            "--out": "write the want-list here",
+        },
+        "emits": "migx.want-list/1",
+        "note": "ISRC-keyed so store lookup is exact. Owning a file below"
+        " the bar is an upgrade, never a re-buy.",
     },
     {
         "id": "system.capabilities",
@@ -302,6 +329,81 @@ def cmd_library_inspect(args: argparse.Namespace) -> int:
     return 0 if passed == len(rows) else 1
 
 
+def _load_mirror(path: str) -> dict[str, Any]:
+    doc = json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
+    schema = doc.get("schema", "")
+    if not schema.startswith(
+        ("migx.playlist-mirror/", "migx.resolution-report/")
+    ):
+        raise api.ApiError(
+            f"{path}: expected migx.playlist-mirror/1, got {schema or '?'}"
+        )
+    return doc
+
+
+def _run_resolve(args: argparse.Namespace) -> dict[str, Any]:
+    doc = _load_mirror(args.mirror)
+    if doc["schema"].startswith("migx.resolution-report/"):
+        return doc  # already resolved; reuse rather than rescan
+    roots = args.root or [str(Path.home() / "Music")]
+    resolver = resolve.LocalFilesResolver(roots)
+    resolver.scan()
+    allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+    return resolve.resolve_mirror(doc, resolver, allow_tiers=allow)
+
+
+def cmd_library_resolve(args: argparse.Namespace) -> int:
+    report = _run_resolve(args)
+    if args.out:
+        out = Path(args.out).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    if args.json:
+        _out(report, True)
+    else:
+        print(f"scanned {report['scanned_files']} local files")
+        print(f"resolved   {report['resolved_count']}/{report['total']}")
+        print(f"below bar  {report['below_bar_count']}")
+        print(f"missing    {report['missing_count']}")
+        for row in report["resolved"][:10]:
+            print(f"  ok  [{row['method']}] {row['title']}")
+        if args.out:
+            print(f"\nreport -> {args.out}", file=sys.stderr)
+    return 0
+
+
+def cmd_library_missing(args: argparse.Namespace) -> int:
+    want = resolve.want_list(_run_resolve(args))
+    if args.out:
+        out = Path(args.out).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(want, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    if args.json:
+        _out(want, True)
+    else:
+        print(
+            f"acquire {want['acquire_count']} · "
+            f"upgrade {want['upgrade_count']}"
+        )
+        for item in want["items"]:
+            tag = "BUY " if item["want"] == "acquire" else "UPGR"
+            isrc = item.get("isrc") or "-"
+            print(f"{tag} {isrc:14} {item['store_query']}")
+        print(
+            "\nISRC is exact — search it at your store before the text query.",
+            file=sys.stderr,
+        )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -388,6 +490,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="accept an extra tier beyond 320-CBR/lossless",
     )
     p.set_defaults(fn=cmd_library_inspect)
+
+    p = sub.add_parser(
+        "library.resolve", help="match a mirror against files you own"
+    )
+    p.add_argument("mirror")
+    p.add_argument("--root", action="append", default=[])
+    p.add_argument("--out", default=None)
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_library_resolve)
+
+    p = sub.add_parser("library.missing", help="the ISRC-keyed want-list")
+    p.add_argument("mirror")
+    p.add_argument("--root", action="append", default=[])
+    p.add_argument("--out", default=None)
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_library_missing)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

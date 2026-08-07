@@ -89,8 +89,39 @@ spotify.login → playlist.pull → library.resolve → library.missing (ISRC wa
      → you buy on Beatport/Bandcamp → local resolver fills paths → library.index
 ```
 
-The resolver is an interface. Core ships the **local-files** resolver only;
-acquisition backends stay out of core.
+```bash
+./tools/migx-cli/migx library.resolve mirror.json --root ~/Music
+./tools/migx-cli/migx library.missing mirror.json --root ~/Music --json
+```
+
+### The resolver seam
+
+A resolver answers exactly one question: *where is the audio for this identity?*
+
+| Element | Rule |
+| --- | --- |
+| Input | one mirror entry; **ISRC is the join key** |
+| Output | a path to an existing local file, or `None` |
+| Purity | must not mutate the mirror, must not write the index |
+| Gate | output **always** passes `quality.verdict` — no resolver self-certifies |
+| Registration | by name; core ships `local-files` only |
+
+Match order: **ISRC** (exact, needs no scoring) → **artist+title** (normalised,
+duration-confirmed) → **title-only** (only when unambiguous).
+
+Normalisation strips what differs between a store's metadata and Spotify's for
+the same recording — `(Original Mix)`, `(feat. …)`, `- Remastered 2011`,
+accents — for *matching only*, never for naming.
+
+### Own-but-low is an upgrade, never a re-buy
+
+A file you already own that fails the quality bar is **not** missing. It lands in
+`below_bar` and the want-list marks it `upgrade`, so you never pay twice for a
+track you have — you just replace a 128 kbps copy with a proper one.
+
+ISRC also survives tagger disagreement: it is read from the standard `TSRC`
+frame *and* from `TXXX:ISRC`, which is where ffmpeg and several taggers actually
+write it. Missing that frame silently downgrades every match to fuzzy.
 
 ## Test
 

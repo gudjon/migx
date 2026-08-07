@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Regression test for the migx CLI wave 1 — naming + mirror shape. No network.
+"""Regression tests for the migx CLI. Offline — no network, no encoder.
 
-Pins the two things a later change could silently break: the output naming
-convention (P-07 — one writer per artifact family) and the
-`migx.playlist-mirror/1`
-document shape agents parse. PKCE/auth is not covered here (needs a
-live account);
-this is the offline contract.
+Pins what a later change could silently break:
+  - the output naming convention (P-07, one writer per artifact family)
+  - the `migx.playlist-mirror/1` and `migx.want-list/1` shapes agents parse
+  - the quality bar, which is a contract on the file not the pipeline
+  - ISRC reading from both TSRC and TXXX, the strongest match key
+
+PKCE/auth needs a live account and is not covered here.
 
 Run: python3 tools/migx-cli/test_migx_cli.py   (exit 0 = pass)
 """
@@ -15,7 +16,32 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from migx_cli import mirror, naming, quality  # noqa: E402
+from migx_cli import mirror, naming, quality, resolve, tags  # noqa: E402
+
+
+def _id3(frames: dict[str, str], txxx: dict[str, str] | None = None) -> bytes:
+    """Build a minimal ID3v2.4 tag (UTF-8 text frames + TXXX pairs)."""
+    body = b""
+    for fid, value in frames.items():
+        payload = b"\x03" + value.encode("utf-8") + b"\x00"
+        body += fid.encode("ascii") + _syncsafe_bytes(len(payload))
+        body += b"\x00\x00" + payload
+    for desc, value in (txxx or {}).items():
+        payload = (
+            b"\x03"
+            + desc.encode("utf-8")
+            + b"\x00"
+            + value.encode("utf-8")
+            + b"\x00"
+        )
+        body += b"TXXX" + _syncsafe_bytes(len(payload)) + b"\x00\x00" + payload
+    return b"ID3\x04\x00\x00" + _syncsafe_bytes(len(body)) + body
+
+
+def _syncsafe_bytes(n: int) -> bytes:
+    return bytes(
+        [(n >> 21) & 0x7F, (n >> 14) & 0x7F, (n >> 7) & 0x7F, n & 0x7F]
+    )
 
 
 def _mp3(bitrate_idx: int, frames: int = 40) -> bytes:
@@ -246,11 +272,117 @@ def main() -> int:
         )
         check(missing["eligible"] is False, "unknown never passes the gate")
 
+    # ---- match normalisation: store metadata never matches Spotify exactly
+    check(
+        resolve.normalise("Windowlicker (Original Mix)")
+        == resolve.normalise("Windowlicker"),
+        "(Original Mix) is stripped for matching",
+    )
+    check(
+        resolve.normalise("Song (feat. Someone)") == resolve.normalise("Song"),
+        "featured-artist suffix stripped",
+    )
+    check(
+        resolve.normalise("Track - Remastered 2011")
+        == resolve.normalise("Track"),
+        "remaster suffix stripped",
+    )
+    check(
+        resolve.normalise("Björk") == resolve.normalise("Bjork"),
+        "accents fold for matching",
+    )
+    check(
+        resolve.normalise("Song") != resolve.normalise("Other Song"),
+        "normalisation does not collapse distinct titles",
+    )
+
+    # ---- tags: ISRC lives in TSRC *or* TXXX depending on the tagger
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        lib = root / "music"
+        lib.mkdir()
+
+        (lib / "a.mp3").write_bytes(
+            _id3(
+                {"TIT2": "Never Gonna Give You Up", "TPE1": "Rick Astley"},
+                txxx={"ISRC": "GBARL9300135"},
+            )
+            + _mp3(14)
+        )
+        (lib / "b.mp3").write_bytes(
+            _id3(
+                {
+                    "TIT2": "Blue Monday",
+                    "TPE1": "New Order",
+                    "TSRC": "GBZZZ1111111",
+                }
+            )
+            + _mp3(9)
+        )
+
+        meta_a = tags.read(lib / "a.mp3")
+        check(meta_a.get("isrc") == "GBARL9300135", "TXXX:ISRC is read")
+        check(meta_a.get("title") == "Never Gonna Give You Up", "TIT2 read")
+        meta_b = tags.read(lib / "b.mp3")
+        check(meta_b.get("isrc") == "GBZZZ1111111", "TSRC is read")
+
+        # ---- resolver: ISRC wins, and below-bar is an upgrade not a re-buy
+        resolver = resolve.LocalFilesResolver([lib])
+        resolver.scan()
+        check(resolver.scanned == 2, f"scanned {resolver.scanned} != 2")
+
+        doc = {
+            "schema": "migx.playlist-mirror/1",
+            "source_name": "T",
+            "captured_week": "2026-W32",
+            "tracks": [
+                {
+                    "position": 0,
+                    "title": "Never Gonna Give You Up (Remaster)",
+                    "artists": ["Rick Astley"],
+                    "isrc": "GBARL9300135",
+                },
+                {
+                    "position": 1,
+                    "title": "Blue Monday",
+                    "artists": ["New Order"],
+                    "isrc": "GBAAA8300001",
+                },
+                {
+                    "position": 2,
+                    "title": "Not Owned",
+                    "artists": ["Nobody"],
+                    "isrc": "GBZZZ0000001",
+                },
+            ],
+        }
+        report = resolve.resolve_mirror(doc, resolver)
+        check(report["resolved_count"] == 1, "one track meets the bar")
+        check(report["below_bar_count"] == 1, "one owned but below bar")
+        check(report["missing_count"] == 1, "one genuinely absent")
+        check(
+            report["resolved"][0]["method"] == "isrc",
+            "ISRC matched despite the differing title",
+        )
+        check(
+            report["below_bar"][0]["method"] == "artist+title",
+            "fuzzy match used when ISRC differs",
+        )
+
+        want = resolve.want_list(report)
+        wants = {i["title"]: i["want"] for i in want["items"]}
+        check(wants.get("Not Owned") == "acquire", "absent track -> acquire")
+        check(
+            wants.get("Blue Monday") == "upgrade",
+            "owned-but-low track -> upgrade, never a re-buy",
+        )
+        check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
         f"{'FAILED' if failures else 'ok'} — migx-cli naming + mirror"
-        f" + quality gate "
+        f" + quality gate + tags + resolver "
         f"({len(failures)} failure(s))"
     )
     return 1 if failures else 0
