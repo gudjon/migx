@@ -14,6 +14,8 @@ related:
   - tui-first-agentic-dj-workstation
   - world-model-experience-ontology
   - headless-sim-ground-truth-agentic-cli
+  - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
+  - kanban/tasks/arcflow-distinct-playlist-count-semantics.md
   - ADR-005
   - P-02
   - P-06

@@ -18,6 +18,9 @@ related:
   - kanban/knowledge/migx-brand-positioning-experience-designer.md
   - kanban/knowledge/tui-first-agentic-dj-workstation.md
   - kanban/knowledge/arcflow-tui-agentic-dj-integration.md
+  - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
+  - kanban/planning/00-PORTFOLIO/README.md
+  - kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md
   - kanban/runbooks/go-private-and-git-posture.md
   - kanban/federation/signal/2026-07-17-deep-x-community-alignment.md
   - kanban/federation/signal/2026-08-07-strategy-ui-adr-x-alignment.md

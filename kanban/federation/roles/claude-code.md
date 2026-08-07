@@ -32,18 +32,25 @@ Consume Grok's signal when it improves the plan; reject signal that violates hou
 | Open dossiers (e.g. MTL) | continue waves; do not abandon for shiny signal |
 | Owner direction | value judgments; ADR accept |
 
+## Product buildout queue
+Before inventing scope: read `kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` §C
+(entry `00-PORTFOLIO/README.md`). Prefer top unblocked gaps; ≤2 active dossiers; after
+seal update matrix status. Doctrine:
+`kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md`.
+
 ## Session loop
 ```text
 migx-fed poll --to claude-code
+→ read capability-gap-matrix §C (what to build next)
 → for each open handoff:
      fold into existing OPEN dossier if scope matches
      OR file kanban/tasks/ + close with pointer
      OR ack and schedule next wave
      OR close wontfix if RT/ADR conflict (cite P-NN / ADR)
-→ execute owned coding work
+→ execute owned coding work (waves + pre-commit)
 → if blocked on "what is the field doing?":
      migx-fed send --type research-request --to grok-signal
-→ commit per wave; never dual-edit Grok's uncommitted signal files
+→ commit per wave; update matrix when a gap ships; never dual-edit Grok's uncommitted signal files
 ```
 
 ## Hard boundaries

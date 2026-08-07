@@ -14,6 +14,10 @@ related:
   - kanban/architecture/ddd/bounded-contexts/arch-cli-commands.md
   - kanban/knowledge/headless-sim-ground-truth-agentic-cli.md
   - kanban/knowledge/output-verification-formats-naming.md
+  - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
+  - kanban/planning/00-PORTFOLIO/README.md
+  - kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md
+  - kanban/federation/signal/2026-08-07-tui-first-dj-workstation-field.md
 sources:
   - https://github.com/sxyazi/yazi
   - https://github.com/aristocratos/btop

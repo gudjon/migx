@@ -35,6 +35,10 @@ workspace, LIVE control, long-lived `--agent` stream, receipts, events, MCP
 adapter, and engine bridge are planned. This bounded context records their
 contract without claiming those later capabilities ship today.
 
+**Operational gap queue** (shipped vs planned commands and TUI commitments):  
+`kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` (§A / §A2). Product capability
+names: `kanban/architecture/ddd/capability-catalogue.md`.
+
 ## Key aggregates / classes
 
 | Class | File | Role |

@@ -118,3 +118,18 @@ OZ-aligned `pm_overlay`, add `_template.md`, delete old `INIT-apple-silicon.md`,
 `AGENT-ONBOARDING.md` HARNESS.md→playbook refs.
 
 Progress is tracked live in the `/loop`; this file is the durable record.
+
+## Product buildout phase (2026-08-07+)
+
+Harness standup is complete. **Product** work is queued operationally (not as more harness
+phases):
+
+| Doc | Role |
+| --- | --- |
+| [`README.md`](README.md) (this folder) | Agent entry for “what to build” |
+| [`capability-gap-matrix.md`](capability-gap-matrix.md) | Shipped vs gap vs blocked; §C top-10 |
+| `kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md` | HARNESS-BIBLE → Migx closed-loop procedure |
+| `kanban/knowledge/tui-first-agentic-dj-workstation.md` | TUI-first product SSoT |
+| `kanban/knowledge/arcflow-tui-agentic-dj-integration.md` | ArcFlow off-RT boundary |
+
+Do **not** treat this harness-roadmap file as the product backlog — use the gap matrix.

@@ -34,14 +34,20 @@ capabilities, implementation ideas, and research relevant to:
 | Handoff | `migx-fed send … --type signal-handoff` → `claude-code` | Only if **actionable** |
 | Answer | reply/close on open `research-request` messages | When Claude/Gudjon asks |
 
+## Product portfolio
+Gap queue SSoT: `kanban/planning/00-PORTFOLIO/capability-gap-matrix.md`. Grok may
+**reorder §C** or open tasks from field evidence; does not implement engine/TUI by default.
+Buildout doctrine: `signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md`.
+
 ## Session loop
 ```text
 migx-fed poll --to grok-signal
 → drain research-request / question mail
 → scout X (semantic + keyword) + selective web
 → write signal brief(s)
+→ if field changes product priority: update matrix §C + handoff (do not rewrite Strategy)
 → promote at most the best 0–2 items as handoffs (quality > volume)
-→ commit kanban/federation/** only (or docs tasks) — avoid dual-build with Claude
+→ commit kanban/federation/** only (or docs/tasks) — avoid dual-build with Claude
 ```
 
 ## Long harness (multi-hour / overnight)

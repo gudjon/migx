@@ -49,6 +49,10 @@ in its home and point here — never restate.** Migx is a DJ application forked 
   ADR-008 · `kanban/knowledge/tui-first-agentic-dj-workstation.md` ·
   `kanban/knowledge/arcflow-tui-agentic-dj-integration.md` · ADR-003 · ADR-005 ·
   `initiative-ai-djing-product`
+- **What to build next (full product gaps)** → `kanban/planning/00-PORTFOLIO/README.md` ·
+  `capability-gap-matrix.md` §C · closed-loop doctrine
+  `kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md`
+  (≤2 active dossiers; update matrix status when a slice lands)
 - Git posture (public early → agora) → `kanban/runbooks/go-private-and-git-posture.md`
 - **Federation (Grok / Claude / Codex)** → `kanban/federation/FEDERATION.md` · role
   `kanban/federation/roles/claude-code.md` · CLI `./kanban/scripts/migx-fed`

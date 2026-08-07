@@ -9,12 +9,24 @@ lastUpdated: "2026-08-07"
 defers_to:
   - kanban/AGENTS.md
   - kanban/HARNESS.md
+  - kanban/planning/00-PORTFOLIO/README.md
 ---
 
 # Agent Onboarding
 
 You are a coding agent (or engineer) arriving in Migx. This is your reading list and the map of what
 the harness maintains. Read the tier that matches your task; don't read everything.
+
+## Product buildout (closed-loop agentic) — start here
+
+To grow the **full DJ feature set** automatically (not vibe-code a mega-PR):
+
+1. [`kanban/planning/00-PORTFOLIO/README.md`](planning/00-PORTFOLIO/README.md) — portfolio entry  
+2. [`planning/00-PORTFOLIO/capability-gap-matrix.md`](planning/00-PORTFOLIO/capability-gap-matrix.md) — **queue**  
+3. [`federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md`](federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md) — doctrine map (HARNESS-BIBLE → Migx)  
+4. Open **one** gap from matrix §C → dossier with EARS + acceptance → peer seal (P-08)
+
+Peers: **Claude** implements · **Codex** verifies · **Grok** signal. ≤2 active implementer dossiers.
 
 ## Reading tiers
 
@@ -32,7 +44,9 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 
 | Your task | Read |
 | --- | --- |
-| Designing/opening a unit of work | `kanban/playbook/01` (cadence) + `.claude/rules/planning-harness.md` → scaffold from `kanban/planning/_template/` |
+| **What to build next / full product gaps** | `planning/00-PORTFOLIO/README.md` + `capability-gap-matrix.md` §C |
+| **Closed-loop agentic buildout (doctrine)** | `federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md` + playbook ch.03–04 |
+| Designing/opening a unit of work | matrix §C first → `playbook/01` + `.claude/rules/planning-harness.md` → `_template/` |
 | Writing an optimization (the north-star) | `kanban/initiatives/initiative-apple-silicon.md` + the relevant dossier + `kanban/patterns/` perf patterns |
 | Reviewing a PR / diff | `kanban/playbook/01` §Discipline Checklist + `.claude/rules/agentic-decision-authority.md` |
 | Debugging a regression | `kanban/playbook/02` §Breakage catalogue |
@@ -45,11 +59,12 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Antigravity co-implementer | **Paused** (no tokens). See `AGY.md` re-enable checklist when available |
 | Claude implementer with federation live | `CLAUDE.md` §Multi-agent + `roles/claude-code.md` + `migx-fed sync` + `migx-fed poll` |
 | Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + ADR-008 + `runbooks/go-private-and-git-posture.md` |
-| TUI / CLI / JSON / agent product work | `kanban/Strategy-Current.md` + ADR-008 + `knowledge/tui-first-agentic-dj-workstation.md` + `architecture/ddd/bounded-contexts/arch-cli-commands.md` |
-| ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + `knowledge/world-model-experience-ontology.md` |
+| TUI / CLI / JSON / agent product work | ADR-008 + `knowledge/tui-first-agentic-dj-workstation.md` + `arch-cli-commands` + matrix §A2 |
+| ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + matrix §B4 + distinct-playlist task |
+| Trackpad / MacBook gestures | `signal/2026-08-07-macbook-trackpad-mode-language.md` + task `macbook-trackpad-v1-appkit-gestures` |
 | Native graphical performance adapter | ADR-004 + ADR-007 + `src/qml/AGENTS.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
-| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` + `2026-08-07-dev-practices-agent-native-x.md` |
+| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` + `2026-08-07-dev-practices-agent-native-x.md` + `2026-08-07-tui-first-dj-workstation-field.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),
 `kanban/architecture/decisions/` (ADRs), `kanban/triggers/registry.yaml` (cadence).

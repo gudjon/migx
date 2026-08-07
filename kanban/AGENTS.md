@@ -76,7 +76,11 @@ The harness serves two standing product bets (see `kanban/Strategy-Current.md`):
    (`initiative-apple-silicon`) so the AI layer never glitches audio.
 
 Missing capabilities become development dossiers, each a closed loop scored on real benchmark or
-product acceptance numbers. Roadmap: `kanban/planning/00-PORTFOLIO/migx-harness-roadmap.md`.
+product acceptance numbers. **Operational queue (what is shipped vs gap):**  
+`kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` — entry  
+`kanban/planning/00-PORTFOLIO/README.md`. Harness-standup history:  
+`kanban/planning/00-PORTFOLIO/migx-harness-roadmap.md`. Closed-loop buildout doctrine:  
+`kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md`.
 
 ## Where things live (the routing table)
 
@@ -84,7 +88,9 @@ product acceptance numbers. Roadmap: `kanban/planning/00-PORTFOLIO/migx-harness-
 |---|---|
 | Learn the ID rules (prefixes, anchor-vs-semantic) | `kanban/GLOSSARY.md` |
 | See which dossier prefixes are registered | `kanban/planning/00-PORTFOLIO/prefix-registry.yaml` |
-| Start a new unit of work | scaffold a dossier from `kanban/planning/_template/` |
+| **See what product gaps to open next** | `kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` §C |
+| **Run closed-loop agentic product buildout** | `00-PORTFOLIO/README.md` + buildout signal (above) |
+| Start a new unit of work | matrix first → scaffold dossier from `kanban/planning/_template/` |
 | Cite or add a validated pattern / named failure mode | `kanban/patterns/` (`P-NN` / `AP-NN`) |
 | Record a path-pinning decision | `kanban/architecture/decisions/` (ADR) |
 | Add a backlog task not tied to a live dossier | `kanban/tasks/` |

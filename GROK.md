@@ -11,6 +11,9 @@ Claude Code loads `CLAUDE.md`; you load **this** + repo-root `AGENTS.md`.
 - Strategy: `kanban/Strategy-Current.md`; interaction reference:
   `kanban/knowledge/tui-first-agentic-dj-workstation.md`.
 - ArcFlow world-model boundary: `kanban/knowledge/arcflow-tui-agentic-dj-integration.md`.
+- **Product gap queue (do not invent parallel roadmaps):**  
+  `kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` — Grok may reorder §C from field
+  evidence and file tasks/signals; Claude/Codex execute.
 - Default peer role: **signal scout** for the federation: Claude implements, Codex verifies.
 
 ## Session start (always)

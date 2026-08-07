@@ -37,7 +37,7 @@ The fleet builds **the product and the product’s co-pilot substrate** — not 
 |---|---|---|---|
 | **Claude Code** | Primary implementer | RT/C++/Qt + non-RT product while AGY paused | **active** |
 | **Codex CLI** | Verifier-cartographer | Trace, tests, harness, P-08 independent eval | **active** |
-| **Grok** | Signal scout | Live X + web field intel, architecture trends | **active** |
+| **Grok** | Signal scout | Live X + web field intel, architecture trends; may reorder portfolio gap matrix §C from field | **active** |
 | **AGY** | (dormant co-implementer) | Was: multi-agent non-RT volume | **paused** |
 
 **Federation** (`migx-fed` + worktrees + roles) is the right substrate: git-mediated mail, pull delivery,
@@ -113,39 +113,42 @@ as a closed loop (suggestion → accept via CO → outcome).
 
 | Peer | Do | Don’t |
 |---|---|---|
-| **Claude** | RT/MTL **and** DUI/EXO/product while AGY paused; seal perf with benches | Self-seal P-08 without Codex |
-| **Codex** | Cartography, P-08, harness scripts, “is this claim true in tree?” | Compete for Claude’s open wave files |
-| **Grok** | Daily/overnight X scout; handoff only if actionable | Write engine code by default |
+| **Claude** | RT/MTL **and** DUI/EXO/product while AGY paused; pull matrix §C; seal perf with benches | Self-seal P-08 without Codex |
+| **Codex** | Cartography, P-08, harness scripts, matrix integrity, “is this claim true in tree?” | Compete for Claude’s open wave files |
+| **Grok** | Daily/overnight X scout; handoff only if actionable; may reorder matrix §C | Write engine code by default |
 | **AGY** | *Paused* — re-enable for non-RT volume when tokens return | Address new open mail while paused |
 
 ## Autonomous day / night operating system
 
 ### Day (human in the loop lightly)
 ```text
-09:00  Gudjon: read migx-fed list --status open + active dossier JOURNALs
-       Priority order: (1) red gates / underruns (2) open high mail (3) north-star dossiers
+09:00  Gudjon: read migx-fed list --status open + capability-gap-matrix §C + JOURNALs
+       Priority order: (1) red gates / underruns (2) open high mail (3) matrix top gaps
 09:15  Start only the DRIs needed (Claude / Codex / Grok — not AGY while paused)
        Claude for implement; Grok if research-request; Codex if P-08 pending
-All day  Each peer: poll → wave → commit → close mail
+All day  Each peer: poll → wave → commit → close mail → update matrix on ship
 EOD     One conductor note in kanban/ or JOURNAL: what closed, what’s blocked
 ```
 
 ### Night (unattended)
 ```text
-Claude  /loop or schedule: MTL/bench delta only if machine free + disk OK
-Grok    long scout loop (disk contract) 1–2 waves; ≤2 handoffs
-Codex   listen or single wake: drain P-08 / verify mails
+Claude  /loop: matrix §C top unblocked gap (or MTL/bench if machine free)
+Grok    long scout loop (disk contract) 1–2 waves; ≤2 handoffs; may reorder matrix §C
+Codex   listen or single wake: drain P-08 / verify mails / matrix integrity
 Conductor shell: list open → if EXO P-08 open and fixtures unchanged, nudge codex only
 # AGY: do not schedule while peers.yaml status=paused
 ```
 
 ### Golden rules for autonomy
-1. **Contract before code** (acceptance in PS or mail).  
+1. **Contract before code** (acceptance in PS, matrix row, or mail).  
 2. **One owner per path** (worktrees).  
 3. **Generator ≠ evaluator** (Codex/human for seal).  
-4. **Evidence on disk** (EVD, JOURNAL, closed mail Resolution).  
+4. **Evidence on disk** (EVD, JOURNAL, closed mail Resolution, matrix status).  
 5. **House physics never optional** (P-02, P-06, P-20).  
-6. **Commoditize the model; own the harness** (federation + kanban).
+6. **Commoditize the model; own the harness** (federation + kanban).  
+7. **Queue is the matrix** (`planning/00-PORTFOLIO/capability-gap-matrix.md`) — not chat memory.
+
+**Portfolio entry:** `kanban/planning/00-PORTFOLIO/README.md`.
 
 ## “Perfect software” for Migx = closed loops on the product
 

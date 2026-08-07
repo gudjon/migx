@@ -46,7 +46,8 @@ conventions. **Read the chapters in order on a first read; refer back by chapter
 |---|---|
 | New engineer / agent, day one | `01` → `04` (the daily loop) → refer to `02`/`03` as questions arise |
 | Reviewing a PR | `01` §Discipline Checklist |
-| Opening a unit of work | `01` §Cadence → scaffold from `kanban/planning/_template/` |
+| Opening a unit of work | **Portfolio first:** `kanban/planning/00-PORTFOLIO/README.md` + `capability-gap-matrix.md` → `01` §Cadence → `_template/` |
+| Building full DJ product agentically | Gap matrix §C + signal `full-dj-closed-loop-agentic-buildout` + ch.03–04 |
 | Debugging a regression | `02` §Breakage catalogue |
 | Extending the harness (skill/agent/workflow/loop) | `03` §Which primitive + `.claude/skills/AGENTS.md` + `.claude/workflows/AGENTS.md` |
 | Running an overnight/optimization loop | `04` §Daily loop + §Autonomous decision cascade |

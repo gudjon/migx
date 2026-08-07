@@ -39,6 +39,8 @@ leave a precise artifact: a map, finding, patch, verifier, or coordination messa
 - **Cross-agent stewardship:** detect second-writer risk, stale open messages, missing role docs, and
   uncommitted handoffs.
 - **Review and hardening:** find regressions, missing tests, RT-safety risks, and doc/code drift.
+- **Portfolio integrity:** `capability-gap-matrix.md` — shipped rows must match `system.capabilities`
+  / green acceptance; block self-seals on matrix “shipped” without P-08 evidence.
 
 ## Hard boundaries
 - Grok owns latest X/trend signal. Do not try to be the field scout.

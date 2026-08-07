@@ -62,6 +62,10 @@ build/test entry points (it cites, but does not restate, the house rules above):
   [ADR-008](kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md) ·
   [`tui-first-agentic-dj-workstation`](kanban/knowledge/tui-first-agentic-dj-workstation.md) ·
   [`ArcFlow integration boundary`](kanban/knowledge/arcflow-tui-agentic-dj-integration.md).
+- **Closed-loop product buildout queue** — what is shipped vs gap for agents:
+  [`kanban/planning/00-PORTFOLIO/README.md`](kanban/planning/00-PORTFOLIO/README.md) ·
+  [`capability-gap-matrix.md`](kanban/planning/00-PORTFOLIO/capability-gap-matrix.md) ·
+  [buildout signal](kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md).
 - **AI-DJing product** (Cursor-for-music, **MIT operating model**: proprietary app + Intelligence;
   public early → agora later) — [`kanban/Strategy-Current.md`](kanban/Strategy-Current.md) ·
   [ADR-003](kanban/architecture/decisions/ADR-003-licensing-and-openness.md) ·
