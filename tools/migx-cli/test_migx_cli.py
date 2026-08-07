@@ -30,6 +30,7 @@ from migx_cli import (  # noqa: E402
     quality,
     ratelimit,
     resolve,
+    sidecar,
     tags,
     tui,
 )
@@ -394,6 +395,65 @@ def main() -> int:
             "owned-but-low track -> upgrade, not a second missing entry",
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
+
+    # ---- sidecar: notes + cues, and never clobber the analyzer's work
+    check(sidecar.parse_position("90") == 90.0, "bare seconds")
+    check(sidecar.parse_position("1:30") == 90.0, "mm:ss")
+    check(sidecar.parse_position("1m30s") == 90.0, "1m30s")
+    check(sidecar.parse_position("1:01:00") == 3660.0, "hh:mm:ss")
+    check(sidecar.fmt_position(275) == "4:35", "position formats back")
+    check(sidecar.fmt_position(None) == "--:--", "unknown position is safe")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "Artist - Title.mp3"
+        audio.write_bytes(_mp3(14))
+        check(
+            sidecar.read(audio) == {}, "no sidecar reads as empty, not error"
+        )
+
+        # Pretend the analyzer got there first.
+        sidecar.write(
+            audio,
+            {
+                "bpm": 124.0,
+                "key": "Am",
+                "energy_curve": {"points": [0.1, 0.9]},
+            },
+        )
+        sidecar.set_note(audio, note="girly song", tags=["girly"])
+        sidecar.add_cue(audio, 275.0, "mix out here")
+        sidecar.add_cue(audio, 62.0, "intro over")
+        data = sidecar.read(audio)
+
+        check(data.get("bpm") == 124.0, "note write preserves analyzer bpm")
+        check(data.get("key") == "Am", "note write preserves key")
+        check("energy_curve" in data, "note write preserves energy curve")
+        check(data.get("notes") == "girly song", "note stored")
+        check(data.get("tags") == ["girly"], "tag stored")
+        check(len(data.get("cues") or []) == 2, "both cues stored")
+        check(
+            [c["position"] for c in data["cues"]] == [62.0, 275.0],
+            "cues are kept sorted by position",
+        )
+        check(
+            data["cues"][0]["label"] == "intro over",
+            "cue label survives the sort",
+        )
+
+        sidecar.set_note(audio, tags=["peak"], append=True)
+        check(
+            sidecar.read(audio)["tags"] == ["girly", "peak"],
+            "append extends tags instead of replacing",
+        )
+        check(
+            sidecar.read(audio).get("notes") == "girly song",
+            "appending a tag leaves the note alone",
+        )
+        # The sidecar lives inside Collection; nothing may treat it as audio.
+        check(
+            sidecar.track_file(audio).suffix == ".json",
+            "sidecar is track.json inside <audio>.migx/",
+        )
 
     # ---- TUI: the snapshot is pure data, so it is testable without a screen
     snap = tui.snapshot()

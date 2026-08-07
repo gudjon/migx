@@ -33,6 +33,7 @@ from . import (
     quality,
     ratelimit,
     resolve,
+    sidecar,
     tracklist,
 )
 
@@ -207,6 +208,37 @@ CAPABILITIES: list[dict[str, Any]] = [
         "note": "Mirror-first: reads your local mirrors, so it needs no API"
         " call and works offline. /v1/tracks is 403 for development-mode"
         " apps anyway.",
+    },
+    {
+        "id": "track.note",
+        "kind": "command",
+        "summary": "Set a DJ note and tags on a track ('girly song').",
+        "args": {
+            "track": "path, or a fragment matched against the Collection",
+            "--note": "free text",
+            "--tag": "repeatable short tag",
+            "--append": "extend instead of replacing",
+        },
+        "writes": "<track>.migx/track.json (sidecar is the SSoT)",
+    },
+    {
+        "id": "track.cue",
+        "kind": "command",
+        "summary": "Bookmark a moment: 'mix out here, 1:30'.",
+        "args": {
+            "track": "path or Collection fragment",
+            "at": "position — 90, 1:30, or 1m30s",
+            "label": "the reminder",
+            "--color": "hex, for the deck display",
+            "--hotcue": "hotcue slot number",
+        },
+        "writes": "<track>.migx/track.json cues[]",
+    },
+    {
+        "id": "track.show",
+        "kind": "query",
+        "summary": "Notes, tags and cues for a track.",
+        "emits": "migx.track-sidecar/1",
     },
     {
         "id": "system.capabilities",
@@ -852,6 +884,97 @@ def cmd_track_pull(args: argparse.Namespace) -> int:
     return 0
 
 
+def _find_track(fragment: str) -> Path | None:
+    """A path, or the single Collection file whose name contains fragment."""
+    direct = Path(fragment).expanduser()
+    if direct.is_file():
+        return direct
+    root = Path(config.get(config.load(), "library.root"))
+    needle = fragment.lower()
+    hits = [
+        p
+        for p in layout.collection_dir(root).rglob("*")
+        if p.is_file()
+        and not p.name.startswith(".")
+        and needle in p.name.lower()
+    ]
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        print(f"error: no track matching {fragment!r}", file=sys.stderr)
+    else:
+        print(
+            f"error: {fragment!r} matches {len(hits)} tracks:", file=sys.stderr
+        )
+        for h in hits[:8]:
+            print(f"  {h.name}", file=sys.stderr)
+    return None
+
+
+def cmd_track_note(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    data = sidecar.set_note(
+        track, note=args.note, tags=args.tag or None, append=args.append
+    )
+    _out(
+        {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+        args.json,
+        f"{track.name}\n  notes: {data.get('notes') or '—'}\n"
+        f"  tags : {', '.join(data.get('tags') or []) or '—'}",
+    )
+    return 0
+
+
+def cmd_track_cue(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    try:
+        position = sidecar.parse_position(args.at)
+    except ValueError:
+        print(
+            f"error: cannot read position {args.at!r} — try 90, 1:30, 1m30s",
+            file=sys.stderr,
+        )
+        return 2
+    data = sidecar.add_cue(
+        track, position, args.label, color=args.color, hotcue=args.hotcue
+    )
+    _out(
+        {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+        args.json,
+        f"{track.name}\n  + {sidecar.fmt_position(position)}  {args.label}",
+    )
+    return 0
+
+
+def cmd_track_show(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    data = sidecar.read(track)
+    if args.json:
+        _out(
+            {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+            True,
+        )
+        return 0
+    print(track.name)
+    print(f"  notes: {data.get('notes') or '—'}")
+    print(f"  tags : {', '.join(data.get('tags') or []) or '—'}")
+    cues = data.get("cues") or []
+    if not cues:
+        print("  cues : —")
+    for index, cue in enumerate(cues):
+        print(
+            f"  [{index}] {sidecar.fmt_position(cue.get('position')):>6}  "
+            f"{cue.get('label') or cue.get('type') or ''}"
+        )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -1042,6 +1165,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("links", nargs="*", default=[])
     p.add_argument("--out", default=None)
     p.set_defaults(fn=cmd_track_pull)
+
+    p = sub.add_parser("track.note", help="set a DJ note / tags on a track")
+    p.add_argument("track")
+    p.add_argument("--note", default=None)
+    p.add_argument("--tag", action="append", default=[])
+    p.add_argument("--append", action="store_true")
+    p.set_defaults(fn=cmd_track_note)
+
+    p = sub.add_parser("track.cue", help="bookmark a moment in a track")
+    p.add_argument("track")
+    p.add_argument("at")
+    p.add_argument("label")
+    p.add_argument("--color", default=None)
+    p.add_argument("--hotcue", type=int, default=None)
+    p.set_defaults(fn=cmd_track_cue)
+
+    p = sub.add_parser("track.show", help="notes, tags and cues for a track")
+    p.add_argument("track")
+    p.set_defaults(fn=cmd_track_show)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

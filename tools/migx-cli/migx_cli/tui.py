@@ -25,9 +25,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from . import config, layout, quality, tags
+from . import config, layout, quality, resolve, sidecar, tags
 
-PANES = ("Overview", "Playlists", "Gaps", "Collection")
+PANES = ("Overview", "Playlists", "Gaps", "Collection", "Notes")
 
 
 def _mirrors(mirror_root: Path) -> list[dict[str, Any]]:
@@ -60,16 +60,25 @@ def _collection(root: Path) -> list[dict[str, Any]]:
     for path in sorted(coll.rglob("*")):
         if path.is_dir() or path.name.startswith("."):
             continue
+        # Skip sidecar contents: <track>.mp3.migx/track.json sits under
+        # Collection/ and is metadata, not a track.
+        if path.suffix.lower() not in resolve.AUDIO_EXTS:
+            continue
         meta = tags.read(path)
         probe = quality.inspect(path)
+        side = sidecar.read(path)
         rows.append(
             {
                 "name": path.name,
+                "path": str(path),
                 "artist": meta.get("artist") or "",
                 "tier": probe.get("tier") or "",
-                "bpm": meta.get("bpm"),
+                "bpm": meta.get("bpm") or side.get("bpm"),
                 "camelot": meta.get("camelot"),
                 "duration_s": probe.get("duration_s"),
+                "notes": side.get("notes") or "",
+                "tags": side.get("tags") or [],
+                "cues": side.get("cues") or [],
             }
         )
     return rows
@@ -170,16 +179,84 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
                 f" {(g.get('title') or '')[:34]}"
             )
         return out or ["(no gaps — run library.missing)"]
+    if pane == "Notes":
+        out = []
+        for c in snap["collection"]:
+            if not (c["notes"] or c["tags"] or c["cues"]):
+                continue
+            out.append(f"@{c['name'][:60]}")
+            if c["notes"]:
+                out.append(f"    {c['notes']}")
+            if c["tags"]:
+                out.append(f"    #{'  #'.join(c['tags'])}")
+            for cue in c["cues"]:
+                out.append(
+                    f"    {sidecar.fmt_position(cue.get('position')):>6}  "
+                    f"{cue.get('label') or cue.get('type') or ''}"
+                )
+            out.append("")
+        return out or [
+            "(no notes yet — try: migx track.note <track> --note …)"
+        ]
+
     rows = []
     for c in snap["collection"]:
         secs = int(c["duration_s"] or 0)
         bpm = f"{round(c['bpm']):>3}" if c["bpm"] else "  -"
         key = c["camelot"] or "--"
+        mark = "*" if (c["notes"] or c["tags"] or c["cues"]) else " "
         rows.append(
-            f"{bpm} {key:3} {secs // 60}:{secs % 60:02d}  "
-            f"{c['tier']:12} {c['name'][:46]}"
+            f"{bpm} {key:3} {secs // 60}:{secs % 60:02d} {mark} "
+            f"{c['tier']:12} {c['name'][:44]}"
         )
     return rows or ["(Collection is empty — run library.ingest)"]
+
+
+# Semantic colour roles, not raw numbers, so the palette is changed in one
+# place and a mono terminal simply gets A_NORMAL.
+ROLE_HEAD, ROLE_OK, ROLE_WARN, ROLE_DIM, ROLE_CUE, ROLE_TAG = range(1, 7)
+
+
+def _init_colours() -> dict[int, int]:
+    import curses
+
+    if not curses.has_colors():
+        return {}
+    curses.start_color()
+    curses.use_default_colors()
+    pairs = {
+        ROLE_HEAD: (curses.COLOR_CYAN, -1),
+        ROLE_OK: (curses.COLOR_GREEN, -1),
+        ROLE_WARN: (curses.COLOR_YELLOW, -1),
+        ROLE_DIM: (curses.COLOR_BLUE, -1),
+        ROLE_CUE: (curses.COLOR_MAGENTA, -1),
+        ROLE_TAG: (curses.COLOR_YELLOW, -1),
+    }
+    for role, (fg, bg) in pairs.items():
+        curses.init_pair(role, fg, bg)
+    return {role: curses.color_pair(role) for role in pairs}
+
+
+def _line_attr(pane: str, line: str, colours: dict[int, int]) -> int:
+    """Colour by what the line means, decided from its rendered shape."""
+    if not colours:
+        return 0
+    stripped = line.strip()
+    if pane == "Notes":
+        if stripped.startswith("@"):
+            return colours[ROLE_HEAD]
+        if stripped.startswith("#"):
+            return colours[ROLE_TAG]
+        if stripped[:1].isdigit() and ":" in stripped[:6]:
+            return colours[ROLE_CUE]
+        return colours[ROLE_DIM]
+    if pane == "Gaps":
+        return colours[ROLE_WARN] if stripped.startswith("UPGR") else 0
+    if pane == "Collection":
+        return colours[ROLE_OK] if " * " in line else 0
+    if pane == "Overview" and "NOT MOUNTED" in line:
+        return colours[ROLE_WARN]
+    return 0
 
 
 def run() -> int:  # pragma: no cover - needs a terminal
@@ -187,6 +264,7 @@ def run() -> int:  # pragma: no cover - needs a terminal
 
     def draw(stdscr) -> None:
         curses.curs_set(0)
+        colours = _init_colours()
         stdscr.nodelay(False)
         pane, top = 0, 0
         snap = snapshot()
@@ -197,7 +275,8 @@ def run() -> int:  # pragma: no cover - needs a terminal
             tabs = "  ".join(
                 f"[{i + 1}] {name}" for i, name in enumerate(PANES)
             )
-            stdscr.addnstr(0, 0, f" migx  {tabs}", width - 1, curses.A_BOLD)
+            head_attr = curses.A_BOLD | colours.get(ROLE_HEAD, 0)
+            stdscr.addnstr(0, 0, f" migx  {tabs}", width - 1, head_attr)
             stdscr.addnstr(
                 1, 0, " " + "-" * max(0, min(width - 2, 78)), width - 1
             )
@@ -206,7 +285,13 @@ def run() -> int:  # pragma: no cover - needs a terminal
             view = height - 4
             top = max(0, min(top, max(0, len(rows) - view)))
             for offset, line in enumerate(rows[top : top + view]):
-                stdscr.addnstr(2 + offset, 1, line, width - 2)
+                stdscr.addnstr(
+                    2 + offset,
+                    1,
+                    line,
+                    width - 2,
+                    _line_attr(PANES[pane], line, colours),
+                )
 
             footer = (
                 f" {PANES[pane]}  {top + 1}-"
