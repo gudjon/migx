@@ -11,6 +11,13 @@ config:
   no-duplicate-heading:
     siblings_only: true
 
+  # Every kanban card carries a YAML frontmatter `title:` AND a body H1 (see
+  # kanban/tasks/AGENTS.md). MD025 counts the frontmatter title as a heading by
+  # default, which made every card a false positive. The body H1 is the only
+  # real heading.
+  single-title:
+    front_matter_title: ""
+
   # We use ordered lists to make stuff easier to read in a text editor.
   ol-prefix:
     style: ordered
