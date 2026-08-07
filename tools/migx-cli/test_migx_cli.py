@@ -20,11 +20,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from migx_cli import (  # noqa: E402
+    api,
+    auth,
     ingest,
     layout,
     mirror,
     naming,
     quality,
+    ratelimit,
     resolve,
     tags,
 )
@@ -574,11 +577,52 @@ def main() -> int:
             "an existing Collection path is reported, never overwritten",
         )
 
+    # ---- Spotify ban-safety rails (offline)
+    try:
+        api.assert_allowed_url("https://evil.example/v1/me")
+        check(False, "non-API host must be refused")
+    except api.ApiError as exc:
+        check("refusing request" in str(exc), "host allowlist message")
+    try:
+        api.assert_allowed_url("https://api.spotify.com/v1/me")
+        check(True, "official API host is allowed")
+    except api.ApiError:
+        check(False, "official API host must pass allowlist")
+
+    check(
+        api.API_HOST == "api.spotify.com"
+        and "api.spotify.com" in api.ALLOWED_HOSTS,
+        "only the official Web API host is allowlisted",
+    )
+    check(
+        set(auth.SCOPES)
+        == {
+            "user-library-read",
+            "playlist-read-private",
+            "playlist-read-collaborative",
+        },
+        "scopes stay read-only — no modify/streaming",
+    )
+    check(
+        "playlist-modify" not in " ".join(auth.SCOPES)
+        and "streaming" not in " ".join(auth.SCOPES),
+        "never request write or streaming scopes",
+    )
+    check(
+        auth.ACCOUNTS_HOST == "accounts.spotify.com",
+        "OAuth only talks to accounts.spotify.com",
+    )
+    check(
+        ratelimit.DEFAULT_MIN_INTERVAL_S >= 0.25,
+        "default pacing is conservative (≥0.25s)",
+    )
+    check(api.MAX_CONSECUTIVE_429 >= 2, "circuit breaker is armed")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
         f"{'FAILED' if failures else 'ok'} — migx-cli naming + mirror"
-        f" + quality + tags + resolver + layout + ingest "
+        f" + quality + tags + resolver + layout + ingest + safety "
         f"({len(failures)} failure(s))"
     )
     return 1 if failures else 0

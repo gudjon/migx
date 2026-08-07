@@ -27,10 +27,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-# Conservative default: ~5 requests/second sustained. Well inside the rolling
-# window for a single user's library, and a 2000-track pull still takes well
-# under a minute at 50 items per page.
-DEFAULT_MIN_INTERVAL_S = 0.2
+# Conservative default: ~3–4 requests/second sustained. Spotify's limit is a
+# rolling ~30s window; bursts trip it, not totals. A 2000-track pull at 50
+# items/page is ~40 pages — still under a minute at this pace, with headroom
+# for concurrent agent + human use of the same app.
+DEFAULT_MIN_INTERVAL_S = 0.3
 
 # Never sleep longer than this for a single backoff step.
 MAX_BACKOFF_S = 60.0

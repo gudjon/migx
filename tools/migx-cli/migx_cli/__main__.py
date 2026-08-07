@@ -86,8 +86,12 @@ CAPABILITIES: list[dict[str, Any]] = [
             "id": "playlist id/URI/URL, or the literal 'liked'",
             "--out": "output path (default: derived weekly path)",
             "--root": "mirror root directory",
+            "--force-full": "re-page even if snapshot_id is unchanged",
+            "--min-interval": "seconds between API calls (default 0.3)",
         },
         "emits": "migx.playlist-mirror/1",
+        "note": "Official Web API only, read-only scopes, metadata only. "
+        "Unchanged playlists skip track pages by default (snapshot_id).",
     },
     {
         "id": "library.inspect",
@@ -267,7 +271,12 @@ def cmd_logout(args: argparse.Namespace) -> int:
 
 
 def cmd_playlist_list(args: argparse.Namespace) -> int:
-    client = api.SpotifyRead(auth.access_token())
+    cfg = config.load()
+    interval = config.get(
+        cfg, "spotify.min_interval_s", ratelimit.DEFAULT_MIN_INTERVAL_S
+    )
+    pacer = ratelimit.Pacer(float(interval))
+    client = api.SpotifyRead(auth.access_token(), pacer=pacer)
     rows = [
         {
             "id": "liked",
@@ -321,13 +330,20 @@ def _unchanged_since(path: Path, snapshot_id: str | None) -> bool:
 def cmd_playlist_pull(args: argparse.Namespace) -> int:
     cfg = config.load()
     if args.min_interval is None:
-        args.min_interval = config.get(cfg, "spotify.min_interval_s", 0.2)
+        args.min_interval = config.get(
+            cfg, "spotify.min_interval_s", ratelimit.DEFAULT_MIN_INTERVAL_S
+        )
     if not args.root:
         args.root = config.get(cfg, "spotify.mirror_root")
-    pacer = ratelimit.Pacer(args.min_interval)
+    # Default is snapshot short-circuit ON (Spotify-recommended). Agents and
+    # cron can re-run freely without re-paging unchanged playlists.
+    if_changed = not bool(getattr(args, "force_full", False))
+
+    pacer = ratelimit.Pacer(float(args.min_interval))
     client = api.SpotifyRead(auth.access_token(), pacer=pacer)
 
     if args.id == "liked":
+        # Liked Songs has no snapshot_id; always a full pull of /me/tracks.
         doc = mirror.build(
             source_id="liked",
             source_name="Liked Songs",
@@ -347,8 +363,9 @@ def cmd_playlist_pull(args: argparse.Namespace) -> int:
         )
 
         # The cheapest request is the one never made: an unchanged snapshot_id
-        # means every track page would be identical. This is worth more for
-        # staying inside the rate limit than any amount of backoff.
+        # means every track page would be identical. Spotify themselves
+        # recommend this. It is worth more for staying inside the rate limit
+        # than any amount of backoff.
         root = (
             Path(args.root).expanduser() if args.root else DEFAULT_MIRROR_ROOT
         )
@@ -357,13 +374,14 @@ def cmd_playlist_pull(args: argparse.Namespace) -> int:
             if args.out
             else mirror.default_path(root, head)
         )
-        if args.if_changed and _unchanged_since(target, snapshot):
+        if if_changed and _unchanged_since(target, snapshot):
             _out(
                 {
                     "schema": "migx.playlist-mirror/1",
                     "path": str(target),
                     "skipped": True,
                     "reason": "snapshot_id unchanged",
+                    "requests": client.requests,
                 },
                 args.json,
                 f"unchanged (snapshot {snapshot}) — kept {target}",
@@ -792,15 +810,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--preview", action="store_true", help="show rendered filenames"
     )
     p.add_argument(
-        "--if-changed",
+        "--force-full",
         action="store_true",
-        help="skip the pull when snapshot_id matches the existing mirror",
+        help="always re-page tracks (default is skip when snapshot_id matches)",
     )
     p.add_argument(
         "--min-interval",
         type=float,
-        default=ratelimit.DEFAULT_MIN_INTERVAL_S,
-        help="minimum seconds between API calls (pacing)",
+        default=None,
+        help="minimum seconds between API calls (default from config / 0.3)",
     )
     p.set_defaults(fn=cmd_playlist_pull)
 

@@ -59,6 +59,37 @@ This is better than API access would have been: DW is regenerated every Monday a
 RR every Friday, destroying the previous week. Dated mirrors give Migx a
 longitudinal taste corpus Spotify itself does not retain.
 
+## Ban / block posture (hard rules)
+
+Migx is built so a normal user **does not get Spotify API access cut off** for
+using this CLI. That is not a guarantee against every future platform policy
+change, but these are the methods Spotify documents as correct:
+
+| Rule | What we do |
+| --- | --- |
+| Official OAuth only | PKCE to `accounts.spotify.com` — no client secret, no unofficial “free API” |
+| Official Web API only | Requests only to `api.spotify.com` — host allowlist rejects anything else |
+| Read-only scopes | `user-library-read`, `playlist-read-private`, `playlist-read-collaborative` only |
+| Metadata only | Never requests, decrypts, or stores audio / streams |
+| Honest client | Real `User-Agent`; no browser automation of the player |
+| Pace | Min interval between calls (default **0.3s**); honour `Retry-After` |
+| Circuit break | Stop after repeated 429s; distinguish `QUOTA_EXCEEDED` from pace limits |
+| Skip work | `playlist.pull` defaults to **snapshot_id short-circuit** (one meta request when unchanged) |
+| Sparse fields | Request only the fields the mirror schema needs |
+| Token hygiene | Access token cached in Keychain until near expiry; refresh serialised |
+
+**What actually gets people in trouble** (and what we never do):
+
+- Unofficial clients that reverse-engineer Spotify’s internal APIs (e.g. SpotipyFree-class paths)
+- Stream ripping / librespot / zotify-class tools
+- Driving the web player with computer-use to capture audio
+- Retrying 404s or hammering through 429s without backoff
+- Write scopes that modify the user’s library without need
+
+Rate limits (429) are temporary throttles. **Account bans** are a different axis —
+they attach to DRM circumvention and ToS abuse, not to a well-behaved OAuth
+metadata client. Stay on this path.
+
 ## Metadata only — and the quality gate
 
 This CLI reads **identities**, never audio. Spotify's audio is DRM-protected and

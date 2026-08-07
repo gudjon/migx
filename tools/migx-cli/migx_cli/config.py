@@ -48,7 +48,10 @@ DEFAULTS: dict[str, Any] = {
     },
     "spotify": {
         "client_id": "",
-        "min_interval_s": 0.2,
+        # Official API pacing only — never lower this to "go faster" in a loop.
+        "min_interval_s": 0.3,
+        # Default True: skip track pages when snapshot_id is unchanged.
+        "if_changed": True,
         "mirror_root": str(Path.home() / "Music" / "Migx" / "_mirrors"),
     },
 }

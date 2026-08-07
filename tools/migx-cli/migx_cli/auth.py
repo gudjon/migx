@@ -2,10 +2,20 @@
 
 PKCE (RFC 7636) is the correct flow for a distributed desktop/CLI app:
 a shipped client *secret* is not a secret, so we never have one. The
-client id is public by
-design and comes from `MIGX_SPOTIFY_CLIENT_ID` (or `--client-id`).
+client id is public by design and comes from config / `MIGX_SPOTIFY_CLIENT_ID`
+/ `--client-id`.
 
-Tokens live in the macOS Keychain via `/usr/bin/security`, never in a dotfile.
+Ban / block posture for auth:
+
+- Official hosts only: `accounts.spotify.com` for authorize + token.
+- Read-only scopes only — never `playlist-modify-*`, `streaming`,
+  `user-modify-playback-state`, etc.
+- Refresh tokens in the macOS Keychain, never in a config file.
+- Access tokens are cached until near expiry so we do **not** hit the token
+  endpoint on every command (refresh thrash is unnecessary load and risks
+  losing a rotated refresh token if two processes race).
+- Refresh is serialised with `RefreshLock` because Spotify rotates refresh
+  tokens and the old one dies when a new one is issued.
 
 Register the app at https://developer.spotify.com/dashboard with redirect URI:
     http://127.0.0.1:8888/callback
@@ -21,28 +31,44 @@ import os
 import secrets
 import subprocess
 import threading
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
-import webbrowser
 from typing import Any
+from urllib.parse import urlparse
 
 from . import ratelimit
 
 AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
+ACCOUNTS_HOST = "accounts.spotify.com"
 REDIRECT_HOST = "127.0.0.1"
 REDIRECT_PORT = 8888
 REDIRECT_URI = f"http://{REDIRECT_HOST}:{REDIRECT_PORT}/callback"
 
 KEYCHAIN_SERVICE = "migx-spotify"
+# Keychain accounts we own. Logout clears all of them.
+_KEYCHAIN_ACCOUNTS = (
+    "refresh_token",
+    "access_token",
+    "access_expires_at",
+    "client_id",
+)
 
-# Read-only scopes. We never request playlist-modify-* or streaming: this tool
-# reads your library, it does not write to your Spotify account or touch audio.
+# Read-only scopes. We never request write or streaming scopes: this tool
+# reads your library identity, it does not write to your Spotify account or
+# touch audio.
 SCOPES = (
     "user-library-read",
     "playlist-read-private",
     "playlist-read-collaborative",
 )
+
+# Refresh a minute early so a slow command never starts with a dead token.
+_ACCESS_SKEW_S = 60.0
+
+USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx; metadata-only)"
 
 
 class AuthError(RuntimeError):
@@ -171,12 +197,26 @@ def _await_callback(expected_state: str, timeout_s: int) -> str:
 # ------------------------------------------------------------ token exchange
 
 
+def _assert_accounts_url(url: str) -> None:
+    host = (urlparse(url).hostname or "").lower()
+    if host != ACCOUNTS_HOST:
+        raise AuthError(
+            f"refusing token request to non-accounts host {host!r}"
+        )
+
+
 def _post_token(payload: dict[str, str]) -> dict[str, Any]:
+    _assert_accounts_url(TOKEN_URL)
     data = urllib.parse.urlencode(payload).encode("ascii")
     req = urllib.request.Request(
         TOKEN_URL,
         data=data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+        },
+        method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -188,12 +228,48 @@ def _post_token(payload: dict[str, str]) -> dict[str, Any]:
         ) from exc
 
 
+def _persist_access(tok: dict[str, Any]) -> None:
+    """Cache the short-lived access token so we don't refresh every call."""
+    access = tok.get("access_token")
+    if not access:
+        return
+    expires_in = float(tok.get("expires_in") or 3600)
+    _keychain_write("access_token", access)
+    _keychain_write(
+        "access_expires_at", str(time.time() + max(60.0, expires_in))
+    )
+
+
+def _cached_access() -> str | None:
+    token = _keychain_read("access_token")
+    expires_raw = _keychain_read("access_expires_at")
+    if not token or not expires_raw:
+        return None
+    try:
+        expires_at = float(expires_raw)
+    except ValueError:
+        return None
+    if time.time() >= expires_at - _ACCESS_SKEW_S:
+        return None
+    return token
+
+
 def client_id(explicit: str | None = None) -> str:
     cid = explicit or os.environ.get("MIGX_SPOTIFY_CLIENT_ID", "").strip()
     if not cid:
+        # Config file is a last resort so agents can run with zero flags.
+        try:
+            from . import config as _config
+
+            cid = str(
+                _config.get(_config.load(), "spotify.client_id", "") or ""
+            ).strip()
+        except Exception:  # noqa: BLE001 — never fail-closed on config import
+            cid = ""
+    if not cid:
         raise AuthError(
             "no Spotify client id — set MIGX_SPOTIFY_CLIENT_ID or"
-            " pass --client-id.\n"
+            " pass --client-id (or config.init --client-id).\n"
             "Create an app at"
             " https://developer.spotify.com/dashboard and add the "
             f"redirect URI exactly: {REDIRECT_URI}"
@@ -221,10 +297,14 @@ def login(
         "code_challenge": challenge,
     }
     url = f"{AUTH_URL}?{urllib.parse.urlencode(params)}"
+    if urlparse(url).hostname != ACCOUNTS_HOST:
+        raise AuthError("authorize URL host mismatch")
 
     print(f"Opening browser to authorize Migx (scopes: {', '.join(SCOPES)})")
     print(f"If it does not open, paste this URL:\n  {url}\n")
     if open_browser:
+        import webbrowser
+
         webbrowser.open(url)
 
     code = _await_callback(state, timeout_s)
@@ -242,18 +322,24 @@ def login(
 
     _keychain_write("refresh_token", tok["refresh_token"])
     _keychain_write("client_id", cid)
+    _persist_access(tok)
     return tok
 
 
 def access_token(cid: str | None = None) -> str:
-    """Exchange the stored refresh token for a fresh access token.
+    """Return a valid access token, refreshing only when needed.
 
-    Serialised across processes: Spotify rotates refresh tokens and the old one
-    dies as soon as a new one is issued, so two migx commands refreshing at the
-    same time would leave one of them holding a dead token — a silent logout
-    with no obvious cause. The lock makes the read-refresh-write atomic.
+    Serialised across processes: Spotify rotates refresh tokens and the old
+    one dies as soon as a new one is issued, so two migx commands refreshing
+    at the same time would leave one of them holding a dead token — a silent
+    logout with no obvious cause. The lock makes the read-refresh-write
+    atomic. Caching the access token avoids refreshing on every command.
     """
     with ratelimit.RefreshLock():
+        cached = _cached_access()
+        if cached:
+            return cached
+
         refresh = _keychain_read("refresh_token")
         if not refresh:
             raise AuthError("not logged in — run `migx spotify.login` first")
@@ -266,10 +352,12 @@ def access_token(cid: str | None = None) -> str:
                 "client_id": cid,
             }
         )
-        # Persist the rotated token *inside* the lock, before anyone
-        # else reads.
+        # Persist the rotated token *inside* the lock, before anyone else
+        # reads.
         if tok.get("refresh_token"):
             _keychain_write("refresh_token", tok["refresh_token"])
+        _persist_access(tok)
+
     if "access_token" not in tok:
         raise AuthError(
             "refresh did not return an access token — try logging in again"
@@ -278,16 +366,27 @@ def access_token(cid: str | None = None) -> str:
 
 
 def logout() -> bool:
-    removed = _keychain_delete("refresh_token")
-    _keychain_delete("client_id")
-    return removed
+    """Remove every credential we stored. Returns True if a refresh existed."""
+    had_refresh = _keychain_delete("refresh_token")
+    for account in _KEYCHAIN_ACCOUNTS:
+        if account == "refresh_token":
+            continue
+        _keychain_delete(account)
+    return had_refresh
 
 
 def status() -> dict[str, Any]:
     return {
         "logged_in": _keychain_read("refresh_token") is not None,
         "client_id_stored": _keychain_read("client_id") is not None,
+        "access_token_cached": _cached_access() is not None,
         "scopes": list(SCOPES),
         "redirect_uri": REDIRECT_URI,
         "token_store": f"macOS Keychain (service={KEYCHAIN_SERVICE})",
+        "hosts": {
+            "authorize": AUTH_URL,
+            "token": TOKEN_URL,
+            "api": "https://api.spotify.com/v1",
+        },
+        "policy": "official-oauth-pkce-readonly-metadata-only",
     }
