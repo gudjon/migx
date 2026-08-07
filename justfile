@@ -101,6 +101,7 @@ kanban-lint:
     python3 kanban/scripts/verify-sealed-dossier-has-closure.py
     python3 kanban/architecture/lint/verify-owns-paths-exist.py
     python3 kanban/architecture/lint/verify-agents-md-present.py
+    python3 kanban/architecture/lint/verify-command-vocabulary.py
     python3 .claude/architecture/lint/verify-skill-grounding.py
     python3 kanban/scripts/gen-pattern-index.py --check
     python3 kanban/architecture/ddd/gen-index.py --check

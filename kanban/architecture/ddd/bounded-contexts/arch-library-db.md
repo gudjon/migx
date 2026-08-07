@@ -23,12 +23,13 @@ The persistent music collection and everything that reads it. `MixxxDb` owns the
 `SchemaManager` runs its versioned migrations; the `dao/` layer (`TrackDAO`, `PlaylistDAO`, `CueDAO`, …)
 is the only typed gateway to those tables. Above it, `TrackCollection`/`TrackCollectionManager` and the
 `LibraryTableModel` family expose the collection to the GUI table views. It is GUI/worker-thread code
-(`rt_safety: none`) — nothing here runs on the audio callback. Pointers, never copies — `src/library/`
-+ `src/database/` are the truth.
+(`rt_safety: none`) — nothing here runs on the audio callback. Pointers, never copies —
+`src/library/` + `src/database/` are the truth.
 
 ## Key aggregates / classes
+
 | Class | File | Role |
-|---|---|---|
+| --- | --- | --- |
 | `TrackCollection` | `library/trackcollection.cpp` | in-process front of the DB; owns the DAOs |
 | `TrackCollectionManager` | `library/trackcollectionmanager.cpp` | internal + external collections, save orchestration |
 | `Library` | `library/library.cpp` | root of features, models, sidebar |
@@ -41,6 +42,7 @@ is the only typed gateway to those tables. Above it, `TrackCollection`/`TrackCol
 | `SchemaManager` | `database/schemamanager.cpp` | forward-only schema version migrations |
 
 ## Invariants (an agent MUST respect these)
+
 - **All DB access goes through a DAO (`P-28`):** no raw `QSqlQuery` scattered through features/models;
   the typed `dao/` layer is the single gateway to the schema.
 - **Schema changes are forward-only migrations (`P-27`):** bump the version and add a migration through
@@ -51,21 +53,26 @@ is the only typed gateway to those tables. Above it, `TrackCollection`/`TrackCol
   library code is never reachable from `process()`.
 
 ## Ubiquitous language
+
 | Term | Meaning here | Not to be confused with |
-|---|---|---|
+| --- | --- | --- |
 | `library` | the persisted track collection + its UI | the RT audio "buffer" library |
 | `track` (row) | a DB record / model row for a track | the in-memory `Track` aggregate (arch-track-model) |
 | `DAO` | a typed table gateway (`*DAO`) | a QML model proxy (arch-qml-ui) |
 | `feature` | a sidebar source (`LibraryFeature`) | an audio feature / analysis result (arch-analyzer) |
+| `playlist` | an ordered, DB-persisted track list (`PlaylistDAO`) | a Spotify playlist mirrored by arch-cli-commands |
+| `crate` | an unordered DB-backed track set (`src/library/trackset/crate/`) | a filesystem crate of symlinks (arch-cli-commands) |
 
 ## Boundaries (edges by id)
+
 | Dir | Seam | Other context | Mechanism | Doc |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | out | `TrackPointer` for load | arch-mixer-decks | `TrackLoader` / `TrackCollection` | — |
 | in/out | `Track` persistence | arch-track-model | `TrackDAO` ↔ `GlobalTrackCache` | — |
 | out | tracks to analyze | arch-analyzer | scheduler pulls collection rows | — |
 | in | tag/metadata on import | arch-sources-decode | `SoundSourceProxy` / metadata sources | — |
 
 ## Key patterns (cited, not restated)
+
 `P-27`, `P-28`, `P-07`, `P-17` — see `kanban/patterns/`. Root house rules: `/AGENTS.md`. The DAO gateway
 (`P-28`) and forward-only migrations (`P-27`) are the load-bearing rules for any schema-touching change.

@@ -43,6 +43,7 @@ Boundaries (edges by id) · Key patterns cited (P-NN, root AGENTS.md) — never 
 ## The 16 bounded contexts (grouped by thread_domain)
 
 **RT-audio (`rt_safety: hard` — highest risk):**
+
 1. `arch-engine-realtime` — src/engine/ (EngineMixer, EngineBuffer, channels/, bufferscalers/, sync/, filters/, cachingreader/)
 2. `arch-effects-chain` — src/engine/effects/, src/effects/ (EffectsManager, backends/, chains/)
 3. `arch-mixer-decks` — src/mixer/ (PlayerManager, Deck, Sampler, PreviewDeck, Microphone) — straddles RT+GUI
@@ -70,7 +71,7 @@ Boundaries (edges by id) · Key patterns cited (P-NN, root AGENTS.md) — never 
 15. `arch-skin-widgets` — src/skin/ + src/widget/ (legacy QWidget UI)
 16. `arch-qml-ui` — src/qml/ + res/qml/ (new Qt Quick UI; likely `migx-new`)
 
-**Cross-cutting notes (not contexts):** `arch-broadcast-recording` (src/broadcast+recording), `arch-preferences` (src/preferences), `arch-util`+`arch-coreservices` (src/util, coreservices.cpp — the composition root). Documented in `ddd/cross-cutting.md`.
+**Cross-cutting notes (not contexts):** `arch-broadcast-recording` (src/broadcast+recording), `arch-preferences` (src/preferences), `arch-util`+`arch-coreservices` (src/util, coreservices.cpp — the composition root). These are listed here rather than carded — they own no bounded invariant.
 
 ## Per-domain AGENTS.md
 
@@ -81,8 +82,9 @@ Build/test entry points (real cmake/ctest commands) · Forbidden edits · Cross-
 /AGENTS.md hard rules; never restates them.
 
 **Priority order** (risk × agent-touch-frequency):
+
 1. src/engine/ 2. src/control/ 3. src/soundio/ 4. src/mixer/ 5. src/effects/ 6. src/library/
-7. src/controllers/ 8. src/waveform/ 9. src/track/ — then second wave: qml, rendergraph, analyzer,
+2. src/controllers/ 8. src/waveform/ 9. src/track/ — then second wave: qml, rendergraph, analyzer,
 sources, preferences, skin+widget, vinylcontrol.
 
 ## The index & discovery
@@ -103,12 +105,13 @@ sources, preferences, skin+widget, vinylcontrol.
 - `verify-index-fresh.py` — generated roster matches the cards. Plus `ddd/gen-index.py` (~50 lines).
 
 ## Authoring order
+
 `_TEMPLATE.md` + `README.md` skeleton → cards for the RT core (engine, control, soundio, mixer) +
 their seam docs (control-to-engine, engine-to-soundio, engine-to-waveform) → `src/engine|control|soundio/AGENTS.md`
 → remaining cards + charters by priority → gen-index + lint (Phase 3).
 
 **CUT from reference** (non-transferable): NATS subject graph, source_domain/runtime_locus/supervision/
 instance_scope, sim/live mode-profiles, 4-way authority split, TEC entity model, the 493-script lint
-suite + _graph.json compiler + readiness scorecard, deployment/promotion/fleet docs. Migx keeps the
+suite +_graph.json compiler + readiness scorecard, deployment/promotion/fleet docs. Migx keeps the
 *shape* (one-home cards, frontmatter+why, boundaries, generated index, minimal lint) and swaps the
 distributed axis for the RT-thread-safety axis.

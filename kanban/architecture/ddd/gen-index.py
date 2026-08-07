@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """gen-index — regenerate the bounded-context roster table in kanban/architecture/README.md.
 
-The canonical 16-context roster (id + intended src paths + thread_domain + rt_safety) lives here.
+The canonical roster (id + intended src paths + thread_domain + rt_safety) lives here.
 `status` is DERIVED: a context whose card file exists under ddd/bounded-contexts/ is `authored`
 (and its owns/thread_domain/rt_safety are read from the card frontmatter — the authoritative source),
 otherwise `planned` (using the intended defaults below).
@@ -44,6 +44,8 @@ ROSTER = [
     ("arch-rendergraph", "src/rendergraph/, src/shaders/", "gpu-render", "none"),
     ("arch-skin-widgets", "src/skin/, src/widget/", "gui", "none"),
     ("arch-qml-ui", "src/qml/, res/qml/", "gui", "none"),
+    # Application/interface layer (ADR-008) — not a src/ domain context.
+    ("arch-cli-commands", "tools/migx-cli/", "worker", "none"),
 ]
 
 CARDS = REPO / "kanban" / "architecture" / "ddd" / "bounded-contexts"
@@ -59,7 +61,12 @@ def _owns_str(fm):
 
 
 def build_table():
-    rows = ["| id | src paths | thread_domain | rt_safety | status |", "|---|---|---|---|---|"]
+    # Separator style matches markdownlint's normalisation (`| --- |`), so the
+    # generator and the linter cannot fight over the same table forever.
+    rows = [
+        "| id | src paths | thread_domain | rt_safety | status |",
+        "| --- | --- | --- | --- | --- |",
+    ]
     for cid, src, thread, rt in ROSTER:
         card = CARDS / f"{cid}.md"
         if card.exists():

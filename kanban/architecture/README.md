@@ -22,8 +22,8 @@ The load-bearing axis is the **real-time boundary**, not deployment — every ca
 because the two ways a change silently breaks Migx are (1) violating the audio deadline and (2)
 botching Qt ownership.
 
-**Platform floor:** macOS **26.\*+** · Apple Silicon only ([ADR-006](decisions/ADR-006-platform-scope-apple-silicon.md)).  
-**Refactor map (feature-preserving Apple-native waves):**  
+**Platform floor:** macOS **26.\*+** · Apple Silicon only ([ADR-006](decisions/ADR-006-platform-scope-apple-silicon.md)).
+**Refactor map (feature-preserving Apple-native waves):**
 [`kanban/knowledge/architecture-apple-silicon-macos26-refactor-map.md`](../knowledge/architecture-apple-silicon-macos26-refactor-map.md).
 
 - Cards: `ddd/bounded-contexts/<id>.md` (template: `_TEMPLATE.md`)
@@ -34,11 +34,11 @@ botching Qt ownership.
 - Buildout plan (format, full roster, lint): `DDD-BUILDOUT-PLAN.md`
 - The roster table below should be **generated** from card frontmatter in Phase 3 (`ddd/gen-index.py`).
 
-## Bounded-context roster (16)
+## Bounded-context roster (17)
 
 <!-- ddd-roster:start -->
 | id | src paths | thread_domain | rt_safety | status |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | arch-engine-realtime | src/engine/, src/engine/sync/ | rt-audio | hard | authored |
 | arch-effects-chain | src/engine/effects/, src/effects/ | rt-audio + gui | hard | authored |
 | arch-mixer-decks | src/mixer/ | rt-audio + gui | hard | authored |
@@ -55,9 +55,10 @@ botching Qt ownership.
 | arch-rendergraph | src/rendergraph/, src/shaders/ | gpu-render | none | authored |
 | arch-skin-widgets | src/skin/, src/widget/ | gui | none | authored |
 | arch-qml-ui | src/qml/, res/qml/ | gui | none | authored |
+| arch-cli-commands | tools/migx-cli/ | worker | none | authored |
 <!-- ddd-roster:end -->
 
-Cross-cutting (not contexts, see `ddd/cross-cutting.md`): broadcast+recording, preferences,
+Cross-cutting (not contexts): broadcast+recording, preferences,
 util+coreservices (the composition root).
 
 ## Domain charters (per-folder AGENTS.md)
@@ -67,7 +68,7 @@ controllers → waveform → track, then the second wave. Each charter cites the
 rules and its DDD card; it never restates them.
 
 | src folder | charter | status |
-|---|---|---|
+| --- | --- | --- |
 | src/engine/ | src/engine/AGENTS.md | authored |
 | src/control/ | src/control/AGENTS.md | authored |
 | src/soundio/ | src/soundio/AGENTS.md | authored |
@@ -76,12 +77,13 @@ rules and its DDD card; it never restates them.
 
 ## The RT signal chain (one-screen mental model)
 
-```
+```text
 sources/decode ──> engine (mix/scale/effects) ──> soundio (SoundManager callback) ──> device
                         │  ▲                                   (RT callback ORIGIN)
    control ────────────┘  │ (lock-free tap)
    (any thread, the bus)  └──> waveform/rendergraph (gpu, display-clock driven)
 ```
+
 The audio callback originates in `soundio` and drives `engine`; `control` crosses every context as the
 string-keyed bus; `waveform` taps engine state lock-free and renders on the display clock, never the
 audio clock.
