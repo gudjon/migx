@@ -627,20 +627,37 @@ def main() -> int:
 
         crate = layout.crate_dir(root, "Night - Club X")
         link = layout.link_into_crate(track, crate)
-        check(link.is_symlink(), "crate entry is a symlink, never a copy")
-        check(link.resolve() == track.resolve(), "symlink points at the file")
+
+        # Hardlink by default: a symlink is 49 bytes on disk, and DJ software
+        # that does not dereference it reads those 49 bytes as a broken track.
+        check(not link.is_symlink(), "crate entry is not a symlink by default")
+        check(link.samefile(track), "crate entry is the same inode")
         check(
-            not str(os.readlink(link)).startswith("/"),
-            "symlink is relative so the tree stays movable",
+            link.stat().st_size == track.stat().st_size,
+            "crate entry reports the real size, not a link's 49 bytes",
         )
+        check(link.stat().st_nlink >= 2, "two names, one inode")
 
         # Re-linking must be a no-op so crate.sync is safe to re-run.
         again = layout.link_into_crate(track, crate)
         check(again == link, "re-linking is idempotent")
+        check(link.samefile(track), "re-link did not break the identity")
 
         # Deleting a crate must never cost audio — the whole invariant.
         shutil.rmtree(crate)
         check(track.is_file(), "deleting a crate leaves the audio intact")
+
+        # Symlink mode stays available and stays relative (portable tree).
+        crate2 = layout.crate_dir(root, "Sym Night")
+        slink = layout.link_into_crate(track, crate2, mode=layout.SYMLINK)
+        check(slink.is_symlink(), "symlink mode still produces a symlink")
+        check(
+            not str(os.readlink(slink)).startswith("/"),
+            "symlink is relative so the tree stays movable",
+        )
+        check(slink.resolve() == track.resolve(), "symlink points at the file")
+        shutil.rmtree(crate2)
+        check(track.is_file(), "removing a symlink crate is also safe")
 
         m3u = layout.write_m3u8(
             layout.playlist_path(root, "Peak"),
@@ -741,9 +758,7 @@ def main() -> int:
     check(api.MAX_CONSECUTIVE_429 >= 2, "circuit breaker is armed")
 
     # Pagination next links drop fields= — sticky re-apply must restore them.
-    nxt = (
-        "https://api.spotify.com/v1/me/playlists?offset=50&limit=50"
-    )
+    nxt = "https://api.spotify.com/v1/me/playlists?offset=50&limit=50"
     fixed = api.reapply_query_params(
         nxt, {"fields": "next,items(id,name,owner(display_name,id))"}
     )

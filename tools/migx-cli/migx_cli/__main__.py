@@ -164,7 +164,8 @@ CAPABILITIES: list[dict[str, Any]] = [
             "--m3u8": "also write a playlist file",
         },
         "emits": "migx.crate-report/1",
-        "note": "Crates contain symlinks only — every unique track stays"
+        "note": "Crates contain links only (hardlink by default) — every"
+        " unique track stays"
         " exactly one file in Collection/. Deleting a crate never"
         " costs audio.",
     },
@@ -619,12 +620,19 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
     if not args.root:
         args.root = [str(layout.collection_dir(root))]
     report = _run_resolve(args)
+    cfg_crate = config.load()
     crate_name = args.crate or report.get("source_name") or "crate"
     crate = layout.crate_dir(root, crate_name)
 
     linked = []
     for row in report["resolved"]:
-        link = layout.link_into_crate(Path(row["path"]), crate)
+        link = layout.link_into_crate(
+            Path(row["path"]),
+            crate,
+            mode=config.get(
+                cfg_crate, "library.crate_link_mode", layout.HARDLINK
+            ),
+        )
         linked.append({**row, "link": str(link)})
 
     playlist = None
@@ -652,7 +660,7 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
         _out(doc, True)
     else:
         print(
-            f"crate {crate_name}: {len(linked)} symlinked, "
+            f"crate {crate_name}: {len(linked)} linked, "
             f"{report['missing_count']} missing, "
             f"{report['below_bar_count']} below bar"
         )
@@ -660,7 +668,7 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
         if playlist:
             print(f"  {playlist}")
         print(
-            "\nSymlinks only — the audio stays one file in Collection/.",
+            "\nLinks only — the audio stays one file in Collection/.",
             file=sys.stderr,
         )
     return 0
