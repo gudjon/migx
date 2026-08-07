@@ -9,7 +9,7 @@ Canonical decision: [`ADR-008`](../../kanban/architecture/decisions/ADR-008-cli-
 Interaction reference:
 [`tui-first-agentic-dj-workstation`](../../kanban/knowledge/tui-first-agentic-dj-workstation.md).
 
-The current command core and initial dashboard are stdlib only - no `spotipy`,
+The current command core and TUI are stdlib only - no `spotipy`,
 `typer`, or `textual`. A richer TUI may later use an isolated framework
 dependency, but CLI/JSON/agent use must not require the renderer. Dependencies
 get added from measured evidence.
@@ -24,17 +24,18 @@ get added from measured evidence.
 | Surface | Contract | Current state |
 | --- | --- | --- |
 | `migx` | Human TUI workspace | planned |
-| `tools/migx-cli/migx-tui` | Read-only curses dashboard | built and snapshot-tested |
-| `migx <noun>.<verb> ...` | Deterministic CLI | metadata/library subset built |
+| `tools/migx-cli/migx-tui` | Interactive preparation TUI | five modes built and snapshot-tested |
+| `migx <noun>.<verb> ...` | Deterministic CLI | library/preparation subset built |
 | `migx <noun>.<verb> ... --json` | One-shot machine result | built for current commands |
 | `migx --agent` | Long-lived JSONL requests, events, cancellation, receipts | planned |
 | `migx mcp-server` | Optional tools over the same core | planned |
 
-Today this package is metadata/library only. The initial TUI shows Overview,
-Playlists, Want-list, and Collection panes over a pure data snapshot. It does not
-control a deck, subscribe to engine events, or touch a ControlObject. Do not
-describe the planned PREP/LIVE workspace or agent capabilities as shipped until
-their code and gates exist.
+Today this package is library/preparation only. The TUI has Overview, Library,
+Arrange, Prep, and Track modes; selection; analyzed BPM/key/energy; cue markers;
+DJ notes; color roles; energy sparklines; and a full-screen track heatmap over a
+pure data snapshot. It does not control a deck, subscribe to engine events, or
+touch a ControlObject. Do not describe LIVE control or agent capabilities as
+shipped until their code and gates exist.
 
 ```bash
 ./tools/migx-cli/migx-tui

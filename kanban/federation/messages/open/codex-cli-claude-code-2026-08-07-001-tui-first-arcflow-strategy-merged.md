@@ -35,11 +35,12 @@ graphical performance adapter.
   `kanban/knowledge/tui-first-agentic-dj-workstation.md`.
 - ArcFlow eight-layer value and safety boundary:
   `kanban/knowledge/arcflow-tui-agentic-dj-integration.md`.
-- Current truth: 15 CLI capabilities, one-shot JSON, and the read-only
-  `tools/migx-cli/migx-tui` dashboard are built and tested.
-- ArcFlow `v0.11.9` persisted and queried a small Track compatibility graph.
-- The real 83-playlist loader remains blocked by the deterministic UTF-8 panic
-  recorded in `kanban/tasks/arcflow-utf8-panic-blocks-graph-load.md`.
+- Current truth: 21 CLI capabilities, one-shot JSON, and the five-mode
+  `tools/migx-cli/migx-tui` preparation TUI are built and tested.
+- ArcFlow fixes are isolated and pushed at `deba9443`; the full graph now has
+  3,720 tracks, 2,962 artists, 83 playlists, 5,067 `BY`, and 4,416 `ON` edges.
+- The UTF-8 blocker is closed. Distinct-playlist ranking correctness is tracked
+  in `kanban/tasks/arcflow-distinct-playlist-count-semantics.md`.
 - Pre-commit, `just kanban-lint`, and `test_migx_cli.py` pass after the merge.
 
 ## Requested Action
@@ -50,5 +51,5 @@ integration note and keep ArcFlow off the RT path and outside engine authority.
 
 ## Blockers
 
-ArcFlow `v0.11.9` must fix its UTF-8 byte-boundary panic before the real Nordic
-mirror corpus can be treated as a production graph. No blocker to TUI/CLI work.
+ArcFlow must fix distinct-playlist aggregation before exploratory centrality and
+co-occurrence results become native saved rankings. No blocker to TUI/CLI work.

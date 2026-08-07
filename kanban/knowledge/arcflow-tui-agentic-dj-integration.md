@@ -61,22 +61,54 @@ Evidence captured on 2026-08-07 from the installed macOS command:
 | Release | `arcflow v0.11.9`; identity source revision `6168ed04322040c7735473093b625e5dc20d18bd` | This is the runtime evaluated here, not the current `arcflow-core` checkout |
 | Local workspace | `workspace init`, persistence, content-addressed snapshot IDs | Suitable for isolated prototypes; not yet a Migx production store |
 | Migx-shaped proof | Three `Track` nodes, two `COMPATIBLE_WITH` edges, ordered JSON query | World Graph + Query Engine are directly useful now |
-| Mirror loader | `tools/migx-cli/mirrors-to-graph` maps Track/Artist/Playlist and BY/ON edges | Loader is landed but cannot complete the real corpus on `v0.11.9` |
+| Mirror loader | `tools/migx-cli/mirrors-to-graph` maps Track/Artist/Playlist and BY/ON edges | Full corpus completed against the patched ArcFlow branch |
 | Query/runtime surface | `db.capabilities()` reported CPU backend, delta engine, e-graph rules, and Z-set operators | Confirms a substantial shipped query/incremental surface, not production performance |
 | Service boundary | Daemon help exposes Unix-socket JSON-RPC plus optional HTTP/SSE and durability controls | Unix socket is the preferred first integration seam |
 | Health ambiguity | `doctor --json` returned `status: ok` but `workspace_valid: false` after init | Must be resolved before relying on doctor as a release gate |
 
-The real 83-playlist loader exposed a deterministic ArcFlow `v0.11.9` runtime
-panic when a multibyte character crosses an internal fixed byte boundary during
-relationship creation. The three-statement `Ysee`/`Ysée` reproduction and expected
-fix live in `kanban/tasks/arcflow-utf8-panic-blocks-graph-load.md`. The ASCII
-compatibility proof above and the UTF-8 blocker are both true: the graph/query
-route works, but it is not production-safe for this Icelandic/Nordic corpus yet.
+The real loader exposed two ArcFlow `v0.11.9` defects. Query-cache normalization
+advanced byte by byte and could stop inside a Unicode scalar; the shared
+REPL/PG-wire statement splitter also split semicolons inside quoted strings.
+Both are fixed with Rust/Python/CLI regressions on branch
+`codex/arcflow-utf8-graph-load-fixes` at `deba9443`. The patched build preserves
+`Ysée`, `trentemøller`, and `Chicane;Máire Brennan`. The published release still
+lags those source fixes, so Migx must pin an identified patched build until a
+release containing them exists.
+
+Verification reported for that branch: 1,942 runtime tests, scoped CLI suites,
+Clippy, formatting, and the complete Migx corpus load passed. Full TCK was not
+rerun. Two later isolated rebuild attempts were terminated with exit 143 during
+dependency compilation; those are incomplete rebuilds, not test failures.
 
 The installed binary, `agent-context`, `paths`, source README, and procedure catalogue report different
 crate/procedure/algorithm counts. The current `arcflow-core` checkout is also ahead of the installed
 release. Treat the binary's behavior and identity as shipped truth. Treat source-only documentation as
 design evidence until the corresponding runtime command is demonstrated.
+
+## Full corpus proof
+
+The patched loader completed 16,248 statements in about 12 seconds:
+
+| Graph element | Count |
+| --- | ---: |
+| `Track` | 3,720 |
+| `Artist` | 2,962 |
+| `Playlist` | 83 |
+| `BY` | 5,067 |
+| `ON` | 4,416 |
+
+The first queries already expose product value. CamelPhat and UNKLE occur
+across 12 distinct playlists; NTO, Gui Boratto, and ANNA span 11. `No Goodbye`,
+`Spektrum`, `Your Loving Arms`, and `Dark Is The Night For All` each span six.
+The strongest five-playlist co-occurrences include the
+Spektrum/Magic/Chemical cluster and `Your Loving Arms` with
+`Dark Is The Night For All`.
+
+These are exploratory findings, not yet product rankings. There are 116 repeated
+`ON` placements within the same playlist, so raw `count()` measures placements,
+not distinct playlists. ArcFlow's current `WITH DISTINCT` behavior collapses the
+tested aggregation incorrectly to one row. Native saved rankings remain blocked
+on `kanban/tasks/arcflow-distinct-playlist-count-semantics.md`.
 
 ## Value by ArcFlow layer
 
@@ -84,8 +116,8 @@ design evidence until the corresponding runtime command is demonstrated.
 | --- | --- | --- | --- |
 | **World Store** | Durable local history of analysis artifacts, playlist snapshots, set/session state, agent receipts, and provenance | Store small structured artifacts and references; keep hot PCM/audio outside initially | Persistence and snapshot IDs verified; Migx schema and retention not designed |
 | **Perception Lake** | Normalize analyzer, controller, community, catalog, and session observations with source time, confidence, and provenance | Design an observation envelope; do not make it a dependency yet | ArcFlow source describes this layer as reserved/transitional |
-| **World Graph** | Typed `Track`, `Artist`, `Release`, `Crate`, `SetSession`, `Deck`, `Transition`, `Cue`, and `Source` relationships | Build the offline library/session graph in a disposable workspace | Node/edge persistence and a track-compatibility query verified |
-| **Query Engine** | Answer "what next and why?", as-of session questions, conflict/missing-data queries, and agent inspection | JSON queries through the local daemon, with bounded templates owned by Migx | Direct query verified; query plans and production latency not benchmarked |
+| **World Graph** | Typed `Track`, `Artist`, `Release`, `Crate`, `SetSession`, `Deck`, `Transition`, `Cue`, and `Source` relationships | Extend the proven library graph with observations and sessions | Full Track/Artist/Playlist graph verified; session schema not built |
+| **Query Engine** | Answer "what next and why?", as-of session questions, conflict/missing-data queries, and agent inspection | JSON queries through the local daemon, with bounded templates owned by Migx | Direct queries verified; distinct aggregation correctness and production latency remain open |
 | **Live Surface** | Incrementally maintain next-track candidates, queue conflicts, energy arc, and health as observations change | Drive synthetic session events and compare live results with full recomputation | Delta/Z-set capability reported; Migx standing views not proved |
 | **Event Bus** | One replayable observation/event feed for TUI and agent subscribers | Bridge non-RT Migx domain events through a local durable topic | Procedure/daemon surface exists; delivery, replay, and backpressure need a spike |
 | **Behavior Engine** | Durable off-RT prepare/analyze/resolve/plan/post-set workflows | Orchestrate preparation jobs and generate proposals with receipts | Behavior/workflow procedures are discoverable; no Migx workflow proved |
@@ -132,7 +164,7 @@ must never overwrite a measured or source-supplied fact without provenance.
 Use the existing one-process REPL loader only for the offline A0 corpus proof;
 ArcFlow `v0.11.9` rejects the bulk forms the loader needs, so spawning one process
 per statement is not viable. For ongoing product integration, prefer the local
-daemon over a Unix socket once the UTF-8 blocker and daemon contract are proved.
+daemon over a Unix socket once the patched runtime and daemon contract are proved.
 That gives the Python TUI/CLI process isolation while preserving the option of a
 native Rust/C++ integration later.
 
@@ -149,16 +181,17 @@ native Rust/C++ integration later.
 
 ## Build horizons
 
-### A0 - contract proof
+### A0 - contract proof (loader complete; query semantics open)
 
-Extend the landed Track/Artist/Playlist loader with the minimal
-`Observation`/`SetSession` mapping after ArcFlow's UTF-8 panic is fixed. Prove
-query results, snapshot persistence, export/rebuild, and identity pinning in an
-isolated workspace. No engine connection.
+The Track/Artist/Playlist loader and full UTF-8 corpus proof are complete against
+the patched branch. Finish A0 by fixing distinct-playlist aggregation, adding
+five bounded queries, and proving snapshot export/rebuild and runtime identity.
+Then extend the graph with the minimal `Observation`/`SetSession` mapping. No
+engine connection.
 
-**Gate:** the UTF-8 reproduction is green; the loader imports all 83 mirrors,
-3,727 tracks, and 2,102 artists with zero errors; one JSON query returns ranked
-candidates with evidence; rebuild produces the same semantic result.
+**Gate:** the achieved 83-mirror/3,720-track/2,962-artist load stays green; all
+ranking queries count distinct playlists correctly in the engine; one JSON query
+returns ranked candidates with evidence; rebuild produces the same semantic result.
 
 ### A1 - PREP workspace world model
 
@@ -205,9 +238,7 @@ disconnect takeover, and audio-underrun acceptance all pass.
 
 ## Next concrete dossier
 
-The next implementation dossier should remain **A0 only**: fix and test the
-UTF-8 boundary in `arcflow-core`, rerun the landed mirror loader against all 83
-mirrors, pin runtime identity, add five bounded queries, prove export/rebuild,
-and decide whether the Unix-socket daemon contract is stable enough for A1. It
-must not touch the engine, ControlObjects, or Grok's active `api.py` / `auth.py`
-/ `ratelimit.py` lane.
+The next implementation dossier should remain **A0 only**: fix and test distinct
+playlist aggregation, pin the patched runtime identity, add five bounded queries,
+prove export/rebuild, and decide whether the Unix-socket daemon contract is
+stable enough for A1. It must not touch the audio engine or ControlObjects.
