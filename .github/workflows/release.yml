@@ -1,11 +1,14 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow
 name: Release
 
+# Tags only. Upstream ran the full release pipeline on every push to main;
+# in this fork that meant a ~1h multi-platform build, clang-tidy, clazy,
+# coverage and benchmarks on every CLI commit — all failing, because a fork
+# has none of the upstream signing secrets or download-server infrastructure.
+# Fifteen commits produced fifteen hours of red CI and fifteen emails saying
+# nothing. A release is a tag; push-to-main is covered by migx-ci.yml.
 on:
   push:
-    branches:
-      - main
-      - "[0-9].[0-9]"
     tags:
       - "[0-9].[0-9].[0-9]"
       - "[0-9].[0-9]-*"

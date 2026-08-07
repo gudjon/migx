@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow
+name: Migx CI
+
+# The fast gate for everyday work: the checks that actually catch things in
+# this fork, in about a minute. Heavy C++ builds belong on tags and PRs, not
+# on every commit — see release.yml for why.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A burst of commits should verify the tip, not queue a job per commit.
+  group: migx-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-checks:
+    name: lint + cli tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: migx-cli tests (offline, stdlib only)
+        run: python3 tools/migx-cli/test_migx_cli.py
+
+      - name: EXO tool tests
+        run: |
+          python3 tools/exo/test_copilot_tempo.py
+          python3 tools/exo/test_ontology_from_sidecar.py
+          python3 tools/exo/test_set_planner.py
+
+      - name: Harness discipline (dossiers, patterns, DDD, keymap)
+        run: |
+          python3 kanban/scripts/lint-dossier-frontmatter.py
+          python3 kanban/scripts/verify-prefix-registry.py
+          python3 kanban/scripts/lint-naming-conventions.py
+          python3 kanban/scripts/verify-ps-citations.py
+          python3 kanban/architecture/lint/verify-owns-paths-exist.py
+          python3 kanban/architecture/lint/verify-agents-md-present.py
+          python3 kanban/scripts/gen-pattern-index.py --check
+          python3 kanban/architecture/ddd/gen-index.py --check
+
+      - name: Command vocabulary (ADR-008)
+        run: python3 kanban/architecture/lint/verify-command-vocabulary.py
+
+      - uses: pre-commit/action@v3.0.1
