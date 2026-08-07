@@ -238,6 +238,20 @@ exo-tool-tests: exo-fixtures-check
     python3 tools/exo/test_set_planner.py
     python3 -m py_compile tools/exo/copilot_why_next.py tools/exo/ontology_from_sidecar.py tools/exo/set_planner.py
 
+# --- migx CLI (the dual-client command spine: DJ TUI + agents) ---------------
+
+# Machine-readable command surface — agents start here.
+cli-capabilities:
+    ./tools/migx-cli/migx system.capabilities
+
+# Classify local audio against the DJ bar (true 320 CBR or lossless).
+cli-inspect PATH:
+    ./tools/migx-cli/migx library.inspect "{{PATH}}"
+
+cli-tests:
+    python3 tools/migx-cli/test_migx_cli.py
+    python3 -m py_compile tools/migx-cli/migx_cli/*.py
+
 # PLT Wave 1: Core Audio HAL soak (measurement only — not product RT path).
 # Defaults: 20s · 256 frames · 48 kHz. Override via env:
 #   SOAK_SECONDS=30 SOAK_BUFFER=128 SOAK_RATE=44100 just soundio-soak
