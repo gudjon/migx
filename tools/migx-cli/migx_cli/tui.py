@@ -34,6 +34,7 @@ from . import (
     sidecar,
     spark,
     tags,
+    termart,
 )
 
 PANES = ("Overview", "Library", "Arrange", "Prep", "Track", "Deck")
@@ -186,6 +187,27 @@ def track_view(
     )
     out.append((meta, None))
     out.append(("", None))
+
+    # Optional cover via chafa (mono symbols — no ANSI; safe for curses).
+    # Art height stays modest so the waveform remains the hero.
+    track_path = track.get("path")
+    if track_path:
+        art_cols = min(max(width, 24), 48)
+        art_rows = min(max(height, 6), 10)
+        art = termart.render_for_track(
+            track_path, cols=art_cols, rows=art_rows, color=False
+        )
+        if art.get("ok"):
+            for line in art.get("lines") or []:
+                out.append((line[:width], None))
+            out.append(("", None))
+        elif art.get("reason") and "chafa not installed" in (
+            art.get("reason") or ""
+        ):
+            # One quiet hint — only when cover exists but tool is missing.
+            if art.get("cover") or termart.find_cover(track_path):
+                out.append(("(cover found — brew install chafa to preview)", None))
+                out.append(("", None))
 
     energy = track.get("energy") or []
     if energy:

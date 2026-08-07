@@ -83,7 +83,8 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `library.analyze` | command | partial | BPM/key sidecar; energy/structure deeper | cap-energy-structure dossier |
 | `library.watch` | command | shipped | _Inbox auto-file | — |
 | `library.rename` | command | shipped | re-file after analysis | — |
-| `system.capabilities` | capability | shipped | 21 rows | grow only with command land |
+| `library.art` | query | shipped | chafa optional; placeholder degrade | brew install chafa for live art |
+| `system.capabilities` | capability | shipped | 22 rows | grow only with command land |
 
 ### A2 — Surface commitments (TUI-first, not yet commands)
 

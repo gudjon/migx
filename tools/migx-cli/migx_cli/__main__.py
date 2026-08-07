@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,7 @@ from . import (
     rename,
     resolve,
     sidecar,
+    termart,
     tracklist,
     watch,
 )
@@ -285,6 +287,22 @@ CAPABILITIES: list[dict[str, Any]] = [
         "note": "Moves the audio, its .migx sidecar, and every crate entry"
         " sharing the inode — a sidecar or crate left behind is worse than"
         " a stale name.",
+    },
+    {
+        "id": "library.art",
+        "kind": "query",
+        "summary": "Render cover art in the terminal (optional chafa).",
+        "args": {
+            "track": "path or Collection fragment, or a bare image path",
+            "--width": "columns (default 40)",
+            "--height": "rows (default 12)",
+            "--color": "16-colour symbols (default mono, curses-safe)",
+            "--format": "symbols | kitty | iterm | sixels",
+        },
+        "emits": "migx.term-art/1",
+        "note": "Requires chafa on PATH (brew install chafa). Degrades to a"
+        " text placeholder when chafa or cover is missing — never a hard fail"
+        " for the rest of the CLI. symbols+-c none is safe for curses TUI.",
     },
     {
         "id": "system.capabilities",
@@ -1021,6 +1039,77 @@ def cmd_track_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_art(args: argparse.Namespace) -> int:
+    """Render cover art for a track or a bare image path."""
+    target = Path(args.track).expanduser()
+    if target.is_file() and target.suffix.lower() in termart.IMAGE_EXTS:
+        report = termart.render(
+            target,
+            cols=args.width,
+            rows=args.height,
+            color=args.color,
+            fmt=args.format,
+        )
+        report["track"] = None
+        report["cover"] = str(target)
+    else:
+        track = _find_track(args.track)
+        if track is None:
+            return 2
+        report = termart.render_for_track(
+            track,
+            cols=args.width,
+            rows=args.height,
+            color=args.color,
+        )
+        if args.format != "symbols" and report.get("cover"):
+            report = termart.render(
+                report["cover"],
+                cols=args.width,
+                rows=args.height,
+                color=args.color,
+                fmt=args.format,
+            )
+            report["track"] = str(track)
+
+    payload = {"schema": "migx.term-art/1", "chafa": termart.available(), **report}
+    if args.json:
+        # Machine clients get lines as a list; no raw raster dumps in JSON.
+        if report.get("format") in ("kitty", "iterm", "sixels"):
+            payload = {
+                **payload,
+                "lines": [],
+                "note": "raster format not included in --json; use human mode",
+            }
+        _out(payload, True)
+        return 0 if report.get("ok") or report.get("engine") == "placeholder" else 1
+
+    if report.get("reason") and not report.get("ok"):
+        print(f"# {report['reason']}", file=sys.stderr)
+    if report.get("cover"):
+        print(f"# cover: {report['cover']}", file=sys.stderr)
+    # Raster protocols must go straight to the TTY without stripping.
+    if args.format in ("kitty", "iterm", "sixels") and report.get("ok"):
+        # Re-run without capture for true inline graphics.
+        binary = termart.chafa_bin()
+        if binary and report.get("cover"):
+            subprocess.run(
+                [
+                    binary,
+                    "-f",
+                    args.format,
+                    "-s",
+                    f"{args.width}x{args.height}",
+                    report["cover"],
+                ],
+                check=False,
+            )
+            return 0
+    for line in report.get("lines") or []:
+        print(line)
+    return 0
+
+
 def cmd_library_analyze(args: argparse.Namespace) -> int:
     cfg = config.load()
     roots = args.paths or [
@@ -1479,6 +1568,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--template", default=None, choices=sorted(ingest.TEMPLATES)
     )
     p.set_defaults(fn=cmd_library_rename)
+
+    p = sub.add_parser(
+        "library.art", help="render cover art in the terminal (chafa)"
+    )
+    p.add_argument("track", help="path, Collection fragment, or image file")
+    p.add_argument("--width", type=int, default=40)
+    p.add_argument("--height", type=int, default=12)
+    p.add_argument(
+        "--color",
+        action="store_true",
+        help="16-colour symbols (default mono for curses safety)",
+    )
+    p.add_argument(
+        "--format",
+        default="symbols",
+        choices=["symbols", "kitty", "iterm", "sixels"],
+        help="symbols = portable; kitty/iterm/sixels need a supporting TTY",
+    )
+    p.set_defaults(fn=cmd_library_art)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

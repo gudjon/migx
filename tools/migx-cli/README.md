@@ -101,6 +101,26 @@ Wave 1 talks to the official Web API with OAuth PKCE. Practical client hygiene:
 | `snapshot_id` short-circuit on `playlist.pull` | Cheap re-polls |
 | Access token cache + refresh lock | Avoid refresh thrash / silent logout |
 
+## Cover art in the terminal (optional chafa)
+
+Track covers can render as Unicode art when [chafa](https://hpjansson.org/chafa/)
+is installed. This is **optional** — missing chafa or missing cover degrades to a
+placeholder / silent skip; the rest of the CLI never depends on it.
+
+```bash
+brew install chafa                         # macOS
+./tools/migx-cli/migx library.art cover.png
+./tools/migx-cli/migx library.art "7 Seconds" --width 48 --height 14
+./tools/migx-cli/migx library.art track.mp3 --format iterm   # iTerm2 raster
+./tools/migx-cli/migx-tui                  # Track mode (t) shows mono art if found
+```
+
+Cover discovery (no tag decoding): `cover.jpg` / `folder.png` next to the audio,
+images in `<track>.migx/`, or a fuzzy match under `_Inbox/.thumb/`.  
+Override binary: `MIGX_CHAFA_BIN=/path/to/chafa`.  
+Curses uses **symbols + monochrome** only (no ANSI); `--color` / kitty / sixels
+are for raw TTY stdout.
+
 ## Quality gate (on the file)
 
 Classify local audio by **what the file actually is**, not how it was produced:

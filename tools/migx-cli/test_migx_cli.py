@@ -14,8 +14,10 @@ Run: python3 tools/migx-cli/test_migx_cli.py   (exit 0 = pass)
 
 import os
 import shutil
+import struct
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -35,9 +37,38 @@ from migx_cli import (  # noqa: E402
     sidecar,
     spark,
     tags,
+    termart,
     tui,
     watch,
 )
+
+
+def _gradient_png(width: int = 64, height: int = 64) -> bytes:
+    """Truecolour gradient PNG (no deps). Solid colours can paint as blanks
+    in chafa mono mode; a gradient always yields glyphs."""
+    rows = []
+    for y in range(height):
+        row = b"\x00"
+        for x in range(width):
+            row += bytes([(x * 4) % 256, (y * 4) % 256, 128])
+        rows.append(row)
+    compressed = zlib.compress(b"".join(rows), 9)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", compressed)
+        + chunk(b"IEND", b"")
+    )
 
 
 def _id3(frames: dict[str, str], txxx: dict[str, str] | None = None) -> bytes:
@@ -1158,6 +1189,55 @@ def main() -> int:
         and "tracks(total)" not in api._PLAYLIST_LIST_FIELDS,
         "playlist list fields keep owner.id; drop dead tracks(total)",
     )
+
+    # ---- termart / chafa cover preview (optional binary; always degrade)
+    check(
+        "\x1b[31m" not in termart.strip_ansi("\x1b[31mred\x1b[0m"),
+        "strip_ansi removes CSI colour",
+    )
+    ph = termart._placeholder(20, 5, "no cover")
+    check(len(ph) >= 3 and ph[0].startswith("┌"), "placeholder is a box")
+    missing = termart.render("/no/such/cover.png", cols=20, rows=6)
+    check(
+        not missing["ok"] and missing["engine"] == "placeholder",
+        "missing file degrades to placeholder",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        td = Path(tmp)
+        audio = td / "Song Title.mp3"
+        audio.write_bytes(b"ID3")
+        cover = td / "cover.png"
+        cover.write_bytes(_gradient_png())
+        found = termart.find_cover(audio)
+        check(found == cover, f"find_cover sibling cover.png, got {found}")
+        # Fuzzy thumb match under .thumb/
+        thumb_dir = td / ".thumb"
+        thumb_dir.mkdir()
+        long = thumb_dir / "Artist - Song Title (Official Video).png"
+        long.write_bytes(cover.read_bytes())
+        near = td / "Song Title.mp3"
+        near.write_bytes(b"ID3")
+        (td / "cover.png").unlink()  # force thumb path
+        fuzzy = termart.find_cover(near)
+        check(
+            fuzzy is not None and "Song Title" in fuzzy.name,
+            f"find_cover .thumb fuzzy, got {fuzzy}",
+        )
+        if termart.available():
+            painted = termart.render(
+                long, cols=24, rows=8, color=False
+            )
+            check(
+                painted["ok"] and painted["engine"] == "chafa",
+                f"chafa symbols render succeeds when installed ({painted.get('reason')})",
+            )
+            check(
+                all("\x1b" not in ln for ln in painted["lines"]),
+                "curses-safe mono output has no ANSI escapes",
+            )
+            check(len(painted["lines"]) >= 2, "chafa produced multiple rows")
+        else:
+            check(True, "chafa not installed — skip live render (ok)")
 
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
