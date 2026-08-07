@@ -399,6 +399,30 @@ def main() -> int:
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
 
+    # ---- waveform + heat: the single-track view
+    check(spark.waveform([], 10, 4) == [], "no curve, no waveform")
+    wf = spark.waveform([0.1, 1.0], 8, 4)
+    check(len(wf) == 4, "one entry per row")
+    check(all(len(text) == 8 for text, _ in wf), "rows are `width` wide")
+    check(all(len(heats) == 8 for _, heats in wf), "one heat band per column")
+    # Loud columns must reach the top row; that is what makes it a waveform.
+    # Curves are normalised so the peak is 1.0; that column fills the top row.
+    check("█" in wf[0][0], "a full-scale column reaches the top row")
+    check(
+        "█" not in spark.waveform([0.1, 0.9], 8, 4)[0][0],
+        "a 0.9 column stops short of the top — partial blocks, not rounding up",
+    )
+    check(wf[-1][0].strip() != "", "the bottom row is filled for any signal")
+    check(
+        spark.heat(0.0) == 0 and spark.heat(1.0) == spark.HEAT_LEVELS - 1,
+        "heat spans the full band range",
+    )
+    check(spark.heat(-5) == 0, "negative energy clamps to the coolest band")
+    axis = spark.time_axis(120, 40)
+    check("0:00" in axis and "2:00" in axis, f"time axis ends: {axis!r}")
+    check(len(axis) == 40, "axis matches the width")
+    check(spark.time_axis(0, 40) == "", "no duration, no axis")
+
     # ---- sparkline: shape of a track in one line, with cue markers
     check(spark.sparkline([], 10) == "", "empty curve renders empty")
     check(len(spark.sparkline([0.5] * 64, 24)) == 24, "resamples to width")
@@ -565,6 +589,15 @@ def main() -> int:
     ):
         check(field in snap, f"snapshot carries {field}")
     check(isinstance(snap["mirrors"], list), "mirrors is a list")
+    check("Track" in tui.PANES, "single-track mode exists")
+    check(
+        {"Library", "Arrange", "Prep"} <= set(tui.PANES),
+        "modes use the house vocabulary (ADR-007)",
+    )
+    check(
+        tui.track_view(None) and tui.track_view(None)[0][1] is None,
+        "no selection renders guidance, not a crash",
+    )
     for pane in tui.PANES:
         rows = tui._rows(pane, snap)
         check(isinstance(rows, list), f"{pane} renders a list of lines")
