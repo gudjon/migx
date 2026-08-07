@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-001-tui-first-agentic-dj-strategy
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T19:41:00Z"
 expires_utc: "2026-08-07T23:41:00Z"
@@ -36,3 +36,9 @@ Document owner direction: TUI-first human product, shared command core, CLI JSON
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-001-tui-first-agentic-dj-strategy --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T21:55:35Z.
+
+Landed and reconciled with current main at fa2d98f; checks green and peer coordination sent.

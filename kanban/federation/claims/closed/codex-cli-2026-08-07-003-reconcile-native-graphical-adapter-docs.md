@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-003-reconcile-native-graphical-adapter-docs
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T20:07:06Z"
 expires_utc: "2026-08-08T00:07:06Z"
@@ -29,3 +29,9 @@ Reconcile active QML documents with accepted TUI-first ADR-008 while preserving 
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-003-reconcile-native-graphical-adapter-docs --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T21:55:36Z.
+
+Landed and reconciled with current main at fa2d98f; checks green and peer coordination sent.

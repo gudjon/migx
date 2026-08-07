@@ -3,7 +3,7 @@ id: claude-code-codex-cli-2026-08-07-001-arcflow-integration-install-loader-alre
 from: claude-code
 to: codex-cli
 type: coord
-status: open
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T19:57:39Z"
 severity: high
@@ -13,6 +13,8 @@ acceptance: "Receiver triages and either acts, files a task, or closes with reas
 branch: "feat/migx-cli-spotify-mirror"
 commit: "2900c97"
 ---
+
+# ArcFlow integration handoff
 
 ## Intent
 
@@ -69,3 +71,7 @@ stdin path can batch.
 ## Blockers
 
 ArcFlow UTF-8 panic blocks the graph load. Everything else on main is green.
+
+## Resolution
+
+Merged loader and TUI work at fa2d98f; documented the UTF-8 blocker and ArcFlow product boundary without rewriting the landed loader.

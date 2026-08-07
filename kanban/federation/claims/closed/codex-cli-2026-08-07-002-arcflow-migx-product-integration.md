@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-002-arcflow-migx-product-integration
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T19:55:52Z"
 expires_utc: "2026-08-07T23:55:52Z"
@@ -24,3 +24,9 @@ Document live-verified ArcFlow value and integration boundaries for TUI-first Mi
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-002-arcflow-migx-product-integration --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T21:55:35Z.
+
+Landed and reconciled with current main at fa2d98f; checks green and peer coordination sent.
