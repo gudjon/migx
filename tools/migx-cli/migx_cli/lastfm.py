@@ -19,6 +19,7 @@ Licensing note: Last.fm's API terms allow free **non-commercial** use.
 Personal signal is fine; shipping a Last.fm-derived feature commercially needs
 a licence from them first. See `kanban/tasks/lastfm-signal-layer.md`.
 """
+
 from __future__ import annotations
 
 import json
@@ -92,16 +93,17 @@ class LastfmRead:
             self.requests += 1
             req = urllib.request.Request(
                 url,
-                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Accept": "application/json",
+                },
             )
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     body = json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 if exc.code == 429:
-                    self.pacer.backoff(
-                        attempt, exc.headers.get("Retry-After")
-                    )
+                    self.pacer.backoff(attempt, exc.headers.get("Retry-After"))
                     continue
                 if 500 <= exc.code < 600 and attempt < MAX_RETRIES - 1:
                     self.pacer.backoff(attempt)
@@ -130,7 +132,11 @@ class LastfmRead:
         return self.call("user.getInfo").get("user", {})
 
     def _paged(
-        self, method: str, root: str, node: str, limit: int | None = None,
+        self,
+        method: str,
+        root: str,
+        node: str,
+        limit: int | None = None,
         **params: Any,
     ) -> Iterator[dict[str, Any]]:
         """Walk a paged Last.fm collection, newest first."""
@@ -166,9 +172,7 @@ class LastfmRead:
         self, period: str = "overall", limit: int | None = None
     ) -> Iterator[dict[str, Any]]:
         if period not in PERIODS:
-            raise LastfmError(
-                f"period {period!r} not in {', '.join(PERIODS)}"
-            )
+            raise LastfmError(f"period {period!r} not in {', '.join(PERIODS)}")
         yield from self._paged(
             "user.getTopTracks", "toptracks", "track", limit, period=period
         )
@@ -182,7 +186,10 @@ class LastfmRead:
         pull we only ever ask for what happened after the last scrobble.
         """
         yield from self._paged(
-            "user.getRecentTracks", "recenttracks", "track", limit,
+            "user.getRecentTracks",
+            "recenttracks",
+            "track",
+            limit,
             **({"from": since} if since else {}),
         )
 

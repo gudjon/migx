@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Mirror every Spotify playlist you own. Safe to leave running, safe to re-run.
+
+Long jobs need three properties, and this has all three:
+
+* **Resumable.** Each pull short-circuits on `snapshot_id`, so a re-run after
+  an interruption costs one request per unchanged playlist instead of a full
+  re-page. Stopping it is free.
+* **Fault-tolerant.** A 403 on one playlist (development-mode apps can only
+  read playlists you created) must not end the run. Failures are recorded and
+  the walk continues.
+* **Observable.** Progress goes to stdout line by line and a summary lands in
+  `_mirrors/_pull-all-<date>.json`, so you can read what happened afterwards.
+
+Ownership is resolved WITHOUT the sparse `fields` filter: it is dropped on
+pagination, so page 2+ has a different shape than page 1 and owner.id goes
+missing for the first 50. Reported to the api.py owner; worked around here.
+
+Run: python3 tools/migx-cli/pull-all-playlists [--limit N] [--dry-run]
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as _dt
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+from migx_cli import auth, config, ratelimit  # noqa: E402
+from migx_cli.api import SpotifyRead  # noqa: E402
+
+CLI = HERE / "migx"
+
+
+def owned_playlists(client: SpotifyRead, me: str) -> list[dict]:
+    """Every playlist you own, via the raw endpoint (no sparse filter)."""
+    out: list[dict] = []
+    url = "/me/playlists"
+    params = {"limit": 50}
+    while True:
+        page = client.get(url, **params)
+        for item in page.get("items", []):
+            if (item.get("owner") or {}).get("id") == me:
+                out.append(
+                    {"id": item.get("id"), "name": item.get("name") or ""}
+                )
+        nxt = page.get("next")
+        if not nxt:
+            return out
+        url, params = nxt, {}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+
+    cfg = config.load()
+    pacer = ratelimit.Pacer(config.get(cfg, "spotify.min_interval_s", 0.3))
+    client = SpotifyRead(auth.access_token(), pacer=pacer)
+    me = client.me().get("id")
+
+    playlists = owned_playlists(client, me)
+    if args.limit:
+        playlists = playlists[: args.limit]
+    total = len(playlists)
+    print(f"{total} playlists owned by {me}", flush=True)
+
+    results = []
+    for index, pl in enumerate(playlists, 1):
+        label = pl["name"][:44]
+        if args.dry_run:
+            print(f"[{index}/{total}] would pull {label}", flush=True)
+            continue
+
+        proc = subprocess.run(
+            [str(CLI), "playlist.pull", pl["id"], "--json"],
+            capture_output=True,
+            text=True,
+        )
+        row = {"id": pl["id"], "name": pl["name"]}
+        try:
+            doc = json.loads(proc.stdout)
+            if doc.get("skipped"):
+                row |= {"status": "unchanged", "tracks": None}
+                print(f"[{index}/{total}] · unchanged  {label}", flush=True)
+            else:
+                row |= {
+                    "status": "ok",
+                    "tracks": doc.get("track_count"),
+                    "path": doc.get("path"),
+                }
+                print(
+                    f"[{index}/{total}] + {doc.get('track_count'):>4} tracks"
+                    f"  {label}",
+                    flush=True,
+                )
+        except json.JSONDecodeError:
+            # A failed pull prints a human error on stderr, not JSON.
+            reason = (proc.stderr or "unknown").strip().splitlines()
+            row |= {
+                "status": "failed",
+                "reason": reason[0][:160] if reason else "unknown",
+            }
+            print(f"[{index}/{total}] ! failed     {label}", flush=True)
+        results.append(row)
+
+    if args.dry_run:
+        return 0
+
+    root = Path(config.get(cfg, "spotify.mirror_root")).expanduser()
+    root.mkdir(parents=True, exist_ok=True)
+    stamp = _dt.datetime.now().strftime("%Y-%m-%d-%H%M")
+    summary = {
+        "schema": "migx.pull-all-report/1",
+        "user": me,
+        "total": total,
+        "ok": sum(1 for r in results if r["status"] == "ok"),
+        "unchanged": sum(1 for r in results if r["status"] == "unchanged"),
+        "failed": sum(1 for r in results if r["status"] == "failed"),
+        "tracks": sum(r.get("tracks") or 0 for r in results),
+        "playlists": results,
+    }
+    out = root / f"_pull-all-{stamp}.json"
+    out.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
+
+    print(
+        f"\ndone: {summary['ok']} pulled · {summary['unchanged']} unchanged · "
+        f"{summary['failed']} failed · {summary['tracks']} tracks",
+        flush=True,
+    )
+    print(f"summary -> {out}", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
