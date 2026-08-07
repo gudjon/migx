@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-007-tui-multimode-current-truth
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T22:58:08Z"
 expires_utc: "2026-08-07T23:58:08Z"
@@ -31,3 +31,9 @@ Replace brittle five-mode wording after Deck mode landed during final publicatio
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-007-tui-multimode-current-truth --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T22:59:11Z.
+
+Multi-mode TUI current truth landed at a87468d; markdownlint and focused CLI tests pass.
