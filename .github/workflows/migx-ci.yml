@@ -30,6 +30,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The kanban lints parse registry/peers YAML with PyYAML. It is their only
+      # dependency, and without it they now fail loudly rather than reading an
+      # empty registry as "nothing registered" (see _kanban_lint.parse_yaml_lite).
+      # migx-cli itself stays stdlib-only — this is for the harness lints.
+      - name: Install lint dependencies
+        run: pip install pyyaml
+
       - name: migx-cli tests (offline, stdlib only)
         run: python3 tools/migx-cli/test_migx_cli.py
 
@@ -53,4 +60,25 @@ jobs:
       - name: Command vocabulary (ADR-008)
         run: python3 kanban/architecture/lint/verify-command-vocabulary.py
 
-      - uses: pre-commit/action@v3.0.1
+      # Deliberately NOT `pre-commit/action` (which runs every hook over every
+      # file). Three ways that fails here, none of them a real defect:
+      #   - `no-commit-to-branch -b main` fails BY DESIGN on a push to main
+      #   - `qmllint`/`qmlformat` are `language: system` — no Qt on this runner
+      #   - `black`/`flake8`/`gersemi`/whitespace hooks flag inherited upstream
+      #     Mixxx files we have not reformatted (a fork-wide reformat would
+      #     destroy `git blame` against upstream)
+      # So CI runs the subset that is green repo-wide and needs no toolchain.
+      # The full hook set remains the LOCAL gate on changed files only —
+      # `pre-commit run --files <changed>` — per CLAUDE.md.
+      - name: Repo hygiene (toolchain-free pre-commit hooks)
+        # `pre-commit run` takes ONE hook id, so loop rather than listing them.
+        run: |
+          pip install pre-commit
+          rc=0
+          for hook in check-json check-yaml check-xml \
+                      check-merge-conflict check-case-conflict \
+                      fix-byte-order-marker mixed-line-ending \
+                      check-github-workflows cmakelint; do
+            pre-commit run "$hook" --all-files || rc=1
+          done
+          exit $rc

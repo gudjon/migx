@@ -233,23 +233,28 @@ def _parse_list(entries, i, indent):
 
 
 def parse_yaml_lite(text: str) -> dict:
-    """Parse a whole YAML document (e.g. prefix-registry.yaml).
+    """Parse a whole YAML document (e.g. prefix-registry.yaml). Requires PyYAML.
 
-    Uses PyYAML when available (correct); falls back to the hand-rolled parser.
+    Deliberately does NOT fall back to the hand-rolled parser. That parser
+    handles flat `key: value` frontmatter, not nested lists-of-mappings, and
+    on prefix-registry.yaml it returns `{}` — which reads as "no prefixes are
+    registered". A lint whose verdict flips on whether a library happens to be
+    installed is worse than one that does not run: `lint-dossier-frontmatter`
+    failed every dossier in CI for exactly this reason, and
+    `lint-federation-messages` would instead have passed *vacuously*, silently
+    checking nothing. Two parsers meant two truths (MG-3); this leaves one.
     """
-    if _yaml is not None:
-        try:
-            val = _yaml.safe_load(text)
-            if isinstance(val, dict):
-                return val
-            return {"_root": val} if val is not None else {}
-        except Exception:
-            pass
-    entries = _entries_from(text.splitlines())
-    if not entries:
-        return {}
-    val, _ = _parse_block(entries, 0, entries[0].indent)
-    return val if isinstance(val, dict) else {"_root": val}
+    if _yaml is None:
+        raise RuntimeError(
+            "PyYAML is required to parse whole YAML documents "
+            "(registry/peers files) — run `pip install pyyaml`. "
+            "Refusing to guess: a partial parse silently reads as "
+            "'nothing is registered' and inverts this lint's verdict."
+        )
+    val = _yaml.safe_load(text)  # a malformed document must raise, not parse as empty
+    if isinstance(val, dict):
+        return val
+    return {"_root": val} if val is not None else {}
 
 
 def parse_frontmatter(text: str) -> dict:
