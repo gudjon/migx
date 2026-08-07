@@ -24,18 +24,18 @@ get added from measured evidence.
 | Surface | Contract | Current state |
 | --- | --- | --- |
 | `migx` | Human TUI workspace | planned |
-| `tools/migx-cli/migx-tui` | Interactive preparation TUI | five modes built and snapshot-tested |
+| `tools/migx-cli/migx-tui` | Interactive preparation TUI | multi-mode adapter built and snapshot-tested |
 | `migx <noun>.<verb> ...` | Deterministic CLI | library/preparation subset built |
 | `migx <noun>.<verb> ... --json` | One-shot machine result | built for current commands |
 | `migx --agent` | Long-lived JSONL requests, events, cancellation, receipts | planned |
 | `migx mcp-server` | Optional tools over the same core | planned |
 
 Today this package is library/preparation only. The TUI has Overview, Library,
-Arrange, Prep, and Track modes; selection; analyzed BPM/key/energy; cue markers;
-DJ notes; color roles; energy sparklines; and a full-screen track heatmap over a
-pure data snapshot. It does not control a deck, subscribe to engine events, or
-touch a ControlObject. Do not describe LIVE control or agent capabilities as
-shipped until their code and gates exist.
+Arrange, Prep, Track, and Deck modes; selection; analyzed BPM/key/energy; cue
+markers; DJ notes; color roles; energy sparklines; a full-screen track heatmap;
+and data-backed transition support over a pure snapshot. It does not control a
+deck, subscribe to engine events, or touch a ControlObject. Do not describe LIVE
+control or agent capabilities as shipped until their code and gates exist.
 
 ```bash
 ./tools/migx-cli/migx-tui

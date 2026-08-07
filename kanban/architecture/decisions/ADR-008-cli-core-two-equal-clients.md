@@ -154,10 +154,10 @@ Mitigated by the closed loop:
   does not exist.
 
 **Current truth and deliberately deferred work.** Today's Python CLI implements a
-library/preparation subset, one-shot `--json`, and a five-mode stdlib curses TUI
+library/preparation subset, one-shot `--json`, and a multi-mode stdlib curses TUI
 launched by `tools/migx-cli/migx-tui`. The TUI reads a pure snapshot and is tested
 without a terminal; its Library/Arrange/Prep/Track views include analyzed metadata,
-cues, notes, sparklines, and a track heatmap. The no-command `migx` launch,
+cues, notes, sparklines, a track heatmap, and Deck transition support. The no-command `migx` launch,
 three-column workspace, `--agent`, events, receipts, MCP adapter, and C++
 application/engine bridge are not built. Documents must call those planned until
 code and gates exist. Deterministic simulation is the gate for live engine

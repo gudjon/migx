@@ -35,7 +35,7 @@ graphical performance adapter.
   `kanban/knowledge/tui-first-agentic-dj-workstation.md`.
 - ArcFlow eight-layer value and safety boundary:
   `kanban/knowledge/arcflow-tui-agentic-dj-integration.md`.
-- Current truth: 21 CLI capabilities, one-shot JSON, and the five-mode
+- Current truth: 21 CLI capabilities, one-shot JSON, and the multi-mode
   `tools/migx-cli/migx-tui` preparation TUI are built and tested.
 - ArcFlow fixes are isolated and pushed at `deba9443`; the full graph now has
   3,720 tracks, 2,962 artists, 83 playlists, 5,067 `BY`, and 4,416 `ON` edges.

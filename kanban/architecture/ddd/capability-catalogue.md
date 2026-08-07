@@ -93,7 +93,7 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-controllers-midi | Integration | generic | chrome | arch-controllers-mapping | planned |
 | cap-keyboard-shortcuts | Integration | generic | all | arch-controllers-mapping, arch-qml-ui | built (KEYMAP + ng-ui-lint) |
 | cap-sampler | Integration | generic | PERFORM | arch-engine-realtime (samplers) | planned |
-| cap-mode-shell | Chrome | supporting | all | arch-cli-commands, arch-qml-ui | Five-mode curses prep TUI (**built**); three-column/LIVE TUI (**planned**); QML adapter shell (**built**) |
+| cap-mode-shell | Chrome | supporting | all | arch-cli-commands, arch-qml-ui | Multi-mode curses prep TUI (**built**); three-column/LIVE TUI (**planned**); QML adapter shell (**built**) |
 
 ## Capability cards (concern · SSoT · UX stance)
 
@@ -210,7 +210,7 @@ hardware MIDI/HID mapping. **Built.**
 **cap-mode-shell** — *owns*: workspace/mode switching + non-modal surface + minimal chrome. *SSoT*:
 ADR-008 + `tui-first-agentic-dj-workstation.md` for product behavior; `res/qml/nextgen/main.qml` and
 KEYMAP (⌘1/2/3 + Tab) for the graphical adapter. *UX*: stable PREP/LIVE/LIBRARY/JOBS workspaces,
-minimal admin chrome, on-demand hints. **Five-mode curses preparation TUI built; three-column/LIVE
+minimal admin chrome, on-demand hints. **Multi-mode curses preparation TUI built; three-column/LIVE
 TUI planned; graphical adapter shell built.**
 
 ## How a new capability enters (the iterated process)

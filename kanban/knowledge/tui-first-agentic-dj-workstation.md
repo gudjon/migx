@@ -68,9 +68,10 @@ able to act as the DJ through the public surface without special in-process acce
 | `migx mcp-server` | Optional tool adapter over the same command core |
 
 The conventional CLI, `--json` subset, and an interactive stdlib curses TUI exist today. The TUI is
-launched by `tools/migx-cli/migx-tui`; it renders Overview, Library, Arrange, Prep, and Track modes
-from a pure snapshot, including selection, analyzed BPM/key/energy, cues, DJ notes, sparklines, color
-roles, and a full-screen track heatmap. The no-command `migx` launch, three-column workspace,
+launched by `tools/migx-cli/migx-tui`; it renders Overview, Library, Arrange, Prep, Track, and Deck
+modes from a pure snapshot, including selection, analyzed BPM/key/energy, cues, DJ notes, sparklines,
+color roles, a full-screen track heatmap, and data-backed transition support. The no-command `migx`
+launch, three-column workspace,
 `--agent`, events, receipts, MCP adapter, and engine command bridge remain product commitments.
 
 ## Interaction synthesis
@@ -169,7 +170,7 @@ single writer (`P-06`); commands cross to the engine through the sanctioned lock
 
 ## Product sequence
 
-1. Grow the shipped five-mode curses TUI into the three-column PREP workspace, with session and job
+1. Grow the shipped multi-mode curses TUI into the three-column PREP workspace, with session and job
    receipts.
 2. `--agent` JSONL discovery, request, event, completion, cancellation, and record/replay contract.
 3. Deterministic two-deck simulation that external agents can drive and verify.

@@ -185,7 +185,7 @@ Gigs + agents. Word-of-mouth from M4 performance + a co-pilot that understands a
 | **0** | Keep public on `gudjon/migx` while early | Owner decision |
 | **1** | Strategy + ADR-003/005 MIT model (this stack) | One map |
 | **2** | Freeze TUI/CLI/JSON/agent command, event, capability, and receipt contracts (ADR-008) | Prevent human/agent drift |
-| **3** | Grow the shipped five-mode preparation TUI into the three-column workspace | First usable human product |
+| **3** | Grow the shipped multi-mode preparation TUI into the three-column workspace | First usable human product |
 | **4** | Add JSONL `--agent`, resumable sessions, cancellation, and record/replay | Claude Code/Codex become first-class DJs |
 | **5** | Drive deterministic two-deck simulation through the same agent intents | Safe RED/GREEN gate before live authority |
 | **6** | Build the single-writer application/engine bridge plus live events | Real decks without a second control plane |
