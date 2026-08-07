@@ -94,6 +94,23 @@ def _identify(path: Path, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _existing_index(root: Path):
+    """Index the Collection so a duplicate is caught by identity, not path.
+
+    Path-based dedup misses the real case: the same recording filed twice
+    under different artist credits ("Diplo - Don't Be Afraid" and "Soulwax -
+    Don't Be Afraid" are one track). Reusing the resolver means ISRC wins,
+    and scored artist/title/duration catches the rest.
+    """
+    from . import resolve
+
+    resolver = resolve.get_resolver(
+        "local-files", [str(layout.collection_dir(root))]
+    )
+    resolver.scan()
+    return resolver
+
+
 def ingest(
     sources: list[Path],
     root: Path,
@@ -106,6 +123,7 @@ def ingest(
 ) -> dict[str, Any]:
     index = _mirror_index(mirror)
     tmpl = TEMPLATES.get(template, naming.TEMPLATE_DJ)
+    existing = _existing_index(root)
 
     filed, refused, duplicates = [], [], []
 
@@ -138,6 +156,29 @@ def ingest(
             # The Collection already holds this exact path. Never silently
             # overwrite and never file a second copy — that is the invariant.
             duplicates.append({**row, "reason": "already in Collection"})
+            continue
+
+        # Same recording, different filename: the store credited a different
+        # artist, so the rendered path does not collide even though the track
+        # is already here. Identity catches what the path cannot.
+        already = existing.resolve(
+            {
+                "title": meta.get("title"),
+                "artists": meta.get("artists") or [],
+                "isrc": meta.get("isrc"),
+                "duration_ms": int((verdict.get("duration_s") or 0) * 1000),
+            }
+        )
+        if already:
+            duplicates.append(
+                {
+                    **row,
+                    "reason": f"already in Collection as "
+                    f"{Path(already['path']).name} "
+                    f"(matched by {already['method']})",
+                    "existing_path": already["path"],
+                }
+            )
             continue
 
         if not dry_run:

@@ -33,6 +33,7 @@ from . import (
     naming,
     quality,
     ratelimit,
+    rename,
     resolve,
     sidecar,
     tracklist,
@@ -271,6 +272,19 @@ CAPABILITIES: list[dict[str, Any]] = [
         "note": "Never touches a file until its size and mtime have been"
         " stable — a download in progress is indistinguishable from a"
         " finished file by name alone.",
+    },
+    {
+        "id": "library.rename",
+        "kind": "command",
+        "summary": "Re-file tracks under their current name after analysis.",
+        "args": {
+            "--dry-run": "show what would move",
+            "--template": "dj | library | flat",
+        },
+        "emits": "migx.rename-report/1",
+        "note": "Moves the audio, its .migx sidecar, and every crate entry"
+        " sharing the inode — a sidecar or crate left behind is worse than"
+        " a stale name.",
     },
     {
         "id": "system.capabilities",
@@ -1154,6 +1168,66 @@ def cmd_library_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_rename(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    template = ingest.TEMPLATES.get(
+        args.template or config.get(cfg, "library.template", "dj"),
+        naming.TEMPLATE_DJ,
+    )
+    rows = rename.plan(root, template)
+    if not rows:
+        print("every track is already correctly named")
+        return 0
+
+    done, conflicts = [], []
+    for row in rows:
+        if args.dry_run:
+            mark = "!" if row["conflict"] else "→"
+            print(
+                f"  {mark} {Path(row['from']).name[:42]:44} "
+                f"{Path(row['to']).name[:42]}"
+            )
+            continue
+        result = rename.apply(row)
+        (conflicts if result["status"] == "conflict" else done).append(result)
+        if result["status"] == "renamed":
+            links = len(result.get("renamed_links") or [])
+            print(
+                f"  → {Path(result['to']).name[:52]}"
+                f"{f'  (+{links} crate)' if links else ''}"
+            )
+        else:
+            print(
+                f"  ! target exists, skipped: "
+                f"{Path(result['to']).name[:44]}",
+                file=sys.stderr,
+            )
+
+    if args.dry_run:
+        print(
+            f"\n{len(rows)} would be renamed "
+            f"({sum(1 for r in rows if r['conflict'])} conflicts)"
+        )
+        return 0
+
+    playlists = rename.rebuild_playlists(root) if done else []
+    doc = {
+        "schema": "migx.rename-report/1",
+        "renamed": len(done),
+        "conflicts": len(conflicts),
+        "playlists_rebuilt": len(playlists),
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        print(
+            f"\n{len(done)} renamed · {len(conflicts)} conflicts · "
+            f"{len(playlists)} playlist(s) rebuilt"
+        )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -1398,6 +1472,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
     )
     p.set_defaults(fn=cmd_library_watch)
+
+    p = sub.add_parser("library.rename", help="re-file under current names")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--template", default=None, choices=sorted(ingest.TEMPLATES)
+    )
+    p.set_defaults(fn=cmd_library_rename)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

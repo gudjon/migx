@@ -167,18 +167,24 @@ def write_m3u8(
 
 
 def find_duplicates(root: Path) -> dict[str, list[str]]:
-    """Tracks present under more than one Collection path.
+    """Recordings present under more than one Collection path.
 
-    Only scans Collection/, so crate links (hard or soft) are never counted:
-    a crate entry is a reference, not a second copy.
+    Keys on ISRC when both copies have one, and otherwise on normalised
+    title + rounded duration. Keying on artist would miss the real case:
+    the same track filed twice under different credits ("Diplo - Don\'t Be
+    Afraid" and "Soulwax - Don\'t Be Afraid" are one recording).
+
+    Only scans Collection/, so crate links — hard or soft — are never counted.
     """
-    from . import tags
+    from . import quality, resolve, tags
 
     seen: dict[str, list[str]] = {}
     collection = collection_dir(root)
     if not collection.is_dir():
         return {}
 
+    by_isrc: dict[str, list[str]] = {}
+    by_shape: dict[str, list[str]] = {}
     for path in sorted(collection.rglob("*")):
         if path.is_symlink() or not path.is_file():
             continue
@@ -192,9 +198,16 @@ def find_duplicates(root: Path) -> dict[str, list[str]]:
         }:
             continue
         meta = tags.read(path)
-        key = meta.get("isrc") or f"{meta.get('artist')}|{meta.get('title')}"
-        if not key or key == "None|None":
-            continue
-        seen.setdefault(key, []).append(str(path))
+        probe = quality.inspect(path)
+        isrc = meta.get("isrc")
+        if isrc:
+            by_isrc.setdefault(isrc, []).append(str(path))
+        title = resolve.normalise(meta.get("title") or path.stem)
+        seconds = int(probe.get("duration_s") or 0)
+        if title and seconds:
+            by_shape.setdefault(f"{title}|{seconds}", []).append(str(path))
 
-    return {k: v for k, v in seen.items() if len(v) > 1}
+    for key, paths in {**by_isrc, **by_shape}.items():
+        if len(paths) > 1:
+            seen[key] = sorted(paths)
+    return seen
