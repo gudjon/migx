@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-006-tui-current-truth-refresh
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T22:55:09Z"
 expires_utc: "2026-08-08T00:55:09Z"
@@ -29,3 +29,9 @@ Reconcile canonical docs with landed modes, analysis, cues, heatmap, and 21-comm
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-006-tui-current-truth-refresh --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T22:56:22Z.
+
+Current truth documented at 61ee9c2; direct markdownlint, CLI tests, and kanban lint pass.

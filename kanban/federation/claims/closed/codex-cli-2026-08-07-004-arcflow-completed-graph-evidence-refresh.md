@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-07-004-arcflow-completed-graph-evidence-refresh
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T22:52:55Z"
 expires_utc: "2026-08-08T00:52:55Z"
@@ -26,3 +26,9 @@ Replace obsolete blocker language with completed graph counts, fix branch eviden
 ## Release
 
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-07-004-arcflow-completed-graph-evidence-refresh --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+
+Released by codex-cli at 2026-08-07T22:56:21Z.
+
+Current truth documented at 61ee9c2; direct markdownlint, CLI tests, and kanban lint pass.
