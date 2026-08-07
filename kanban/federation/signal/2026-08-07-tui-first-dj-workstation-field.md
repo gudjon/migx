@@ -15,9 +15,11 @@ topics:
 sources:
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
   - kanban/knowledge/tui-first-agentic-dj-workstation.md
+  - kanban/knowledge/arcflow-tui-agentic-dj-integration.md
   - kanban/federation/signal/2026-08-07-macbook-trackpad-mode-language.md
   - kanban/federation/signal/2026-08-07-dev-practices-agent-native-x.md
   - kanban/tasks/macbook-trackpad-v1-appkit-gestures.md
+  - kanban/federation/messages/closed/codex-cli-grok-signal-2026-08-07-001-tui-first-arcflow-strategy-merged.md
   - "https://x.com/rauchg/status/1974623937750589906"
   - "https://x.com/arthurkatcher/status/2085460585601237168"
   - "https://x.com/orhundev/status/2084604801065553936"
@@ -48,7 +50,7 @@ no_touch:
 
 # Signal — TUI-first DJ workstation (field + Migx deltas)
 
-**Author:** `grok-signal` · **Date:** 2026-08-07  
+**Author:** `grok-signal` · **Date:** 2026-08-07
 **Why now:** Codex published TUI-first product routing (ADR-008); Claude is shipping
 `migx-tui` modes (Library / Arrange / Prep / Track / Deck) on
 `feat/migx-cli-spotify-mirror`. Trackpad language is closed for v1 design
@@ -81,11 +83,11 @@ No AppKit / QML / engine edits this wave.
 ### 1.1 TUI = product (not nostalgia)
 
 - Terminals are “admitting they’re **product surfaces**” — onboarding, discoverability,
-  even “app store for CLI” energy.  
+  even “app store for CLI” energy.
   Evidence: [@huxlab](https://x.com/huxlab/status/2084125705198272792)
-- AI harness success is “not accidental” — CLI forces **utility essence**.  
+- AI harness success is “not accidental” — CLI forces **utility essence**.
   Evidence: [@rauchg](https://x.com/rauchg/status/1974623937750589906)
-- Builders are reverse-engineering **how top AI harnesses design TUIs in 2026**.  
+- Builders are reverse-engineering **how top AI harnesses design TUIs in 2026**.
   Evidence: [@arthurkatcher](https://x.com/arthurkatcher/status/2085460585601237168)
 
 **Implication:** `migx-tui` is allowed to look and feel like a first-class app
@@ -132,9 +134,9 @@ Evidence sketch: Hermes TUI notes [@cv_usk](https://x.com/cv_usk/status/20841608
 
 ### 1.4 Terminal DJ specifically
 
-- **termixer** — dual-deck TUI mixer for TidalCycles/MPV/SuperCollider (Ratatui).  
-  Evidence: [@orhundev](https://x.com/orhundev/status/2084604801065553936) ·  
-  https://github.com/l00sed/termixer  
+- **termixer** — dual-deck TUI mixer for TidalCycles/MPV/SuperCollider (Ratatui).
+  Evidence: [@orhundev](https://x.com/orhundev/status/2084604801065553936) ·
+  https://github.com/l00sed/termixer
 - Pro path still: **controller for muscle memory**, not mouse/glass faders.
 
 **Implication:** Celebrate terminal DJ experiments as **adjacent validation** that
@@ -186,18 +188,18 @@ Each must map to existing or new **command IDs** first (ADR-008).
 | **P2** | **Receipt toast** after load/stage/ingest | Agent trust | One-line, auto-clear, no modal |
 | **P3** | Three-column PREP workspace (Codex wireframe) | Yazi grammar | Only after composer + stage exist |
 
-**Not P0:** AppKit trackpad in curses (already ruled out — see trackpad signal §0).  
+**Not P0:** AppKit trackpad in curses (already ruled out — see trackpad signal §0).
 **Not P0:** Full dual-deck fader TUI (termixer lane; controllers own perform).
 
 ---
 
 ## 4. Interaction rules (steal into KEYMAP / MODULE when implementing)
 
-1. **One writer:** TUI never mutates Collection/engine except via command handlers.  
-2. **Keyboard primary in TTY:** bare mode numbers OK (no `⌘` in terminal) — matches in-flight KEYMAP TUI section.  
-3. **Trackpad in TTY:** OS scroll only; no custom multitouch claims.  
-4. **Mouse optional** (when terminal supports): click-to-focus row; same selection model as `j/k`.  
-5. **No blocking modal mid-LIVE/Deck** — overlays must be dismissible without stopping refresh.  
+1. **One writer:** TUI never mutates Collection/engine except via command handlers.
+2. **Keyboard primary in TTY:** bare mode numbers OK (no `⌘` in terminal) — matches in-flight KEYMAP TUI section.
+3. **Trackpad in TTY:** OS scroll only; no custom multitouch claims.
+4. **Mouse optional** (when terminal supports): click-to-focus row; same selection model as `j/k`.
+5. **No blocking modal mid-LIVE/Deck** — overlays must be dismissible without stopping refresh.
 6. **Agents use the same IDs** the composer shows; never a parallel “agent API.”
 
 ---
@@ -206,8 +208,9 @@ Each must map to existing or new **command IDs** first (ADR-008).
 
 | Artifact | Relationship |
 | --- | --- |
-| Codex `tui-first-agentic-dj-workstation.md` (codex/sync) | **Canonical product routing** — this brief is field validation, not a fork |
-| Codex ArcFlow integration note | Off-RT world model; TUI may *query* later via commands only |
+| Codex `tui-first-agentic-dj-workstation.md` (**on branch**) | **Canonical product routing** — this brief is field validation, not a fork |
+| Codex `arcflow-tui-agentic-dj-integration.md` (**on branch**) | Off-RT world model; TUI may *query* later via commands only |
+| Closed mail `codex-cli-grok-signal-2026-08-07-001-…` | Grok accepted routing 2026-08-07 |
 | Trackpad signal + task | Native-host AppKit v1; **orthogonal** to curses deltas above |
 | Dev-practices signal | Worktree/claim hygiene while TUI ships fast |
 
@@ -227,7 +230,7 @@ When Codex merges TUI-first knowledge to main, add this file under `related:` (o
 
 ## 7. Blockers
 
-None for TUI product polish.  
+None for TUI product polish.
 ArcFlow distinct-playlist ranking remains a Codex task — does not block P0/P1 TUI.
 
 ---
@@ -237,3 +240,4 @@ ArcFlow distinct-playlist ranking remains a Codex task — does not block P0/P1 
 | Date | Change |
 | --- | --- |
 | 2026-08-07 | Initial field brief: X clusters, termixer adjacent, Migx match table, prioritised TUI deltas, peer actions |
+| 2026-08-07 | Closed Codex coord mail; knowledge SSoTs on branch; field brief defers to them |
