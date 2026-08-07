@@ -23,6 +23,19 @@ default:
 # ---- C++ pipeline (heavy; the FAST loop is `just lint-changed`, not this) ----
 # Configure arm64-native macOS 26+ (ADR-006) + compile_commands.json for clangd (P-26) + tests + bench.
 configure:
+    #!/usr/bin/env bash
+    # No `set -u`: tools/macos_buildenv.sh reads CI-only vars (GITHUB_ENV) that
+    # are unset in a local shell, and nounset turns that into a hard failure.
+    set -eo pipefail
+    # MUST source the buildenv first. On macOS, CMakeLists.txt:116 hard-fails
+    # with "BUILDENV_URL not specified" unless MIXXX_VCPKG_ROOT points at an
+    # existing vcpkg tree — so without this line `just configure` could never
+    # succeed, which is why `just test` had never produced mixxx-test and the
+    # C++ suite was silently ungated.
+    # Sourced rather than passing -DMIXXX_VCPKG_ROOT=<path>: the script is the
+    # single home for WHICH buildenv this arch uses (MG-3). Hardcoding the name
+    # here would drift the day the dependency bundle is bumped.
+    source tools/macos_buildenv.sh setup
     cmake -S . -B {{build_dir}} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DBUILD_BENCH=ON \
       -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -34,6 +47,41 @@ build: configure
 
 test: build
     ctest --test-dir {{build_dir}} --output-on-failure
+
+# ---- The gate: one command, one verdict ----
+# What must be green before a change is trusted (verification ladder, playbook
+# ch.03). This is the command an autonomous/overnight loop runs — a loop is only
+# as trustworthy as its gate, so this one REFUSES to pass vacuously: if
+# mixxx-test is missing it fails and says so rather than quietly skipping ctest
+# and reporting green. Deliberately does NOT depend on `build` — rebuilding is
+# the caller's choice; verifying a stale tree silently is the failure to avoid.
+#
+# The gate: harness lints + Python suites + ctest. Fails if mixxx-test is missing.
+verify: kanban-lint
+    #!/usr/bin/env bash
+    set -eo pipefail
+    python3 tools/migx-cli/test_migx_cli.py
+    python3 tools/exo/test_copilot_tempo.py
+    python3 tools/exo/test_ontology_from_sidecar.py
+    python3 tools/exo/test_set_planner.py
+    if [ ! -x "{{build_dir}}/mixxx-test" ]; then
+      echo "FAIL: {{build_dir}}/mixxx-test not built — the C++ suite would be"
+      echo "      silently skipped. Run \`just build\` first (or \`just verify-fast\`"
+      echo "      if you knowingly only touched Python/harness files)."
+      exit 1
+    fi
+    ctest --test-dir {{build_dir}} --output-on-failure
+
+# The same gate minus the C++ suite, for changes that provably cannot touch it
+# (harness, docs, migx-cli). Named separately so skipping ctest is always an
+# explicit choice in the log, never an accident.
+#
+# The gate minus ctest — for harness/docs/CLI changes only.
+verify-fast: kanban-lint
+    python3 tools/migx-cli/test_migx_cli.py
+    python3 tools/exo/test_copilot_tempo.py
+    python3 tools/exo/test_ontology_from_sidecar.py
+    python3 tools/exo/test_set_planner.py
 
 # Google-benchmark suite (BUILD_BENCH → the mixxx-benchmark target = mixxx-test --benchmark).
 # Pin baselines per P-03 / P-25; gate on p99/max not mean (P-18).
@@ -93,18 +141,9 @@ lint-qss:
     pre-commit run qsscheck --all-files
 
 # ---- Agent-harness discipline (mirrors .github/workflows/kanban-discipline.yml) ----
+# The lint LIST lives in the script, not here — CI runs the same one (MG-3).
 kanban-lint:
-    python3 kanban/scripts/lint-dossier-frontmatter.py
-    python3 kanban/scripts/verify-prefix-registry.py
-    python3 kanban/scripts/lint-naming-conventions.py
-    python3 kanban/scripts/verify-ps-citations.py
-    python3 kanban/scripts/verify-sealed-dossier-has-closure.py
-    python3 kanban/architecture/lint/verify-owns-paths-exist.py
-    python3 kanban/architecture/lint/verify-agents-md-present.py
-    python3 kanban/architecture/lint/verify-command-vocabulary.py
-    python3 .claude/architecture/lint/verify-skill-grounding.py
-    python3 kanban/scripts/gen-pattern-index.py --check
-    python3 kanban/architecture/ddd/gen-index.py --check
+    ./kanban/scripts/run-harness-lints.sh
 
 # ---- Fleet federation (multi-peer Claude/Codex/Grok; AGY paused) ----
 # Rank open+ack mail; write scratchpad nudge (gitignored).

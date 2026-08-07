@@ -46,21 +46,11 @@ jobs:
           python3 tools/exo/test_ontology_from_sidecar.py
           python3 tools/exo/test_set_planner.py
 
-      - name: Harness discipline (dossiers, patterns, DDD, keymap)
-        run: |
-          python3 kanban/scripts/lint-dossier-frontmatter.py
-          python3 kanban/scripts/verify-prefix-registry.py
-          python3 kanban/scripts/lint-naming-conventions.py
-          python3 kanban/scripts/verify-ps-citations.py
-          python3 kanban/scripts/verify-sealed-dossier-has-closure.py
-          python3 kanban/architecture/lint/verify-owns-paths-exist.py
-          python3 kanban/architecture/lint/verify-agents-md-present.py
-          python3 .claude/architecture/lint/verify-skill-grounding.py
-          python3 kanban/scripts/gen-pattern-index.py --check
-          python3 kanban/architecture/ddd/gen-index.py --check
-
-      - name: Command vocabulary (ADR-008)
-        run: python3 kanban/architecture/lint/verify-command-vocabulary.py
+      # The lint LIST lives in the script, so `just kanban-lint` and this gate
+      # can never disagree about what "the harness lints" means (MG-3).
+      # Includes the ADR-008 command-vocabulary check.
+      - name: Harness discipline (dossiers, patterns, DDD, keymap, vocabulary)
+        run: ./kanban/scripts/run-harness-lints.sh
 
       # Deliberately NOT `pre-commit/action` (which runs every hook over every
       # file). Three ways that fails here, none of them a real defect:
