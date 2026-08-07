@@ -56,6 +56,12 @@ build/test entry points (it cites, but does not restate, the house rules above):
 
 **North-stars:**
 
+- **TUI-first agentic DJ workstation** — the terminal is the first human product; TUI, CLI,
+  `--json`, and external agents share one command/event/receipt core —
+  [`kanban/Strategy-Current.md`](kanban/Strategy-Current.md) ·
+  [ADR-008](kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md) ·
+  [`tui-first-agentic-dj-workstation`](kanban/knowledge/tui-first-agentic-dj-workstation.md) ·
+  [`ArcFlow integration boundary`](kanban/knowledge/arcflow-tui-agentic-dj-integration.md).
 - **AI-DJing product** (Cursor-for-music, **MIT operating model**: proprietary app + Intelligence;
   public early → agora later) — [`kanban/Strategy-Current.md`](kanban/Strategy-Current.md) ·
   [ADR-003](kanban/architecture/decisions/ADR-003-licensing-and-openness.md) ·

@@ -4,6 +4,7 @@ This file loads into every Claude Code context. Keep it high-signal and short: *
 in its home and point here — never restate.** Migx is a DJ application forked from Mixxx (C++/Qt6/CMake).
 
 ## Read first
+
 - **House code physics** (the hard rules) → repo-root [`AGENTS.md`](AGENTS.md): the RT audio engine
   (no allocation/lock on the callback thread; emits but never receives Qt signals),
   ControlObject/ControlProxy `[Group], key` messaging, `parented_ptr`/`make_parented` ownership.
@@ -12,11 +13,13 @@ in its home and point here — never restate.** Migx is a DJ application forked 
 - **Onboarding / what to read by task** → [`kanban/AGENT-ONBOARDING.md`](kanban/AGENT-ONBOARDING.md).
 
 ## The two ground rules (act on these; don't wait to follow a pointer)
+
 1. **Everything is a closed loop** — Trigger → Capture → Intelligence → Adjustment. Shipping without a
    loop attached (a benchmark that re-checks a perf claim) means it isn't done. `P-01`, `P-03`.
 2. **Everything is code** — load-bearing decisions live at stable grep-able paths, or they're scratch.
 
 ## Critical operational rules
+
 - **Never allocate, lock, or block on the real-time audio thread** (`process*()` in `src/engine/`). A
   "faster on average" change that does is a regression, not an optimization. See `P-02` / `AP-02`.
 - **Performance claims need a benchmark contract** — p99/max + zero underruns vs a pinned baseline, not
@@ -26,6 +29,7 @@ in its home and point here — never restate.** Migx is a DJ application forked 
 - **One writer per ControlObject.** `P-06` / `AP-03`.
 
 ## Development standards (index into .claude/rules/ — read the rule, don't rely on this line)
+
 - Single source of truth → [`single-source-of-truth`](.claude/rules/single-source-of-truth.md)
 - Real-time audio safety → [`rt-audio-safety`](.claude/rules/rt-audio-safety.md)
 - Build & test workflow → [`build-and-test`](.claude/rules/build-and-test.md)
@@ -35,19 +39,23 @@ in its home and point here — never restate.** Migx is a DJ application forked 
 - Exercise judgment / own the PR → [`agentic-decision-authority`](.claude/rules/agentic-decision-authority.md)
 
 ## Where things live
+
 - Patterns / antipatterns (cite by ID) → `kanban/patterns/`
 - Architecture map + per-domain charters → `kanban/architecture/README.md`, `src/**/AGENTS.md`
 - Units of work (dossiers) → `kanban/planning/` (scaffold from `_template/`)
 - Backlog tasks → `kanban/tasks/` · Cadence → `kanban/triggers/`
 - Apple Silicon perf → `kanban/initiatives/initiative-apple-silicon.md`
-- **Product strategy (Cursor / MIT model)** → `kanban/Strategy-Current.md` · ADR-003 · ADR-005 ·
+- **Product strategy (TUI-first agentic DJ / Cursor / MIT model)** → `kanban/Strategy-Current.md` ·
+  ADR-008 · `kanban/knowledge/tui-first-agentic-dj-workstation.md` ·
+  `kanban/knowledge/arcflow-tui-agentic-dj-integration.md` · ADR-003 · ADR-005 ·
   `initiative-ai-djing-product`
 - Git posture (public early → agora) → `kanban/runbooks/go-private-and-git-posture.md`
 - **Federation (Grok / Claude / Codex)** → `kanban/federation/FEDERATION.md` · role
-  `kanban/federation/roles/claude-code.md` · CLI `./kanban/scripts/migx-fed`  
+  `kanban/federation/roles/claude-code.md` · CLI `./kanban/scripts/migx-fed`
   (Antigravity/`agy` is **paused** — no tokens; do not route new mail there.)
 
 ## Multi-agent on this box
+
 You are the **implementer** peer (`claude-code`) — RT/engine **and** non-RT/UI/ontology product
 volume while Antigravity is paused. Grok CLI is the **signal scout** (`grok-signal`); Codex is the
 **verifier-cartographer** (`codex-cli`). Coordination is **git-mediated mail**, not chat:
@@ -75,6 +83,7 @@ Codex = P-08; Grok = X). Antigravity re-enable path: `AGY.md` + `peers.yaml`.
 Codex long harness: `just fed-harness SIDE=codex-cli INTERVAL=900`.
 
 ## Extending the harness
+
 Which primitive (subagent / skill / workflow / `/loop` / `/schedule`) → `kanban/playbook/03`. Skill/agent/
 workflow authoring conventions → the `AGENTS.md` in each `.claude/` subdir. CC capabilities →
 `kanban/knowledge/claude-code-capabilities.md`.

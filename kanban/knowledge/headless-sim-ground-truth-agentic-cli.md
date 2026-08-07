@@ -5,9 +5,12 @@ title: "Headless simulation ground truth + agentic CLI for Migx"
 status: active
 owner: gudjon
 created: "2026-07-18"
-lastUpdated: "2026-07-18"
+lastUpdated: "2026-08-07"
+defers_to:
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
 task: kanban/tasks/research-headless-sim-ground-truth-agentic-cli.md
 related:
+  - tui-first-agentic-dj-workstation
   - closed-loops-and-tdd-feedback-gaps
   - output-verification-formats-naming
   - world-model-experience-ontology
@@ -24,14 +27,25 @@ recommendation: phased-go
 
 **Question:** Should we build a **Simulation / ground-truth** layer (e.g. `.wav` fixtures an agent can load, mix headless, and measure) so Migx supports **full CLI agentic mode** and stronger TDD?
 
-**Recommendation:** **Phased go** — invest in a **headless mix scenario harness** (engine graph → measurable audio out) before a full product CLI. Do **not** put simulation on the RT callback path. Prefer reusing `mixxx-test` + golden artifacts over a second audio engine.
+**Recommendation:** **Phased go** — invest in a **headless mix scenario harness** (engine graph →
+measurable audio out) before granting CLI or agent clients live engine authority. Build the TUI and
+public command contract in parallel; ADR-008 supersedes this note's original recommendation to defer
+the full product CLI. Do **not** put simulation on the RT callback path. Prefer reusing `mixxx-test` +
+golden artifacts over a second audio engine.
+
+## 0. Supersession boundary (2026-08-07)
+
+ADR-008 is authoritative for product-surface order: TUI first, with CLI/JSON/agent adapters over one
+command core. This note remains authoritative for **simulation and engine-ground-truth gates**.
+Simulation must precede guarded deck/mixer authority; it does not precede metadata/library TUI work,
+capability discovery, schemas, receipts, or the agent protocol itself.
 
 ---
 
 ## 1. Why this exists
 
 | Need | Without sim | With sim |
-|---|---|---|
+| --- | --- | --- |
 | Agent TDD (RED→GREEN) | Needs GUI dogfood or partial unit tests | One command: scenario → metrics/WAV |
 | Independent eval (`P-08`) | Human listens or peer skims diff | CI re-runs same scenario |
 | Co-pilot claims | EXO plans offline only | Prove engine accepted load/crossfade |
@@ -44,7 +58,7 @@ Club gigs stay Core Audio + GUI. **Sim is a development and agent sensor**, not 
 ## 2. What we already have (do not rebuild)
 
 | Asset | Role | Limit |
-|---|---|---|
+| --- | --- | --- |
 | `mixxx-test` + GoogleTest | Headless unit/E2E pieces | No standard multi-deck product scenario pack |
 | `src/test/enginebuffertest.cpp`, scale, mixer, sync tests | Engine graph fragments | Synthetic buffers, not named DJ scenarios |
 | `src/test/enginefilterbenchmark.cpp` | Pure CPU DSP EVD | No decks/crossfader story |
@@ -68,7 +82,7 @@ scenario.json → load Track from fixture WAV → EngineMixer process N buffers
 ```
 
 | Pros | Cons |
-|---|---|
+| --- | --- |
 | Stays in-process `mixxx-test`; no SoundIO | Not full app (no QML, limited CO surface) |
 | Deterministic if clock is virtual | Must fix sample rates / buffer sizes |
 | Matches EVD culture | Needs careful fixture paths |
@@ -80,32 +94,34 @@ scenario.json → load Track from fixture WAV → EngineMixer process N buffers
 Register a non-hardware device that drains the engine callback into a file/ring.
 
 | Pros | Cons |
-|---|---|
+| --- | --- |
 | Exercises more of SoundManager | Closer to RT path — higher risk of pollution |
 | Useful soak of full open path | Harder CI (timing, threads) |
 
 Use only if A cannot reach the code under test. Prefer **pulling buffers in tests** over faking a device when possible.
 
-### Option C — **Product CLI / agent RPC** (`migx --agent` / headless)
+### Option C — **Product CLI / agent protocol** (`migx --agent`)
 
 ```text
 CLI/JSON-RPC → ControlObject intents → engine → report state + optional capture
 ```
 
 | Pros | Cons |
-|---|---|
+| --- | --- |
 | True “agentic DJ mode” | Large product surface; prefs, library, threads |
 | Depth of permission for co-pilot | Needs security (local socket only) |
 
-**Phase 2+** after A proves value. Layer B intents (EXO inbox) should be the **same** messages CLI uses — one path.
+The surface contract starts now under ADR-008. Engine-mutating methods become available only after
+Option A proves them against deterministic scenarios. Layer B intents (EXO inbox) should be the
+**same** messages the CLI uses — one path.
 
 ### Option D — **Offline DSP-only goldens without engine**
 
 Script pure C++ filter/mix util.
 
-| Pros | Cons |
-|---|---|
-| Fastest CI | Diverges from production graph (`AP-02` risk) |
+| Pros       | Cons                                                   |
+|------------|--------------------------------------------------------|
+| Fastest CI | Diverges from production graph (`AP-02` risk)          |
 
 Reject as primary; ok for micro kernels only.
 
@@ -165,7 +181,7 @@ Keep goldens **short** (2–10 s) to bound CI. Prefer **hash of metrics + option
 ### 4.3 Metrics that matter for agents
 
 | Metric | Use |
-|---|---|
+| --- | --- |
 | `underrun_count` / xrun proxy | RT safety in sim clock |
 | `rms_*_db`, peak | Crossfade / kill switch |
 | `pcm_sha256` or sample-epsilon vs golden | Bit-exact regressed mix |
@@ -187,9 +203,9 @@ build/mixxx-test --sim res/sim/scenarios/S02-two-deck-xfade-linear.json
 
 Agent workflow:
 
-1. Edit production code  
-2. Re-run scenario filter  
-3. Commit only if GREEN + no RT path dirty without review  
+1. Edit production code
+2. Re-run scenario filter
+3. Commit only if GREEN + no RT path dirty without review
 
 ### Phase 2 (product headless)
 
@@ -202,14 +218,14 @@ migx agent run --scenario S02
 JSON-RPC / line protocol (illustrative):
 
 | Method | Maps to |
-|---|---|
+| --- | --- |
 | `library.load` | Track load intent |
 | `deck.play` / `deck.cue` | CO writers (single writer still) |
 | `mixer.crossfader` | CO |
 | `capture.start/stop` | File writer on worker |
 | `scenario.run` | Full sim pack |
 
-**Security:** localhost only; no network bind by default.  
+**Security:** localhost only; no network bind by default.
 **Same intents** as EXO `intent-inbox.v1.json` so Layer B stays one path.
 
 ---
@@ -217,27 +233,28 @@ JSON-RPC / line protocol (illustrative):
 ## 6. Risks and mitigations
 
 | Risk | Mitigation |
-|---|---|
+| --- | --- |
 | Sim drifts from production graph | Drive real `EngineMixer` / buffers, not a toy mixer |
 | Flaky timing | Virtual time / fixed buffer steps; no wall-clock sleeps |
 | RT pollution | Sim code only under test/tools; never link into callback |
 | Huge goldens in git | Short clips + hashes; regenerate script |
 | Agent “cheats” by editing golden | P-08: golden updates require human/evaluator ack |
-| Over-scoping product CLI early | Phase 1 test harness only until 3 scenarios prove value |
+| Exposing unsafe engine commands early | Capability manifest marks authority unavailable until scenarios prove it |
 
 ---
 
 ## 7. Recommendation (go / phases)
 
 | Phase | Deliverable | Effort (order-of-mag) | Gate |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **W0** | This note + output-verification contracts for sim paths | done / parallel | — |
 | **W1** | 2–3 corpus WAVs + `SimScenario` gtest runner + 1 golden | small–medium | `ctest -R SimScenario` |
 | **W2** | Scenario pack S01–S03 + CI job on macOS arm64 | medium | PR fails on metric reg |
 | **W3** | Wire EXO intent → same ops (no GUI) | medium | Intent fixture drives S02 |
-| **W4** | Optional `migx --headless` socket | large | Dogfood agent session |
+| **W4** | Guarded engine authority through `migx --agent` | large | Dogfood agent session + receipts |
 
-**Go:** W1–W2. **Defer** full product CLI until W1–W2 close TDD loops for engine changes.  
+**Go:** TUI/command contracts and W1–W2 in parallel. **Defer engine-mutating capabilities**, not the
+product CLI, until W1–W2 close TDD loops for engine changes.
 **No-go:** separate audio engine “for agents only.”
 
 ---
@@ -246,13 +263,16 @@ JSON-RPC / line protocol (illustrative):
 
 From `closed-loops-and-tdd-feedback-gaps.md`:
 
-- Supplies **product-level RED/GREEN** missing above unit benches.  
-- Gives **independent eval** a command CI can run.  
-- Complements EXO offline plans with **engine ground truth**.  
+- Supplies **product-level RED/GREEN** missing above unit benches.
+- Gives **independent eval** a command CI can run.
+- Complements EXO offline plans with **engine ground truth**.
 - Requires **output verification** (companion note) so scenarios/goldens have frozen names.
 
 ---
 
 ## 9. Bottom line
 
-**Yes — build simulation ground truth**, starting as a **headless scenario harness inside `mixxx-test`** with short WAV corpus and metric/golden asserts. **Yes — aim for agentic CLI**, but as **Layer B intents + later product headless**, not a fork of the RT path. Measure twice (EVD-style); ship the sensor before the full CLI product.
+**Yes — build simulation ground truth**, starting as a **headless scenario harness inside `mixxx-test`**
+with short WAV corpus and metric/golden asserts. **Build the TUI and agentic command surface now**, but
+keep live deck/mixer authority unavailable until those scenarios pass. Layer B intents and every
+adapter share one path; none forks the RT path.

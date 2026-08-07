@@ -1,19 +1,24 @@
 ---
 id: ADR-007
 type: decision
-title: "NextGen UI — a shadow QML shell on the shared engine, grown module-by-module (Option A)"
+title: "Native graphical adapter — a shadow QML shell on the shared engine"
 status: accepted
 owner: gudjon
 created: "2026-07-22"
-lastUpdated: "2026-07-22"
+lastUpdated: "2026-08-07"
 supersedes: []
 amends: [ADR-004]
-related: [ADR-005, ADR-006, initiative-ui-modernization, ai-code-migration-methodology, ui-non-modal-error-ux, nextgen-shadow-app-proposal, nextgen-engine-reuse-boundary-codex, nextgen-dj-ux-modes-and-signal]
+related: [ADR-005, ADR-006, ADR-008, initiative-ui-modernization, ai-code-migration-methodology, ui-non-modal-error-ux, nextgen-shadow-app-proposal, nextgen-engine-reuse-boundary-codex, nextgen-dj-ux-modes-and-signal]
 ---
 
-# ADR-007 — NextGen shadow UI (Option A)
+# ADR-007 — Native graphical shadow adapter (Option A)
+
+> **Scope after ADR-008:** this accepted decision governs migration from legacy widgets/skins to a
+> native QML performance adapter. ADR-008 governs product order and makes the TUI the first human
+> product. The QML path is no longer the command spine or a prerequisite for TUI/CLI/agent work.
 
 ## Context
+
 The legacy Mixxx QWidget/XML-skin UI is deeply entangled and is the source of real UX failures (modal
 dialogs mid-set — `ui-non-modal-error-ux`). The owner set the next undertaking (2026-07-19): build a
 **NextGen "Agent DJ" version as a parallel shadow build** — the full new UI development — reusing the
@@ -26,6 +31,7 @@ The fleet converged independently (Grok scout + Codex boundary map + Claude impl
 shell beats Electron/web (perf, anti-goal) and SwiftUI (Swift↔C++ RT-engine bridge tax) for v1.
 
 ## Decision
+
 1. **NextGen is an in-process QML *shadow shell*** that reuses the existing C++ engine unchanged: it
    boots through the `mixxx::qml::QmlApplication` bootstrap + `CoreServices`, and reads/writes only via
    typed `Qml*Proxy` / `QmlControlProxy` over the **ControlObject bus** (`[Group],key`). **No engine
@@ -47,6 +53,7 @@ shell beats Electron/web (perf, anti-goal) and SwiftUI (Swift↔C++ RT-engine br
    the legacy QML (dual-stack fights), separate repo (federation harder).
 
 ## How it is built (methodology)
+
 Per `ai-code-migration-methodology`: **build the judge first**, keep a rulebook, **"fix the loop, not
 the code,"** mechanical queue from disk, adversarial review. Module order:
 `scaffold → primitives → eq/vu/tempo → deck-shell → mixer/fx → library → co-pilot → waveform (after the
@@ -60,7 +67,8 @@ matches ControlObject behaviour + rendered pixels (reuse the headless-CGL harnes
 passes the **non-modal** check. A module is not "done" if it can raise a blocking modal during a set.
 
 ## Consequences
+
 - A clean greenfield UI surface each agent (Claude/Codex/Grok) can work a bounded module of, verified.
 - Classic Migx keeps shipping; NextGen grows until the feature-flag default flips (dual-deck acceptance).
-- Amends ADR-004: QML-primary stands; ADR-007 pins the *shadow-shell strategy + engine seam + modes +
-  non-modal law*. The end state is one product on the NextGen UI, not permanent dual roadmaps.
+- Amends ADR-004: ADR-007 pins the QML *graphical-adapter strategy + engine seam + modes + non-modal
+  law*. The end state is one native graphical path beside the TUI, not permanent QML/skin roadmaps.

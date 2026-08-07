@@ -5,9 +5,10 @@ title: "Architecture map — refactor to 100% macOS 26+ Apple Silicon (feature-p
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 enriched: "2026-07-17 PLT dossier executed Waves 1–3 (EVD-PLT-0001, CI prune, parity HOLD)"
 defers_to:
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
   - kanban/architecture/decisions/ADR-006-platform-scope-apple-silicon.md
   - kanban/architecture/README.md
   - kanban/Strategy-Current.md
@@ -29,7 +30,10 @@ note: >
 
 # Architecture map — 100% macOS 26+ · Apple Silicon
 
-**Product floor (ADR-006):** Migx ships for **macOS 26.\*+** on **Apple Silicon (arm64) only**.  
+> **Interface scope:** ADR-008 makes the TUI/command core the product spine. QML references in this
+> platform map describe the later native graphical performance adapter and legacy-skin retirement.
+
+**Product floor (ADR-006):** Migx ships for **macOS 26.\*+** on **Apple Silicon (arm64) only**.
 **Goal of this map:** refactor so the codebase, runtime, and CI **double down** on that platform’s
 capabilities (Core Audio, Accelerate/vDSP, Metal, unified memory, OS 26 spatial/capture APIs where
 useful) **without deleting DJ features** — only the **portability tax** (Win/Linux/Intel, dead GL,
@@ -91,7 +95,7 @@ without partners; shipping iPad/Windows.
 ### 1.2 Platform-native capability map (what we double down on)
 
 | Capability | Apple surface | Migx domain | Role |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | RT I/O | **Core Audio** (HAL) | `arch-audio-io` | Origin of deadline; exclusive mode; low buffer |
 | Decode | **CoreAudio** codecs + FFmpeg where needed | `arch-sources-decode` | Worker; prefer CA for AAC/ALAC |
 | DSP | **Accelerate / vDSP / vForce** (+ NEON) | engine, effects, analyzer | Batch math off hand-rolled loops |
@@ -105,7 +109,7 @@ without partners; shipping iPad/Windows.
 ### 1.3 What “feature-preserving” means
 
 | Keep (product features) | May remove / go dormant (portability tax) |
-|---|---|
+| --- | --- |
 | Multi-deck mix, sync, keylock, effects | Linux PipeWire/ALSA-specific backends as **build defaults** |
 | Controllers (MIDI/HID), vinyl/DVS | Windows WASAPI-specific packaging/CI |
 | Library, crates, analysis, waveforms | Intel/x86_64 + Rosetta build matrix |
@@ -136,11 +140,11 @@ should migrate to `migx-divergent` as waves land.
 ### 2.2 Hot multi-platform surfaces (refactor targets)
 
 | Surface | Today | Tax | Apple-native direction |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Audio backend** | PortAudio required; PipeWire optional; network device | PA abstracts Mac but hides CA knobs | **Core Audio–first** device path; PA only if still needed as thin shim |
 | **Decode** | FFmpeg + CoreAudio option | Dual paths | Prefer **CoreAudio** for Apple codecs; FFmpeg for gap formats |
 | **Waveform** | `allshader/` + `deprecated/` GL + Qt paths | Dead GL risk (allshader deps HOLD) | **allshader/RHI → Metal** only after retire gate |
-| **UI** | QML + legacy skins/widgets | Dual chrome | **QML-primary** (ADR-004); skins until feature parity |
+| **Graphical UI** | QML + legacy skins/widgets | Dual chrome | One **QML/Metal adapter** (ADR-004); skins until feature parity |
 | **Packaging** | `packaging/{macos,debian,flatpak,wix,android,ios}` | CI + docs for dead platforms | **macos only** shipping |
 | **CI** | Multi-OS legs (upstream-shaped) | Slow, green noise | **macOS arm64 26** only |
 | **`#ifdef` matrix** | ~50+ files touch Win/Linux/Android | Mental load | Collapse as files are touched (`P-11`) |
@@ -149,7 +153,7 @@ should migrate to `migx-divergent` as waves land.
 ### 2.3 Already decided / in motion
 
 | Artifact | Status |
-|---|---|
+| --- | --- |
 | ADR-006 macOS 26+ AS only | **accepted** |
 | CMake floor `26.0` + arm64 | **landed** |
 | MTL waveform baseline / VBO | dossiers under `initiative-apple-silicon` |
@@ -173,7 +177,7 @@ SoundManager
 ```
 
 | Phase | Work | Feature keep |
-|---|---|---|
+| --- | --- | --- |
 | **A0** | Soak PortAudio/CA on 26+M4 (task `tahoe-m4-soundio-soak-rebaseline`) | All routing as today |
 | **A1** | Expose exclusive mode, buffer, sample-rate, aggregate devices clearly in prefs | Same features, better Mac UX |
 | **A2** | Optional native `SoundDeviceCoreAudio` if PA blocks latency/stability | Bit-identical mix; lower p99 |
@@ -186,7 +190,7 @@ SoundManager
 **Target:** same graph semantics; **kernels** prefer Accelerate/vDSP where shape amortizes.
 
 | Phase | Work | Feature keep |
-|---|---|---|
+| --- | --- | --- |
 | **E0** | Inventory hot `process*` paths (scale, EQ, rubberband, effects) | — |
 | **E1** | Replace scalar loops with vDSP where benches win | Same sound (or documented epsilon) |
 | **E2** | QoS / P-core affinity for non-RT workers only (not RT priority games without proof) | Stability |
@@ -197,7 +201,7 @@ SoundManager
 **Target:** CoreAudio provider first-class for ALAC/AAC/CAF; FFmpeg for the long tail.
 
 | Phase | Work | Feature keep |
-|---|---|---|
+| --- | --- | --- |
 | **S0** | Matrix: format → provider on M4 | All formats still open |
 | **S1** | Prefer CA where quality/latency of open wins | No “can’t play X” regressions |
 | **S2** | Worker-only MLX/analysis decode reuse | Stems/structure later |
@@ -207,17 +211,17 @@ SoundManager
 **Target:** single modern path — **allshader + Metal RHI**; zero-copy VBO (MTL dossiers).
 
 | Phase | Work | Feature keep |
-|---|---|---|
+| --- | --- | --- |
 | **W0** | Prove allshader covers every skin/QML waveform feature | Visual parity checklist |
 | **W1** | Retire `deprecated/` GL **only after W0** (task hold) | No blank waveforms |
 | **W2** | Metal-specific residency / heap if RHI allows | Smoother UI, not RT |
 
 ### 3.5 `arch-qml-ui` + skins
 
-**Target:** QML-primary product shell; DESIGN.md tokens; co-pilot chrome.
+**Target:** one QML/Metal graphical performance adapter; DESIGN.md tokens; co-pilot chrome.
 
 | Phase | Work | Feature keep |
-|---|---|---|
+| --- | --- | --- |
 | **U0** | Feature parity matrix: QWidget skin feature → QML | Controllers + library workflows |
 | **U1** | Migrate high-traffic prefs/library to QML | Same settings |
 | **U2** | Layer B co-pilot: fixture → live CO reconciler | Prep/explain; no dual-stream DRM |
@@ -251,7 +255,7 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 ### Wave 0 — Lock the floor (done / verify)
 
 | Item | Gate |
-|---|---|
+| --- | --- |
 | ADR-006 + CMake `26.0` + arm64 | configure refuses Intel/iOS |
 | README / AGENTS / justfile | docs match |
 | Host is macOS 26+ arm64 | `sw_vers`, `uname -m` |
@@ -262,17 +266,17 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 
 ### Wave 1 — **Validate SoundIO on the only OS** (P0)
 
-**Owner task:** `tahoe-m4-soundio-soak-rebaseline`  
+**Owner task:** `tahoe-m4-soundio-soak-rebaseline`
 **Context:** `arch-audio-io`
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 1.1 | Dual-deck soak: built-in, USB interface, AirPods; exclusive vs shared |
 | 1.2 | Sample-rate / buffer sweeps; log xruns |
 | 1.3 | EVD vs MTL baseline; record OS build in baseline axis (`P-25`) |
 | 1.4 | Open flake cards only if needed — **no rewrite yet** |
 
-**Gate:** EVD with p99/max + **zero underruns** (or named residual flakes).  
+**Gate:** EVD with p99/max + **zero underruns** (or named residual flakes).
 **Feature impact:** none (measurement).
 
 ---
@@ -282,13 +286,13 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 **Owner task:** `narrow-platform-to-apple-silicon` (update acceptance: **iPad not shipping**; macOS-only)
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 2.1 | CI: drop Linux/Windows legs; one macOS-arm64 job on 26 |
 | 2.2 | packaging: stop shipping debian/flatpak/PPA; wix/android **dormant** |
 | 2.3 | CMake: `PIPEWIRE` default OFF; document Mac-only options |
 | 2.4 | Touch-based `#ifdef` collapse when editing files (`P-11`) — no mega-PR |
 
-**Gate:** `cmake --build` + `ctest` green on arm64.  
+**Gate:** `cmake --build` + `ctest` green on arm64.
 **Feature impact:** none for Mac users; remove unsupported OS promises.
 
 ---
@@ -298,13 +302,13 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 **Owner tasks:** `retire-deprecated-gl-waveform-renderers` after parity; MTL VBO dossiers
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 3.1 | Feature matrix: allshader vs deprecated vs Qt legacy |
 | 3.2 | Fix gaps in allshader (cues, RGB, overview, stems marks) |
 | 3.3 | Delete/stop compiling `deprecated/` |
 | 3.4 | Land zero-copy / persistent VBO where EVD proves win |
 
-**Gate:** visual regression checklist + no RT regression.  
+**Gate:** visual regression checklist + no RT regression.
 **Feature impact:** **zero visual features lost** (parity first).
 
 ---
@@ -312,12 +316,12 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 ### Wave 4 — **Decode + DSP Apple-native** (perf without feature loss)
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 4.1 | Format matrix + CA-first provider ranking |
 | 4.2 | vDSP/Accelerate in top N engine hotspots (bench each) |
 | 4.3 | Analyzer worker: Accelerate FFT/filter; optional MLX later |
 
-**Gate:** `ctest -R Engine|SoundSource|Analyzer` + bench deltas (`P-03`).  
+**Gate:** `ctest -R Engine|SoundSource|Analyzer` + bench deltas (`P-03`).
 **Feature impact:** same formats; same musical behavior within epsilon policy.
 
 ---
@@ -327,25 +331,25 @@ Each wave: **scope → do → gate → feature checklist**. Never green-over-red
 Only if Wave 1 shows PA is the ceiling:
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 5.1 | Design `SoundDeviceCoreAudio` behind same `SoundDevice` interface |
 | 5.2 | Feature parity: multi-out, vinyl inputs, clock ref, aggregate |
 | 5.3 | A/B underrun EVD; flip default when green |
 
-**Gate:** full SoundManager tests + soak EVD.  
+**Gate:** full SoundManager tests + soak EVD.
 **Feature impact:** **no routing feature removed**.
 
 ---
 
-### Wave 6 — **UI QML-primary without feature drop**
+### Wave 6 — **QML graphical adapter without feature drop**
 
 | Step | Action |
-|---|---|
+| --- | --- |
 | 6.1 | Skin→QML feature matrix (library, effects, sampler, AutoDJ, prefs) |
 | 6.2 | Port missing prefs/library flows |
 | 6.3 | Co-pilot: Ack → CO reconciler (Layer B production path) |
 
-**Gate:** manual dogfood script + controller smoke.  
+**Gate:** manual dogfood script + controller smoke.
 **Feature impact:** parity checklist signed before skin deprecation.
 
 ---
@@ -355,7 +359,7 @@ Only if Wave 1 shows PA is the ceiling:
 From `apple-audio-frameworks-os26-wwdc25.md`:
 
 | Capability | How without losing deck features |
-|---|---|
+| --- | --- |
 | FOA / rec sidecar | Separate from master mix path |
 | AUAudioMix | Offline/worker on spatial files only |
 | MusicKit prep | Identity + sequence like Spotify Octave path |
@@ -368,7 +372,7 @@ From `apple-audio-frameworks-os26-wwdc25.md`:
 ## 5. Feature-preservation matrix (sign before big deletes)
 
 | DJ feature | Today path | Mac-native target path | Wave |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 2–4 deck mix | engine + soundio | same | — |
 | Sync / keylock | engine | + Accelerate where safe | 4 |
 | Effects | engine/effects | same + vDSP | 4 |
@@ -387,7 +391,7 @@ From `apple-audio-frameworks-os26-wwdc25.md`:
 ## 6. Risk register
 
 | Risk | Mitigation |
-|---|---|
+| --- | --- |
 | Delete GL too early → blank waveforms | Wave 3 parity gate; HOLD until deps proven |
 | Core Audio rewrite regression | Wave 1 soak first; interface-preserving adapter |
 | `#ifdef` mega-delete breaks build | Touch-local only; bisectable commits |
@@ -418,7 +422,7 @@ Dossier: `kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment/` (p
 ## 8. Success criteria (“100% aligned”)
 
 | Criterion | Measure |
-|---|---|
+| --- | --- |
 | Single platform story | Docs + CI + packaging match ADR-006 |
 | Native arch | No Rosetta; arm64 only |
 | OS floor | Deployment target ≥ 26.0; soak EVD on 26.x |
@@ -432,13 +436,13 @@ Dossier: `kanban/planning/2026-07-17-gudjon-PLT--macos26-platform-alignment/` (p
 
 ## 9. What this architecture is *not*
 
-- Not “drop PortAudio tomorrow.”  
-- Not “rewrite Mixxx in Swift.”  
-- Not “replace decks with AVAudioEngine.”  
-- Not “iPad ships next sprint.”  
+- Not “drop PortAudio tomorrow.”
+- Not “rewrite Mixxx in Swift.”
+- Not “replace decks with AVAudioEngine.”
+- Not “iPad ships next sprint.”
 - Not feature amputation for purity.
 
-It **is** a deliberate collapse of the portability tax so every engineering hour compounds on  
+It **is** a deliberate collapse of the portability tax so every engineering hour compounds on
 **macOS 26 + Apple Silicon performance, stability, and DJ feature depth**.
 
 ---
@@ -446,7 +450,7 @@ It **is** a deliberate collapse of the portability tax so every engineering hour
 ## 10. Cross-links
 
 | Doc | Role |
-|---|---|
+| --- | --- |
 | [ADR-006](../architecture/decisions/ADR-006-platform-scope-apple-silicon.md) | Platform decision |
 | [architecture README](../architecture/README.md) | DDD map |
 | [apple-audio-frameworks-os26](apple-audio-frameworks-os26-wwdc25.md) | OS 26 API menu |

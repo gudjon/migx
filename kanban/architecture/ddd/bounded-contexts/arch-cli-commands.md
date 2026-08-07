@@ -1,7 +1,7 @@
 ---
 id: arch-cli-commands
 type: ddd-bounded-context
-title: "cli-commands — the command surface the DJ UI and agents both drive"
+title: "cli-commands — the application surface every adapter drives"
 owns:
   - tools/migx-cli/             # migx_cli package: auth, api, mirror, resolve, ingest, layout, quality
 exclude: []
@@ -19,14 +19,19 @@ last_audited: "2026-08-07"
 # cli-commands — bounded context
 
 The application/interface layer over the domain contexts. One command surface,
-two adapters: the DJ TUI/UI and the agentic peers (Claude Code, Codex, Grok).
-Neither is a second-class client — see `ADR-008`. Pointers, never copies: the
-code in `owns:` is the truth, and `system.capabilities` is generated from it, so
-the manifest cannot describe a command that does not exist.
+four adapter classes: the human TUI, direct CLI/JSON, agent/MCP, and a future
+graphical adapter. None is a second-class client — see `ADR-008`. Pointers,
+never copies: the code in `owns:` is the truth, and `system.capabilities` will
+be generated from it so the manifest cannot describe a command that does not
+exist.
 
 Today this context is **metadata only**. It reads Spotify identities, matches
 them against local files, and files audio into the Collection. It holds no
 `ControlObject`, touches no audio callback, and decodes no audio.
+
+The TUI, long-lived `--agent` stream, receipts, events, MCP adapter, and engine
+bridge are planned. This bounded context records their contract; it does not
+claim they ship today.
 
 ## Key aggregates / classes
 
@@ -49,9 +54,9 @@ them against local files, and files audio into the Collection. It holds no
   appear in some context's ubiquitous-language table. Enforced by
   `kanban/architecture/lint/verify-command-vocabulary.py`. Inventing a parallel
   vocabulary is `P-11`.
-- **One writer survives two adapters (`P-06`)** — when this layer starts writing
-  `[Group],key`, the UI and CLI route through one handler. Two adapters, one
-  writer, never two.
+- **One writer survives every adapter (`P-06`)** — when this layer starts writing
+  `[Group],key`, TUI, CLI, agent, MCP, and graphical clients route through one
+  handler. Many adapters, one writer.
 - **Never on the RT thread (`P-02`/`P-16`)** — nothing here may be called from
   `process*()`; when engine commands land they cross lock-free.
 - **Library writes go through the DAO layer (`P-27`)** — this context never

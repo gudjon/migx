@@ -5,9 +5,10 @@ title: "Migx capability catalogue — product domain map (DDD)"
 status: active
 owner: gudjon
 created: "2026-07-23"
-lastUpdated: "2026-07-23"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/architecture/README.md
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
   - kanban/architecture/nextgen-ui-architecture.md
   - kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md
 related:
@@ -17,6 +18,11 @@ related:
 ---
 
 # Capability Catalogue — Migx product domain map
+
+> **Surface order:** ADR-008 makes the TUI the first human product over one shared command core.
+> The `UI mode` and `UI module` columns below describe the existing or planned graphical adapter;
+> they do not make QML the product spine. Each non-presentation capability must become addressable
+> through the same command/query/event/capability contract before adapter-specific behavior grows.
 
 The **product / capability** view of Migx: *what the software does for the DJ*, decomposed into bounded
 capabilities. Complementary to the **technical** context roster in [`README.md`](../README.md) (how the
@@ -29,6 +35,7 @@ areas) plus our differentiator. UI/UX stance for every capability is grounded in
 invariants (token-only, dumb-view + ViewModel, non-modal, minimal chrome, design-gate-first).
 
 ## DDD subdomain classification (where we invest — ADR-005)
+
 - **Core** (the differentiator; invest most): the **Intelligence** subdomain — co-pilot track
   suggestion (EXO), harmonic/energy reasoning, community signal. The landscape roundup found **no**
   competitor doing AI/smart recommendation ("remains emergent") — this is our whitespace.
@@ -40,6 +47,7 @@ capabilities win on **cognitive load** (the djworx critique — "smarter use of 
 prioritise vital info over hardware duplication"), not feature count.
 
 ## Separation-of-concerns law
+
 Each capability **owns exactly one concern** and names what it does **not** own. Capabilities never reach
 into each other's internals — they compose via the ControlObject `[Group],key` bus, typed props/signals,
 and shared kernel (`Theme` tokens + primitives). One writer per CO (P-06). A capability's UI is a bounded
@@ -47,6 +55,7 @@ NextGen module (its own dir + `MODULE.md`); its truth (bindings, tokens, keymap,
 SSoT paths named in its card — cited, never copied (MG-3).
 
 ## Verification notes (Codex 2026-07-23)
+
 - Engine-context mappings name existing `arch-*` bounded contexts only. External feeds, EXO tools, and
   future services can appear in SSoT notes, but not as invented context IDs.
 - The ControlObject bus is an implicit seam for QML modules. List `arch-control-messaging` only when the
@@ -56,8 +65,9 @@ SSoT paths named in its card — cited, never copied (MG-3).
   not become core unless they create the co-pilot/session-planning advantage.
 
 ## Roster
+
 | id | subdomain | class | UI mode | engine context(s) | UI module (status) |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | cap-deck-transport | Playback | supporting | PERFORM | arch-engine-realtime, arch-mixer-decks | components deck-transport (**built**) |
 | cap-track-identity | Playback | supporting | PERFORM | arch-track-model | components deck-identity (**built**) |
 | cap-deck-clock | Playback | supporting | PERFORM | arch-engine-realtime | components deck-clock (**built**) |
@@ -83,12 +93,14 @@ SSoT paths named in its card — cited, never copied (MG-3).
 | cap-controllers-midi | Integration | generic | chrome | arch-controllers-mapping | planned |
 | cap-keyboard-shortcuts | Integration | generic | all | arch-controllers-mapping, arch-qml-ui | built (KEYMAP + ng-ui-lint) |
 | cap-sampler | Integration | generic | PERFORM | arch-engine-realtime (samplers) | planned |
-| cap-mode-shell | Chrome | supporting | all | arch-qml-ui | main.qml shell (**built**) |
+| cap-mode-shell | Chrome | supporting | all | arch-cli-commands, arch-qml-ui | TUI workspace (**planned**); QML main.qml graphical adapter (**built**) |
 
 ## Capability cards (concern · SSoT · UX stance)
+
 Format per card: **owns / not** · **SSoT** · **UX stance** (grounded in references).
 
 ### Playback (PERFORM · supporting)
+
 **cap-deck-transport** — *owns*: play/pause intent per deck. *not*: tempo, cue, load. *SSoT*:
 `[ChannelN],play` + `track_loaded`; `res/qml/nextgen/components/` MODULE.md. *UX*: one big action, state
 cue, no skeuomorphic platter (djworx: platters waste laptop real-estate). **Built.**
@@ -124,6 +136,7 @@ edge. *SSoT*: Grok's `research-onbeat-play-phase-snap` (design/algorithm/`PS-OBP
 snap); raw-play escape; Ritual brand (not "Smart"/Automix). **Signature simplicity; owner-directed.**
 
 ### Mixing (PERFORM · supporting)
+
 **cap-mixer-eq** — *owns*: per-channel gain/HI-MID-LO/filter/fader/crossfader. *SSoT*: arch-mixer-decks;
 `[ChannelN],volume`/`pregain`/`filter*`/`[Master],crossfader`. *UX*: Traktor's internal mixer is the model
 for laptop/controllerless play; **mode-scoped / on-demand knobs**, not always-on knob-walls. **Planned.**
@@ -137,6 +150,7 @@ arch-engine-realtime. *UX*: 2024–25 trend (rekordbox 7, Traktor 4, VirtualDJ);
 **cap-headphone-cue** — *owns*: pre-listen routing/mix. *SSoT*: arch-mixer-decks; `[ChannelN],pfl`. *UX*: minimal. **Planned.**
 
 ### Intelligence (ARRANGE · **core — the differentiator**)
+
 **cap-copilot-suggestion** — *owns*: "what to play next" — ranked candidates with *reasons*. *not*: playback,
 raw library CRUD. *SSoT*: `tools/exo/` (copilot_why_next, set_planner, ontology_from_sidecar) + arch-library-db.
 *UX*: **the recommendation is the hero** — we score mixability (tempo + Camelot) and surface the call, vs
@@ -167,6 +181,7 @@ patterns; Grok sourcing notes. *UX*: signal chips per track; v1 YT/BP/SC/local h
 setlist appearances require licensed v2 feed. **Planned.**
 
 ### Collection (LIBRARY · supporting/generic)
+
 **cap-library-crates** — *owns*: collection/playlists/crates browse + organize. *SSoT*: arch-library-db.
 *UX*: loaded-track highlight; preview mini-waveform + BPM/KEY per row (all three rivals). **Planned.**
 
@@ -178,6 +193,7 @@ with local rows. **Planned (generic).** Boundary: when streaming grows beyond so
 adapters, create a real network-services bounded context instead of reusing an unnamed pseudo-context.
 
 ### Output · Integration · Chrome (generic)
+
 **cap-recording** / **cap-broadcast** — *owns*: set capture / live stream. *SSoT*: broadcast+recording
 cross-cutting. *UX*: **non-modal** status only — the broadcast modal-error was the anti-pattern we fixed
 (`ui-non-modal-error-ux`). **Planned / fix landed.**
@@ -191,10 +207,13 @@ hardware MIDI/HID mapping. **Built.**
 
 **cap-sampler** — *owns*: one-shot/loop sample slots. *SSoT*: arch-engine-realtime samplers. **Planned.**
 
-**cap-mode-shell** — *owns*: the mode switcher + non-modal surface + minimal chrome. *SSoT*: `res/qml/nextgen/main.qml`;
-KEYMAP (⌘1/2/3 + Tab). *UX*: minimal admin chrome, on-demand hints. **Built.**
+**cap-mode-shell** — *owns*: workspace/mode switching + non-modal surface + minimal chrome. *SSoT*:
+ADR-008 + `tui-first-agentic-dj-workstation.md` for product behavior; `res/qml/nextgen/main.qml` and
+KEYMAP (⌘1/2/3 + Tab) for the graphical adapter. *UX*: stable PREP/LIVE/LIBRARY/JOBS workspaces,
+minimal admin chrome, on-demand hints. **TUI planned; graphical adapter shell built.**
 
 ## How a new capability enters (the iterated process)
+
 1. Add/confirm its row here (concern, SoC, SSoT, engine context, class).
 2. Design-gate draft in `res/design/wireframes/<module>.md` (wireframe + value + cognitive-load + trend
    grounding citing `res/design/references/`) → owner review.

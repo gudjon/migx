@@ -5,8 +5,9 @@ title: "AI-assisted UI migration loop — QML modules, DESIGN.md, mechanical jud
 status: active
 owner: gudjon
 created: "2026-07-19"
-lastUpdated: "2026-07-23"
+lastUpdated: "2026-08-07"
 defers_to:
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
   - kanban/knowledge/ai-code-migration-methodology.md
   - kanban/knowledge/ui-framework-migration-map.md
   - kanban/knowledge/design-md-ui-modernization.md
@@ -19,13 +20,14 @@ defers_to:
 
 # AI-Assisted UI Migration Loop
 
-This is the operating loop for moving Migx UI toward an agent-friendly QML-primary shell without a
-rewrite cliff. It adapts the large-codebase migration pattern from Anthropic's Claude Code migration
-writeup: improve the migration process first, then run many small translation batches through a judge.
+This is the operating loop for moving Migx's **native graphical adapter** toward agent-friendly QML
+without a rewrite cliff. It adapts the large-codebase migration pattern from Anthropic's Claude Code
+migration writeup: improve the migration process first, then run many small translation batches
+through a judge. ADR-008 separately owns the TUI-first product and command-core sequence.
 
 The target is not a vague "new framework." The current strategy is a **NextGen Agent DJ shadow
-shell**: a ghost version of the product that can run beside the current app path, absorb one module at
-a time, and eventually become the primary shell only after its judges prove parity and better UX.
+shell**: a graphical adapter that can run beside the current app path, absorb one module at a time,
+and replace legacy graphical skins only after its judges prove parity and better UX.
 
 The current framework posture is:
 
@@ -37,7 +39,7 @@ The current framework posture is:
 ## Closed Loop
 
 | Beat | UI migration meaning | Stable artifact |
-|---|---|---|
+| --- | --- | --- |
 | Trigger | A component/module is selected for migration | `kanban/tasks/ui-migration-judge-rulebook-inventory.md` or a dossier `PS-*` |
 | Capture | Current behavior, CO keys, theme tokens, screenshots/logs, dependency edges | `MODULE.md`, inventory CSV/JSON, EVD notes |
 | Intelligence | Judge compares migrated module against old behavior | `qmllint`, `theme-check`, CO parity, screenshot/pixel gate, focused gtest |

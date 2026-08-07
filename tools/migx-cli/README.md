@@ -1,20 +1,40 @@
-# `migx` CLI — the command spine
+# `migx` - the TUI-first command spine
 
-The interface layer both clients drive: the **DJ TUI/UI** and the **agentic peers**
-(Claude Code, Codex, Grok). Same commands, same schemas, no second-class consumer.
+Migx is built **TUI first**. The rich human terminal workspace, deterministic CLI,
+one-shot JSON, and external agents such as Claude Code and Codex all drive the
+same command/query/event/capability core. Same handlers, schemas, validation, and
+receipts; no second-class consumer and no private UI control plane.
 
-Stdlib only — no `spotipy`, no `typer`, no `textual`. `tools/` has carried zero
-Python dependencies and wave 1 keeps it that way; deps get added from evidence,
-not upfront.
+Canonical decision: [`ADR-008`](../../kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md).
+Interaction reference:
+[`tui-first-agentic-dj-workstation`](../../kanban/knowledge/tui-first-agentic-dj-workstation.md).
+
+The current command core is stdlib only - no `spotipy`, `typer`, or `textual`.
+The future TUI may use an isolated framework dependency, but CLI/JSON/agent use
+must not require the renderer. Dependencies get added from measured evidence.
 
 ```bash
 ./tools/migx-cli/migx system.capabilities        # what exists (agents start here)
 ./tools/migx-cli/migx system.capabilities --json # machine-readable
 ```
 
+## Product surface and current truth
+
+| Surface | Contract | Current state |
+| --- | --- | --- |
+| `migx` | Human TUI workspace | planned |
+| `migx <noun>.<verb> ...` | Deterministic CLI | metadata/library subset built |
+| `migx <noun>.<verb> ... --json` | One-shot machine result | built for current commands |
+| `migx --agent` | Long-lived JSONL requests, events, cancellation, receipts | planned |
+| `migx mcp-server` | Optional tools over the same core | planned |
+
+Today this package is metadata/library only. It does not control a deck, subscribe
+to engine events, or touch a ControlObject. Do not describe planned TUI or agent
+capabilities as shipped until their code and gates exist.
+
 ## Interface kinds
 
-Every command is exactly one of four kinds (ADR-008, draft):
+Every surface entry is exactly one of four kinds (ADR-008, accepted):
 
 | Kind | Meaning |
 | --- | --- |

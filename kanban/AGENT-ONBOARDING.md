@@ -5,7 +5,7 @@ title: "Agent onboarding — what to read, in what order, and the 8 artifact fam
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/AGENTS.md
   - kanban/HARNESS.md
@@ -29,8 +29,9 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 `./kanban/scripts/migx-fed sync` and `./kanban/scripts/migx-fed poll --to <side>`.
 
 **Tier 2 — by task shape:**
+
 | Your task | Read |
-|---|---|
+| --- | --- |
 | Designing/opening a unit of work | `kanban/playbook/01` (cadence) + `.claude/rules/planning-harness.md` → scaffold from `kanban/planning/_template/` |
 | Writing an optimization (the north-star) | `kanban/initiatives/initiative-apple-silicon.md` + the relevant dossier + `kanban/patterns/` perf patterns |
 | Reviewing a PR / diff | `kanban/playbook/01` §Discipline Checklist + `.claude/rules/agentic-decision-authority.md` |
@@ -44,6 +45,8 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Antigravity co-implementer | **Paused** (no tokens). See `AGY.md` re-enable checklist when available |
 | Claude implementer with federation live | `CLAUDE.md` §Multi-agent + `roles/claude-code.md` + `migx-fed sync` + `migx-fed poll` |
 | Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + `runbooks/go-private-and-git-posture.md` |
+| TUI / CLI / JSON / agent product work | `kanban/Strategy-Current.md` + ADR-008 + `knowledge/tui-first-agentic-dj-workstation.md` + `architecture/ddd/bounded-contexts/arch-cli-commands.md` |
+| ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + `knowledge/world-model-experience-ontology.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),

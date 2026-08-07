@@ -22,48 +22,58 @@ pm_overlay:
   validation: >
     EXO spike; MTL EVD baselines; ADR-003/005 boundary checklist on AI features.
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/Strategy-Current.md
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
   - kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md
   - kanban/architecture/decisions/ADR-003-licensing-and-openness.md
 related:
   - initiative-apple-silicon
   - ADR-002
   - ADR-004
+  - tui-first-agentic-dj-workstation
+  - arcflow-tui-agentic-dj-integration
 ---
 
 # Initiative — AI-DJing product (Cursor strategy)
 
-Strategy SSoT: [`kanban/Strategy-Current.md`](../Strategy-Current.md).  
-MIT operating model: [ADR-003](../architecture/decisions/ADR-003-licensing-and-openness.md).  
+Strategy SSoT: [`kanban/Strategy-Current.md`](../Strategy-Current.md).
+MIT operating model: [ADR-003](../architecture/decisions/ADR-003-licensing-and-openness.md).
 Stack: [ADR-005](../architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md).
+Product surface: [ADR-008](../architecture/decisions/ADR-008-cli-core-two-equal-clients.md).
 
 ## Problem
+
 Building a DJ app from zero wastes the instrument. A weak plugin next to another DAW lacks depth of
 permission. We take the **Cursor path**: fork the base, ship a **proprietary product**, embed AI.
 
 ## Workstreams
 
 | Stream | Outcome | Seeds |
-|---|---|---|
+| --- | --- | --- |
 | **S0 Repo home** | Public early; later [agora](https://github.com/orgs/agora) | git posture runbook |
 | **S1 Performance trust** | M4 p99/underrun floor | `initiative-apple-silicon`, MTL |
-| **S2 World model** | Song/session ontology | EXO, FSL |
-| **S3 Agent seams (B)** | Session mirror + intents | EXO, control bus |
-| **S4 Product UI** | QML-primary | ADR-004 |
+| **S2 World model** | Song/session ontology with durable provenance and live derived views | EXO, FSL, ArcFlow evaluation |
+| **S3 Agent seams (B)** | Shared command/query/event/capability core | ADR-008, control bus |
+| **S4 Product surface** | TUI first; CLI/JSON/agent parity; later native graphical adapter | ADR-008, ADR-004 |
 | **S5 Intelligence (C)** | Multi-model co-pilot (in-process OK) | ADR-005 |
 | **S6 Growth** | Freemium, privacy mode | product notes |
 
 ## Closed loop
+
 Trigger: next-track / transition / cue plan mid-session → Capture: session + ontology → Intelligence:
-Layer C → Adjustment: intents applied; measure accept rate + underruns.
+Layer C → Adjustment: intents applied through the shared command core; measure accept rate, receipt
+completion, and underruns.
 
 ## Non-goals
-- Rebuild engine from scratch  
-- Electron-as-product  
-- Forcing AI out-of-process for copyleft reasons (superseded)  
-- Blocking S1 on S5  
+
+- Rebuild engine from scratch
+- Electron-as-product
+- Forcing AI out-of-process for copyleft reasons (superseded)
+- Blocking S1 on S5
+- Letting the TUI, agent adapter, ArcFlow, or a future GUI become a second engine authority
 
 ## Status
+
 `active` strategy umbrella. Dossiers open under registered prefixes as streams start.
