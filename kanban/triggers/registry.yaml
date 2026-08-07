@@ -25,11 +25,16 @@ triggers:
 
   - id: TR-kanban-discipline-ci
     type: event
-    condition: "pull_request touching kanban/** or .claude/**"
+    condition: "every push to main and every pull_request"
     calendar_ref: null
-    action: "run the kanban discipline lint suite (.github/workflows/kanban-discipline.yml)"
-    produces: "a pass/fail check on the PR"
-    wiring: UNVERIFIED   # workflow authored; confirm it runs green on the first PR
+    action: "run the harness discipline lints + CLI tests (.github/workflows/migx-ci.yml)"
+    produces: "a pass/fail check in ~50s"
+    # Was a second, PR-only, path-filtered workflow (kanban-discipline.yml) that
+    # duplicated this lint set. Two gates over one rule set is two truths (MG-3):
+    # they drift, and the path filter meant work landing straight on main — how
+    # this repo actually operates — was never linted at all. Folded into Migx CI,
+    # which covers push AND pull_request, and deleted.
+    wiring: VERIFIED   # green on main 2026-08-07 (run 31226433230, 49s)
 
   - id: TR-pat-skill-autoload
     type: event
