@@ -22,6 +22,8 @@ sources:
   - kanban/federation/signal/2026-07-17-deep-x-community-alignment.md
 relevance: actionable
 promoted_to: null
+related_signal:
+  - kanban/federation/signal/2026-08-07-dev-practices-agent-native-x.md
 ---
 
 # Signal — Strategy / UI ADRs × X (2026-08-07)

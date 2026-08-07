@@ -47,7 +47,7 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Product UI stack (decks vs AI surface) | ADR-004 (QML-primary) + ADR-007 + `src/qml/AGENTS.md` |
 | CLI / agent-equal command surface | ADR-008 + `tools/migx-cli/README.md` + `system.capabilities` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
-| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` |
+| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` + `2026-08-07-dev-practices-agent-native-x.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),
 `kanban/architecture/decisions/` (ADRs), `kanban/triggers/registry.yaml` (cadence).
