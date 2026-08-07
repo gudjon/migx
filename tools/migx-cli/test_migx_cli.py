@@ -31,6 +31,7 @@ from migx_cli import (  # noqa: E402
     ratelimit,
     resolve,
     tags,
+    tui,
 )
 
 
@@ -391,6 +392,39 @@ def main() -> int:
             "owned-but-low track -> upgrade, never a re-buy",
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+
+    # ---- TUI: the snapshot is pure data, so it is testable without a screen
+    snap = tui.snapshot()
+    for field in (
+        "library_root",
+        "mirror_count",
+        "collection_count",
+        "want_acquire",
+        "template",
+    ):
+        check(field in snap, f"snapshot carries {field}")
+    check(isinstance(snap["mirrors"], list), "mirrors is a list")
+    for pane in tui.PANES:
+        rows = tui._rows(pane, snap)
+        check(isinstance(rows, list), f"{pane} renders a list of lines")
+        check(all(isinstance(r, str) for r in rows), f"{pane} rows are str")
+    # An empty library must render guidance, never a traceback.
+    blank = {
+        **snap,
+        "collection": [],
+        "mirrors": [],
+        "want": [],
+        "crates": [],
+        "collection_count": 0,
+        "mirror_count": 0,
+        "mirror_tracks": 0,
+        "analysed_count": 0,
+        "want_acquire": 0,
+        "want_upgrade": 0,
+    }
+    for pane in tui.PANES:
+        rows = tui._rows(pane, blank)
+        check(len(rows) > 0, f"{pane} renders something when empty")
 
     # ---- key notation: every tagger's spelling folds to one Camelot value
     for raw, want in [
