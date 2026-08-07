@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from typing import Any
 from . import (
     api,
     auth,
+    config,
     ingest,
     layout,
     mirror,
@@ -167,6 +169,25 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.dedupe-report/1",
     },
     {
+        "id": "config.init",
+        "kind": "command",
+        "summary": "Write a complete config file with every key present.",
+        "args": {
+            "--library": "library root (Collection/ lives under it)",
+            "--client-id": "Spotify client id (public; PKCE uses no secret)",
+            "--force": "overwrite an existing config",
+        },
+        "emits": "migx.config/1",
+    },
+    {
+        "id": "config.show",
+        "kind": "query",
+        "summary": "Print resolved settings and where each value came from.",
+        "emits": "migx.config/1",
+        "note": "Precedence is flag > env > file > default, so an explicit"
+        " flag can never be silently overridden by a config file.",
+    },
+    {
         "id": "system.capabilities",
         "kind": "capability",
         "summary": "This manifest.",
@@ -298,6 +319,11 @@ def _unchanged_since(path: Path, snapshot_id: str | None) -> bool:
 
 
 def cmd_playlist_pull(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    if args.min_interval is None:
+        args.min_interval = config.get(cfg, "spotify.min_interval_s", 0.2)
+    if not args.root:
+        args.root = config.get(cfg, "spotify.mirror_root")
     pacer = ratelimit.Pacer(args.min_interval)
     client = api.SpotifyRead(auth.access_token(), pacer=pacer)
 
@@ -426,6 +452,17 @@ def cmd_library_inspect(args: argparse.Namespace) -> int:
     return 0 if passed == len(rows) else 1
 
 
+def _config_roots(cfg: dict[str, Any]) -> list[str]:
+    """Collection first, then any extra roots the config declares."""
+    root = config.get(cfg, "library.root")
+    roots = [str(layout.collection_dir(Path(root)))] if root else []
+    roots += [
+        str(Path(r).expanduser())
+        for r in config.get(cfg, "library.extra_roots", []) or []
+    ]
+    return roots or [str(Path.home() / "Music")]
+
+
 def _load_mirror(path: str) -> dict[str, Any]:
     doc = json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
     schema = doc.get("schema", "")
@@ -442,7 +479,8 @@ def _run_resolve(args: argparse.Namespace) -> dict[str, Any]:
     doc = _load_mirror(args.mirror)
     if doc["schema"].startswith("migx.resolution-report/"):
         return doc  # already resolved; reuse rather than rescan
-    roots = args.root or [str(Path.home() / "Music")]
+    cfg = config.load()
+    roots = args.root or _config_roots(cfg)
     resolver = resolve.LocalFilesResolver(roots)
     resolver.scan()
     allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
@@ -502,6 +540,10 @@ def cmd_library_missing(args: argparse.Namespace) -> int:
 
 
 def cmd_library_ingest(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    args.library = config.resolve(args.library, cfg, "library.root")
+    if args.template is None:
+        args.template = config.get(cfg, "library.template", "dj")
     sources: list[Path] = []
     for raw in args.paths:
         p = Path(raw).expanduser()
@@ -547,6 +589,7 @@ def cmd_library_ingest(args: argparse.Namespace) -> int:
 
 
 def cmd_crate_sync(args: argparse.Namespace) -> int:
+    args.library = config.resolve(args.library, config.load(), "library.root")
     root = Path(args.library).expanduser()
     # A crate is built out of the Collection, so that is what we scan unless
     # the caller points somewhere else explicitly.
@@ -601,6 +644,7 @@ def cmd_crate_sync(args: argparse.Namespace) -> int:
 
 
 def cmd_library_dedupe(args: argparse.Namespace) -> int:
+    args.library = config.resolve(args.library, config.load(), "library.root")
     dupes = layout.find_duplicates(Path(args.library).expanduser())
     doc = {
         "schema": "migx.dedupe-report/1",
@@ -617,6 +661,62 @@ def cmd_library_dedupe(args: argparse.Namespace) -> int:
             for p in paths:
                 print(f"  {p}")
     return 0 if not dupes else 1
+
+
+def cmd_config_init(args: argparse.Namespace) -> int:
+    target = config.path()
+    if target.exists() and not args.force:
+        print(
+            f"error: {target} exists — pass --force to overwrite",
+            file=sys.stderr,
+        )
+        return 2
+
+    doc = config.scaffold(
+        library_root=args.library,
+        client_id=args.client_id
+        or os.environ.get("MIGX_SPOTIFY_CLIENT_ID", ""),
+    )
+    written = config.save(doc, target)
+    if args.json:
+        _out({"path": str(written), **doc}, True)
+    else:
+        print(f"wrote {written}")
+        print(f"  library root : {doc['library']['root']}")
+        print(f"  template     : {doc['library']['template']}")
+        print(f"  quality bar  : {', '.join(doc['quality']['allow_tiers'])}")
+    return 0
+
+
+def cmd_config_show(args: argparse.Namespace) -> int:
+    target = config.path()
+    doc = config.load(target)
+    origins = config.sources(target)
+
+    if args.json:
+        _out(
+            {
+                "path": str(target),
+                "exists": target.is_file(),
+                "sources": origins,
+                **doc,
+            },
+            True,
+        )
+    else:
+        print(
+            f"config: {target}"
+            f"{'' if target.is_file() else '  (not created yet)'}"
+        )
+        for dotted in sorted(origins):
+            value = config.get(doc, dotted) or "(unset)"
+            print(f"  {dotted:22} {str(value):46} [{origins[dotted]}]")
+        print(f"  library.template       {doc['library']['template']}")
+        print(
+            f"  quality.allow_tiers    "
+            f"{', '.join(doc['quality']['allow_tiers'])}"
+        )
+    return 0
 
 
 def cmd_capabilities(args: argparse.Namespace) -> int:
@@ -745,10 +845,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("library.ingest", help="file audio into Collection/")
     p.add_argument("paths", nargs="+")
-    p.add_argument("--library", required=True, help="the Music/ root")
+    p.add_argument("--library", default=None, help="the Music/ root")
     p.add_argument("--mirror", default=None)
     p.add_argument(
-        "--template", default="dj", choices=sorted(ingest.TEMPLATES)
+        "--template", default=None, choices=sorted(ingest.TEMPLATES)
     )
     p.add_argument("--move", action="store_true")
     p.add_argument("--dry-run", action="store_true")
@@ -762,7 +862,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("crate.sync", help="symlink a mirror into a crate")
     p.add_argument("mirror")
-    p.add_argument("--library", required=True)
+    p.add_argument("--library", default=None)
     p.add_argument("--crate", default=None)
     p.add_argument("--m3u8", action="store_true")
     p.add_argument("--root", action="append", default=[])
@@ -775,8 +875,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_crate_sync)
 
     p = sub.add_parser("library.dedupe", help="find duplicated tracks")
-    p.add_argument("--library", required=True)
+    p.add_argument("--library", default=None)
     p.set_defaults(fn=cmd_library_dedupe)
+
+    p = sub.add_parser("config.init", help="write a complete config file")
+    p.add_argument("--library", default=None)
+    p.add_argument("--client-id", default=None)
+    p.add_argument("--force", action="store_true")
+    p.set_defaults(fn=cmd_config_init)
+
+    sub.add_parser(
+        "config.show", help="resolved settings and their origin"
+    ).set_defaults(fn=cmd_config_show)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

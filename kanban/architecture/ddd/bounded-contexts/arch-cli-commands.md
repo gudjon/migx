@@ -77,6 +77,7 @@ them against local files, and files audio into the Collection. It holds no
 | `tier` | a quality classification of a file | a subscription tier |
 | `spotify` | the remote catalogue this context reads identities from | a playback source (Migx has none) |
 | `system` | the reserved namespace for surface introspection | the OS |
+| `config` | the CLI's own settings file (`migx.config/1`) | Mixxx user preferences / `mixxx.cfg` (arch-preferences) |
 
 ## Boundaries (edges by id — detail in ../boundaries/)
 
