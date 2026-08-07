@@ -156,6 +156,8 @@ def snapshot() -> dict[str, Any]:
         "tiers": config.get(cfg, "quality.allow_tiers"),
         "linked_ok": config.get(cfg, "spotify.client_id") not in (None, ""),
         "selected": 0,
+        "query": "",
+        "sort": "name",
         "deck_a": 0,
         "deck_b": 1 if len(collection) > 1 else 0,
     }
@@ -215,12 +217,101 @@ def track_view(
     return out
 
 
+SORTS = ("name", "bpm", "key", "duration", "tier")
+
+
+def sort_collection(
+    collection: list[dict[str, Any]], key: str
+) -> list[dict[str, Any]]:
+    """Sort for finding the next track, not for tidiness.
+
+    Unknowns sort LAST in every mode. A track with no BPM is not "0 BPM" —
+    putting it at the top of a tempo sort would bury the fastest tracks under
+    the unanalysed ones.
+    """
+    if key == "bpm":
+        return sorted(
+            collection, key=lambda c: (c.get("bpm") is None, c.get("bpm") or 0)
+        )
+    if key == "key":
+
+        def wheel(c):
+            code = c.get("camelot") or ""
+            if not code or not code[:-1].isdigit():
+                return (1, 0, "")
+            # Sort round the Camelot wheel so neighbours sit together, which
+            # is the whole point of looking at key.
+            return (0, int(code[:-1]), code[-1])
+
+        return sorted(collection, key=wheel)
+    if key == "duration":
+        return sorted(
+            collection,
+            key=lambda c: (
+                c.get("duration_s") is None,
+                c.get("duration_s") or 0,
+            ),
+        )
+    if key == "tier":
+        return sorted(collection, key=lambda c: (c.get("tier") or "~"))
+    return sorted(collection, key=lambda c: (c.get("name") or "").lower())
+
+
+def filter_collection(
+    collection: list[dict[str, Any]], query: str
+) -> list[dict[str, Any]]:
+    """Match name, artist, tags, notes, key — and BPM ranges like `120-125`.
+
+    One box, several meanings: a DJ hunting the next track types "8A" or
+    "124" or "girly" without switching search modes first.
+    """
+    query = (query or "").strip().lower()
+    if not query:
+        return collection
+
+    low, high = None, None
+    if "-" in query:
+        head, _, tail = query.partition("-")
+        if head.strip().isdigit() and tail.strip().isdigit():
+            low, high = float(head), float(tail)
+    elif query.isdigit() and len(query) == 3:
+        low, high = float(query) - 2, float(query) + 2
+
+    out = []
+    for c in collection:
+        if low is not None:
+            bpm = c.get("bpm")
+            if bpm is not None and low <= bpm <= high:
+                out.append(c)
+            continue
+        haystack = " ".join(
+            [
+                c.get("name") or "",
+                c.get("artist") or "",
+                c.get("camelot") or "",
+                c.get("notes") or "",
+                " ".join(c.get("tags") or []),
+            ]
+        ).lower()
+        if query in haystack:
+            out.append(c)
+    return out
+
+
+def visible(snap: dict[str, Any]) -> list[dict[str, Any]]:
+    """The collection as the user currently has it filtered and sorted."""
+    rows = filter_collection(
+        snap.get("collection") or [], snap.get("query", "")
+    )
+    return sort_collection(rows, snap.get("sort", "name"))
+
+
 def _selected(snap: dict[str, Any]) -> dict[str, Any] | None:
     index = snap.get("selected", 0)
-    collection = snap.get("collection") or []
-    if not collection:
+    rows = visible(snap)
+    if not rows:
         return None
-    return collection[max(0, min(index, len(collection) - 1))]
+    return rows[max(0, min(index, len(rows) - 1))]
 
 
 def deck_view(
@@ -267,6 +358,16 @@ def deck_view(
     out.append(("-- transition A -> B " + "-" * max(0, width - 21), None))
     out.append((f"  {plan['tempo']['note']}", None))
     out.append((f"  {plan['harmonic']['note']}", None))
+    beat = plan.get("beatmatch") or {}
+    if beat.get("possible") is not None:
+        out.append((f"  {beat['note']}", None))
+        out.append(
+            (
+                f"  1 bar {beat['bar_s']}s   32 bars {beat['phrase_s']}s"
+                f"   (plan the blend in bars, not seconds)",
+                None,
+            )
+        )
     out.append(("", None))
     for technique in plan["techniques"]:
         bar = "#" * max(0, min(10, technique["score"] // 10))
@@ -349,16 +450,31 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
         ]
 
     rows = []
-    for c in snap["collection"]:
+    shown = visible(snap)
+    if snap.get("query"):
+        rows.append(
+            f"/{snap['query']}   {len(shown)}/"
+            f"{len(snap['collection'])} match   sort:{snap.get('sort')}"
+        )
+    elif snap.get("sort", "name") != "name":
+        rows.append(f"sort:{snap.get('sort')}   {len(shown)} tracks")
+    cursor = max(0, min(snap.get("selected", 0), max(0, len(shown) - 1)))
+    for index, c in enumerate(shown):
         secs = int(c["duration_s"] or 0)
         bpm = f"{round(c['bpm']):>3}" if c["bpm"] else "  -"
         key = c["camelot"] or "--"
         mark = "*" if (c["notes"] or c["tags"] or c["cues"]) else " "
+        here = ">" if index == cursor else " "
+        deck = ""
+        if index == snap.get("deck_a"):
+            deck = "[A]"
+        elif index == snap.get("deck_b"):
+            deck = "[B]"
         rows.append(
-            f"{bpm} {key:3} {secs // 60}:{secs % 60:02d} {mark} "
-            f"{c['tier']:12} {c['name'][:44]}"
+            f"{here}{bpm} {key:3} {secs // 60}:{secs % 60:02d} {mark}"
+            f"{deck:3} {c['name'][:44]}"
         )
-    return rows or ["(Collection is empty — run library.ingest)"]
+    return rows or ["(no match — Esc clears the filter)"]
 
 
 # Semantic colour roles, not raw numbers, so the palette is changed in one
