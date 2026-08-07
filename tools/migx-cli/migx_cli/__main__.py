@@ -36,6 +36,7 @@ from . import (
     resolve,
     sidecar,
     tracklist,
+    watch,
 )
 
 REPO = Path(__file__).resolve().parents[3]
@@ -253,6 +254,23 @@ CAPABILITIES: list[dict[str, Any]] = [
         "writes": "<track>.migx/track.json (bpm, key, camelot)",
         "note": "Runs the app's own AnalyzerBeats/AnalyzerKey via the"
         " migx-analyze binary — there is no second detector.",
+    },
+    {
+        "id": "library.watch",
+        "kind": "command",
+        "summary": "Watch _Inbox and file new purchases automatically.",
+        "args": {
+            "--inbox": "directory to watch (default: <library>/_Inbox)",
+            "--interval": "seconds between polls (default 10)",
+            "--settle": "seconds a file must be unchanged (default 20)",
+            "--once": "single pass, then exit (for launchd/cron)",
+            "--copy": "copy instead of moving out of the inbox",
+            "--no-analyze": "skip BPM/key detection",
+        },
+        "emits": "migx.ingest-report/1 per batch",
+        "note": "Never touches a file until its size and mtime have been"
+        " stable — a download in progress is indistinguishable from a"
+        " finished file by name alone.",
     },
     {
         "id": "system.capabilities",
@@ -1064,6 +1082,78 @@ def cmd_library_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_watch(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    inbox = (
+        Path(args.inbox).expanduser() if args.inbox else root / layout.INBOX
+    )
+    if not inbox.is_dir():
+        print(f"error: no inbox at {inbox}", file=sys.stderr)
+        return 2
+
+    mirror_doc = _load_mirror(args.mirror) if args.mirror else None
+    allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+    template = args.template or config.get(cfg, "library.template", "dj")
+
+    def on_ready(paths: list[Path]) -> dict[str, Any]:
+        report = ingest.ingest(
+            paths,
+            root,
+            mirror=mirror_doc,
+            template=template,
+            move=not args.copy,
+            allow_tiers=allow,
+        )
+        for row in report["filed"]:
+            print(f"  + {Path(row['destination']).name}")
+        for row in report["refused"]:
+            print(
+                f"  ! {row['tier']:12} {Path(row['source']).name}"
+                f"  ({row.get('reason', '')})"
+            )
+        for row in report["duplicates"]:
+            source = Path(row["source"])
+            note = ""
+            if not args.keep_duplicates:
+                parked = watch.park(source, inbox)
+                note = (
+                    f" -> {watch.FILED_DIR}/" if parked else " (park failed)"
+                )
+            print(f"  = already present: {source.name}{note}")
+
+        if report["filed"] and not args.no_analyze:
+            bin_path = analyze.binary(None)
+            if bin_path.is_file():
+                targets = [Path(r["destination"]) for r in report["filed"]]
+                for result in analyze.run(targets, bin_path):
+                    if result.get("error"):
+                        continue
+                    stored = analyze.store(result)
+                    print(
+                        f"    {round(stored.get('bpm') or 0):>3} "
+                        f"{stored.get('camelot') or '--':3} "
+                        f"{Path(result['path']).name[:44]}"
+                    )
+            else:
+                print(
+                    "    (migx-analyze not built — skipping analysis)",
+                    file=sys.stderr,
+                )
+        return report
+
+    watch.run(
+        inbox,
+        AUDIO_EXTS,
+        on_ready,
+        interval_s=args.interval,
+        settle_s=args.settle,
+        once=args.once,
+        max_wait_s=args.max_wait,
+    )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -1279,6 +1369,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true")
     p.add_argument("--bin", default=None)
     p.set_defaults(fn=cmd_library_analyze)
+
+    p = sub.add_parser("library.watch", help="auto-file new purchases")
+    p.add_argument("--inbox", default=None)
+    p.add_argument("--mirror", default=None)
+    p.add_argument(
+        "--template", default=None, choices=sorted(ingest.TEMPLATES)
+    )
+    p.add_argument("--interval", type=float, default=watch.DEFAULT_INTERVAL_S)
+    p.add_argument("--settle", type=float, default=watch.DEFAULT_SETTLE_S)
+    p.add_argument(
+        "--once",
+        action="store_true",
+        help="drain the inbox, then exit (launchd)",
+    )
+    p.add_argument("--max-wait", type=float, default=600.0)
+    p.add_argument("--copy", action="store_true")
+    p.add_argument("--no-analyze", action="store_true")
+    p.add_argument(
+        "--keep-duplicates",
+        action="store_true",
+        help="leave already-filed files in the inbox",
+    )
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_library_watch)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

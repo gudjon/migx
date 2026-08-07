@@ -34,6 +34,7 @@ from migx_cli import (  # noqa: E402
     sidecar,
     tags,
     tui,
+    watch,
 )
 
 
@@ -396,6 +397,54 @@ def main() -> int:
             "owned-but-low track -> upgrade, not a second missing entry",
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
+
+    # ---- watch: a file still downloading must never be filed
+    with tempfile.TemporaryDirectory() as tmp:
+        inbox = Path(tmp)
+        exts = {".mp3"}
+        seen: dict = {}
+        growing = inbox / "downloading.mp3"
+        growing.write_bytes(b"x" * 1000)
+        clock = 1000.0
+
+        for step in range(4):
+            clock += 10
+            growing.write_bytes(b"x" * (1000 + step * 500))
+            ready = watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+            check(not ready, "a growing file is never ready")
+
+        clock += 30  # it stops changing
+        ready = watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+        check(
+            [p.name for p in ready] == ["downloading.mp3"],
+            "a quiet file becomes ready once settled",
+        )
+
+        # Downloader debris shares the inbox and is never audio.
+        (inbox / "subs.srt").write_bytes(b"x")
+        (inbox / "half.crdownload").write_bytes(b"x")
+        (inbox / ".thumb").mkdir()
+        (inbox / ".thumb" / "art.mp3").write_bytes(b"x")
+        (inbox / watch.FILED_DIR).mkdir()
+        (inbox / watch.FILED_DIR / "done.mp3").write_bytes(b"x")
+        clock += 60
+        names = {
+            p.name
+            for p in watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+        }
+        check(names == {"downloading.mp3"}, f"debris ignored: got {names}")
+
+        # Parking must move, never delete.
+        parked = watch.park(inbox / "downloading.mp3", inbox)
+        check(parked is not None and parked.is_file(), "parked file exists")
+        check(
+            not (inbox / "downloading.mp3").exists(),
+            "parking removes it from the inbox root",
+        )
+        check(
+            parked.parent.name == watch.FILED_DIR,
+            "parked into _filed/, not deleted",
+        )
 
     # ---- analyze: results land in the sidecar without losing notes
     with tempfile.TemporaryDirectory() as tmp:
