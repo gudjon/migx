@@ -347,6 +347,44 @@ def resolve_mirror(
     }
 
 
+def merge_gap_lists(lists: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Fold per-mirror gap lists into one, deduped and ranked.
+
+    A track on seven of your playlists matters more than one saved once, so
+    `on_playlists` becomes the priority signal — your own curation ranks the
+    buy list without needing any external play-count source.
+    """
+    merged: dict[str, dict[str, Any]] = {}
+    for gaps in lists:
+        source = gaps.get("source_name") or "?"
+        for item in gaps.get("items", []):
+            key = item.get("isrc") or item.get("label") or ""
+            if not key:
+                continue
+            row = merged.setdefault(
+                key, {**item, "on_playlists": [], "sources": []}
+            )
+            if source not in row["sources"]:
+                row["sources"].append(source)
+            # An upgrade anywhere outranks missing: you already own something.
+            if item.get("status") == "upgrade":
+                row["status"] = "upgrade"
+                row.setdefault("have_path", item.get("have_path"))
+                row.setdefault("have_tier", item.get("have_tier"))
+
+    items = sorted(
+        ({**v, "on_playlists": len(v["sources"])} for v in merged.values()),
+        key=lambda r: (-r["on_playlists"], r.get("label") or ""),
+    )
+    return {
+        "schema": "migx.gap-list/1",
+        "source_name": "(all mirrors)",
+        "missing_count": sum(1 for i in items if i["status"] == "missing"),
+        "upgrade_count": sum(1 for i in items if i["status"] == "upgrade"),
+        "items": items,
+    }
+
+
 def gap_list(report: dict[str, Any]) -> dict[str, Any]:
     """Missing from Collection, plus on-disk files below the quality bar."""
 

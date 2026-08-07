@@ -549,7 +549,39 @@ def cmd_library_resolve(args: argparse.Namespace) -> int:
 
 
 def cmd_library_missing(args: argparse.Namespace) -> int:
-    gaps = resolve.gap_list(_run_resolve(args))
+    if args.all:
+        cfg = config.load()
+        root = Path(config.get(cfg, "spotify.mirror_root")).expanduser()
+        mirrors = sorted(
+            f
+            for f in root.rglob("*.json")
+            if not f.name.startswith("_pull-all")
+        )
+        # Scan the Collection once, not once per mirror — 83 rescans of the
+        # same tree is the difference between seconds and minutes.
+        resolver = resolve.get_resolver(
+            args.resolver or "local-files", _config_roots(cfg)
+        )
+        resolver.scan()
+        allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+        per = []
+        for path in mirrors:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            per.append(
+                resolve.gap_list(
+                    resolve.resolve_mirror(doc, resolver, allow_tiers=allow)
+                )
+            )
+        gaps = resolve.merge_gap_lists(per)
+        gaps["mirrors"] = len(per)
+        gaps["scanned_files"] = resolver.scanned
+        # Land in the one place the TUI and everything else look.
+        if not args.out:
+            args.out = str(
+                layout.gap_list_path(Path(config.get(cfg, "library.root")))
+            )
+    else:
+        gaps = resolve.gap_list(_run_resolve(args))
     if args.out:
         out = Path(args.out).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -565,10 +597,23 @@ def cmd_library_missing(args: argparse.Namespace) -> int:
             f"missing {gaps['missing_count']} · "
             f"upgrade {gaps['upgrade_count']}"
         )
-        for item in gaps["items"]:
+        if args.all:
+            print(
+                f"across {gaps.get('mirrors')} mirrors · "
+                f"{gaps.get('scanned_files')} local files scanned"
+            )
+        shown = gaps["items"] if not args.all else gaps["items"][:25]
+        for item in shown:
             tag = "UPGR" if item.get("status") == "upgrade" else "MISS"
             isrc = item.get("isrc") or "-"
-            print(f"{tag} {isrc:14} {item.get('label') or ''}")
+            rank = f"x{item['on_playlists']:<2}" if args.all else "   "
+            print(f"{tag} {rank} {isrc:14} {item.get('label') or ''}")
+        if args.all and len(gaps["items"]) > len(shown):
+            print(
+                f"... {len(gaps['items']) - len(shown)} more "
+                f"(--json or --out for all)",
+                file=sys.stderr,
+            )
     return 0
 
 
@@ -926,7 +971,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_library_resolve)
 
     p = sub.add_parser("library.missing", help="missing + upgrade gap list")
-    p.add_argument("mirror")
+    p.add_argument("mirror", nargs="?", default=None)
+    p.add_argument(
+        "--all",
+        action="store_true",
+        help="every mirror, deduped and ranked by playlist count",
+    )
     p.add_argument("--root", action="append", default=[])
     p.add_argument("--out", default=None)
     p.add_argument(

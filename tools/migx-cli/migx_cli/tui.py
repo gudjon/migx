@@ -77,7 +77,7 @@ def _collection(root: Path) -> list[dict[str, Any]]:
 
 def _gaps(root: Path) -> list[dict[str, Any]]:
     """Load a gap list written by library.missing --out (if present)."""
-    path = Path(root) / "_gaps.json"
+    path = layout.gap_list_path(root)
     if not path.is_file():
         return []
     try:
@@ -85,6 +85,12 @@ def _gaps(root: Path) -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError):
         return []
     return doc.get("items", [])
+
+
+def _status(item: dict[str, Any]) -> str:
+    """Current schema says `status`; an older artifact on disk says `want`."""
+    raw = item.get("status") or item.get("want") or "missing"
+    return "upgrade" if raw == "upgrade" else "missing"
 
 
 def _item_status(item: dict[str, Any]) -> str:

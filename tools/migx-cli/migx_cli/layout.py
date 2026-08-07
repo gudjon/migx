@@ -29,6 +29,13 @@ COLLECTION = "Collection"
 CRATES = "Crates"
 PLAYLISTS = "Playlists"
 INBOX = "_Inbox"
+# The gap list has one home. The command defaults its --out here and the TUI
+# reads here; a second convention is how the dashboard silently showed zero.
+GAP_LIST = "_gaps.json"
+
+
+def gap_list_path(root: Path) -> Path:
+    return Path(root).expanduser() / GAP_LIST
 
 
 def alpha_bucket(name: str) -> str:
