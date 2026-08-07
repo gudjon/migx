@@ -5,11 +5,12 @@ title: "Migx product strategy — Cursor-for-AI-DJing (MIT operating model)"
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-23"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/architecture/decisions/ADR-002-hard-fork-no-upstream-merge.md
   - kanban/architecture/decisions/ADR-003-licensing-and-openness.md
   - kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
 related:
   - kanban/initiatives/initiative-ai-djing-product.md
   - kanban/initiatives/initiative-apple-silicon.md
@@ -17,11 +18,12 @@ related:
   - kanban/knowledge/migx-brand-positioning-experience-designer.md
   - kanban/runbooks/go-private-and-git-posture.md
   - kanban/federation/signal/2026-07-17-deep-x-community-alignment.md
+  - kanban/federation/signal/2026-08-07-strategy-ui-adr-x-alignment.md
 note: >
   Operating model: treat the forked base as MIT-equivalent (Cursor path). Proprietary app +
   in-process AI allowed (ADR-003 accepted). Early public OK; later under agora.
-  Field alignment (X mid-2026): signal-2026-07-17-deep-x-community-alignment — no strategy
-  rewrite; elevate Layer B visibility; Automix is anti-identity.
+  Field alignment (X mid-2026): signal-2026-07-17 + 2026-08-07 — no strategy rewrite;
+  elevate Layer B + ADR-008 CLI spine; Automix is anti-identity; accept ADR-004.
 ---
 
 # Migx strategy — “Cursor for AI-DJing”
@@ -137,9 +139,10 @@ Gigs + agents. Word-of-mouth from M4 performance + a co-pilot that understands a
 
 ## 6. Near-term posture (now → 90 days)
 
-*X field alignment 2026-07-17 does **not** reorder this stack; it sharpens **Layer B urgency** and
-**anti-Automix messaging**. Full brief:
-[`federation/signal/2026-07-17-deep-x-community-alignment.md`](federation/signal/2026-07-17-deep-x-community-alignment.md).*
+*X field alignment 2026-07-17 and 2026-08-07 does **not** reorder this stack; it sharpens
+**Layer B urgency**, **ADR-008 CLI spine**, and **anti-Automix messaging**. Briefs:
+[`signal-2026-07-17`](federation/signal/2026-07-17-deep-x-community-alignment.md) ·
+[`signal-2026-08-07`](federation/signal/2026-08-07-strategy-ui-adr-x-alignment.md).*
 
 | Priority | Action | Why |
 |---|---|---|
@@ -147,10 +150,10 @@ Gigs + agents. Word-of-mouth from M4 performance + a co-pilot that understands a
 | **1** | Strategy + ADR-003/005 MIT model (this stack) | One map |
 | **2** | MTL baseline (performance trust) | Product floor — X: underruns kill AI narrative |
 | **3** | EXO/FSL spikes (world model) | Music “index” — X: embedding matchers shipping |
-| **4** | QML-primary shell + DESIGN.md (ADR-004) | Product surface — X: DESIGN.md is agent-UI default |
-| **5** | Layer B seams visible (session mirror, intents, “why next”) | Cursor depth — X: co-pilot where you work |
+| **4** | QML-primary shell + DESIGN.md (**accept ADR-004**) | Product surface — X: native for continuous GPU |
+| **5** | Layer B seams + **CLI spine** (session mirror, intents, “why next”, ADR-008) | Cursor depth — X: agents = CLI; UI = equal client |
 | **6** | Plan agora transfer | Org home |
-| **7** | Freemium / privacy product shape | Growth |
+| **7** | Freemium / **local-first free** privacy product shape | Growth — X: on-device / privacy apps |
 
 **Anti-identity (X-validated):** consumer Automix clone, dual Spotify multi-deck as core, gen-music
 vending machine, “AI plays the gig for you.” **Identity:** Predict → Ask → Explain.
@@ -186,8 +189,9 @@ vending machine, “AI plays the gig for you.” **Identity:** Predict → Ask �
 | **This file** | Product strategy SSoT |
 | ADR-002 | Hard fork |
 | ADR-003 | **MIT operating model** (accepted) |
-| ADR-004 | QML-primary UI |
+| ADR-004 | QML-primary UI (**accept**) |
 | ADR-005 | Proprietary product layers (accepted) |
+| ADR-008 | CLI core — two equal clients (UI + agents) |
 | `initiative-ai-djing-product` | Product execution umbrella |
 | `initiative-apple-silicon` | Perf trust |
 | `runbooks/go-private-and-git-posture` | Public early · agora later |
@@ -206,3 +210,5 @@ vending machine, “AI plays the gig for you.” **Identity:** Predict → Ask �
 | (later) | Transfer under agora | planned |
 | (later) | Align on-disk LICENSE/notices with operating model if needed | optional cleanup |
 | 2026-07-17 | Grok 4.5 long harness = disk loops + federation (Claude-Code-shaped properties) | active — `knowledge/grok-long-harness-and-loops.md` |
+| 2026-08-07 | CLI core as product spine; UI + agents equal clients | **accepted** (ADR-008) |
+| 2026-08-07 | X alignment refresh — amplify Layer B/ADR-008; accept ADR-004 recommended | signal-2026-08-07 |

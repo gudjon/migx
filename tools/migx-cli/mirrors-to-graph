@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Load the Spotify mirror corpus into ArcFlow as a queryable graph.
+
+Why a graph: a mirror answers "what is on this playlist". A graph answers the
+questions that actually matter for the co-pilot — *which tracks are central to
+my curation*, *which tracks keep appearing together*, *which artists anchor my
+library*. That is `initiative-ai-djing-product`'s setlist-corpus intelligence,
+built from data you already have.
+
+    (:Track {isrc, title, spotify_id, duration_ms})
+      -[:BY]->   (:Artist {name})
+      -[:ON]->   (:Playlist {id, name})
+
+Co-occurrence is not stored as an edge — it is *derived* by traversal, so it
+stays correct when a playlist changes. Deriving beats denormalising (MG-3).
+
+ArcFlow notes learned by probing 0.11.9, not assumed:
+  * `arcflow query "..." --data-dir D` — flags must follow the query.
+  * Multi-statement (`;`) is rejected; UNWIND over map literals is rejected;
+    map-valued `--param` is rejected. Only scalar-list params work.
+  * The REPL reads statements from stdin one per line in a single process,
+    which is the only sane way to load ~14k statements.
+
+Run: python3 tools/migx-cli/mirrors-to-graph [--data-dir DIR] [--limit N]
+"""
+
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ARCFLOW = Path.home() / ".arcflow" / "bin" / "arcflow"
+
+
+def cy(value: str | None) -> str:
+    """Quote a Cypher string literal. Titles contain apostrophes constantly."""
+    text = "" if value is None else str(value)
+    text = text.replace("\\", "\\\\").replace("'", "\\'")
+    text = text.replace("\n", " ").replace("\r", " ")
+    return f"'{text}'"
+
+
+def statements(mirror_dir: Path, limit: int | None) -> tuple[list[str], dict]:
+    files = sorted(
+        f
+        for f in glob.glob(str(mirror_dir / "**" / "*.json"), recursive=True)
+        if "_pull-all" not in os.path.basename(f)
+    )
+    if limit:
+        files = files[:limit]
+
+    artists: set[str] = set()
+    tracks: dict[str, dict] = {}
+    playlists: list[dict] = []
+    on_edges: list[tuple[str, str, int]] = []
+
+    for path in files:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        pid = doc.get("source_id") or Path(path).stem
+        playlists.append({"id": pid, "name": doc.get("source_name") or pid})
+        for t in doc.get("tracks", []):
+            key = t.get("isrc") or t.get("spotify_id")
+            if not key:
+                continue
+            if key not in tracks:
+                tracks[key] = t
+            for a in t.get("artists") or []:
+                artists.add(a)
+            on_edges.append((key, pid, t.get("position") or 0))
+
+    out: list[str] = []
+    for name in sorted(artists):
+        out.append(f"CREATE (:Artist {{name: {cy(name)}}})")
+    for pl in playlists:
+        out.append(
+            f"CREATE (:Playlist {{id: {cy(pl['id'])}, "
+            f"name: {cy(pl['name'])}}})"
+        )
+    for key, t in tracks.items():
+        out.append(
+            f"CREATE (:Track {{key: {cy(key)}, title: {cy(t.get('title'))}, "
+            f"isrc: {cy(t.get('isrc'))}, "
+            f"spotify_id: {cy(t.get('spotify_id'))}, "
+            f"duration_ms: {int(t.get('duration_ms') or 0)}}})"
+        )
+    for key, t in tracks.items():
+        for a in t.get("artists") or []:
+            out.append(
+                f"MATCH (t:Track {{key: {cy(key)}}}), "
+                f"(a:Artist {{name: {cy(a)}}}) CREATE (t)-[:BY]->(a)"
+            )
+    for key, pid, pos in on_edges:
+        out.append(
+            f"MATCH (t:Track {{key: {cy(key)}}}), "
+            f"(p:Playlist {{id: {cy(pid)}}}) "
+            f"CREATE (t)-[:ON {{position: {int(pos)}}}]->(p)"
+        )
+
+    stats = {
+        "mirrors": len(files),
+        "artists": len(artists),
+        "tracks": len(tracks),
+        "playlists": len(playlists),
+        "on_edges": len(on_edges),
+        "statements": len(out),
+    }
+    return out, stats
+
+
+def run_repl(stmts: list[str], data_dir: Path) -> int:
+    """Feed every statement to one REPL process — 14k subprocesses is absurd."""
+    proc = subprocess.run(
+        [str(ARCFLOW), "--data-dir", str(data_dir)],
+        input="\n".join(stmts) + "\n",
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
+    errors = [
+        ln
+        for ln in proc.stdout.splitlines()
+        if "error" in ln.lower() and "no results" not in ln.lower()
+    ]
+    for line in errors[:5]:
+        print(f"  ! {line.strip()[:150]}", file=sys.stderr)
+    if errors:
+        print(f"  ({len(errors)} error line(s))", file=sys.stderr)
+    return len(errors)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--mirrors",
+        default=str(Path.home() / "Music" / "Migx" / "_mirrors"),
+    )
+    ap.add_argument("--data-dir", default=str(Path.home() / ".migx" / "graph"))
+    ap.add_argument("--limit", type=int, default=None)
+    args = ap.parse_args()
+
+    data_dir = Path(args.data_dir).expanduser()
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    stmts, stats = statements(Path(args.mirrors).expanduser(), args.limit)
+    print(
+        f"{stats['mirrors']} mirrors -> {stats['tracks']} tracks, "
+        f"{stats['artists']} artists, {stats['playlists']} playlists, "
+        f"{stats['on_edges']} ON edges ({stats['statements']} statements)",
+        flush=True,
+    )
+
+    errors = run_repl(stmts, data_dir)
+    print(
+        f"loaded into {data_dir}"
+        + (f" with {errors} errors" if errors else ""),
+        flush=True,
+    )
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

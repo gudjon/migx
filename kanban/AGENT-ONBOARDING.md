@@ -5,7 +5,7 @@ title: "Agent onboarding — what to read, in what order, and the 8 artifact fam
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/AGENTS.md
   - kanban/HARNESS.md
@@ -43,8 +43,11 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Codex long verifier harness | `AGENTS.md` + `kanban/federation/roles/codex-cli.md` + `runbooks/codex-long-harness-loop.md` |
 | Antigravity co-implementer | **Paused** (no tokens). See `AGY.md` re-enable checklist when available |
 | Claude implementer with federation live | `CLAUDE.md` §Multi-agent + `roles/claude-code.md` + `migx-fed sync` + `migx-fed poll` |
-| Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + `runbooks/go-private-and-git-posture.md` |
+| Product strategy / agora transfer / moat | `kanban/Strategy-Current.md` + ADR-005 + ADR-008 + `runbooks/go-private-and-git-posture.md` |
+| Product UI stack (decks vs AI surface) | ADR-004 (QML-primary) + ADR-007 + `src/qml/AGENTS.md` |
+| CLI / agent-equal command surface | ADR-008 + `tools/migx-cli/README.md` + `system.capabilities` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
+| Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` |
 
 **Tier 3 — reference on demand.** `kanban/GLOSSARY.md` (ID rules), `kanban/patterns/` (catalogue),
 `kanban/architecture/decisions/` (ADRs), `kanban/triggers/registry.yaml` (cadence).

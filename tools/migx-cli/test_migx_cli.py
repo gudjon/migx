@@ -740,6 +740,23 @@ def main() -> int:
     )
     check(api.MAX_CONSECUTIVE_429 >= 2, "circuit breaker is armed")
 
+    # Pagination next links drop fields= — sticky re-apply must restore them.
+    nxt = (
+        "https://api.spotify.com/v1/me/playlists?offset=50&limit=50"
+    )
+    fixed = api.reapply_query_params(
+        nxt, {"fields": "next,items(id,name,owner(display_name,id))"}
+    )
+    check(
+        "fields=" in fixed and "offset=50" in fixed and "limit=50" in fixed,
+        "sticky fields re-applied on pagination next without dropping offset",
+    )
+    check(
+        "owner(display_name,id)" in api._PLAYLIST_LIST_FIELDS
+        and "tracks(total)" not in api._PLAYLIST_LIST_FIELDS,
+        "playlist list fields keep owner.id; drop dead tracks(total)",
+    )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

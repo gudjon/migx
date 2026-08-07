@@ -22,22 +22,25 @@ pm_overlay:
   validation: >
     EXO spike; MTL EVD baselines; ADR-003/005 boundary checklist on AI features.
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 defers_to:
   - kanban/Strategy-Current.md
   - kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md
   - kanban/architecture/decisions/ADR-003-licensing-and-openness.md
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
 related:
   - initiative-apple-silicon
   - ADR-002
   - ADR-004
+  - ADR-008
 ---
 
 # Initiative — AI-DJing product (Cursor strategy)
 
 Strategy SSoT: [`kanban/Strategy-Current.md`](../Strategy-Current.md).  
 MIT operating model: [ADR-003](../architecture/decisions/ADR-003-licensing-and-openness.md).  
-Stack: [ADR-005](../architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md).
+Stack: [ADR-005](../architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md).  
+Command spine (UI + agents equal): [ADR-008](../architecture/decisions/ADR-008-cli-core-two-equal-clients.md).
 
 ## Problem
 Building a DJ app from zero wastes the instrument. A weak plugin next to another DAW lacks depth of
@@ -50,10 +53,10 @@ permission. We take the **Cursor path**: fork the base, ship a **proprietary pro
 | **S0 Repo home** | Public early; later [agora](https://github.com/orgs/agora) | git posture runbook |
 | **S1 Performance trust** | M4 p99/underrun floor | `initiative-apple-silicon`, MTL |
 | **S2 World model** | Song/session ontology | EXO, FSL |
-| **S3 Agent seams (B)** | Session mirror + intents | EXO, control bus |
-| **S4 Product UI** | QML-primary | ADR-004 |
-| **S5 Intelligence (C)** | Multi-model co-pilot (in-process OK) | ADR-005 |
-| **S6 Growth** | Freemium, privacy mode | product notes |
+| **S3 Agent seams (B)** | Session mirror + intents + **CLI spine** | EXO, control bus, **ADR-008**, `tools/migx-cli` |
+| **S4 Product UI** | QML-primary (Surface A); AI chrome as client of commands | ADR-004, ADR-007, ADR-008 |
+| **S5 Intelligence (C)** | Multi-model co-pilot (in-process OK); Predict → Ask → Explain | ADR-005 |
+| **S6 Growth** | Freemium; **local-first free tier** / privacy mode | product notes; signal-2026-08-07 |
 
 ## Closed loop
 Trigger: next-track / transition / cue plan mid-session → Capture: session + ontology → Intelligence:
