@@ -27,6 +27,7 @@ from migx_cli import (  # noqa: E402
     keys,
     layout,
     mirror,
+    mixing,
     naming,
     quality,
     ratelimit,
@@ -399,6 +400,51 @@ def main() -> int:
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
 
+    # ---- mixing: can these two be mixed, and how
+    same = mixing.tempo(125.0, 125.0)
+    check(same["drift_pct"] == 0.0, "identical tempo has no drift")
+    half = mixing.tempo(128.0, 64.0)
+    check(
+        half["drift_pct"] == 0.0,
+        "half-time is beatmixable, not a 50% clash",
+    )
+    check(
+        mixing.tempo(None, 125.0)["score"] is None,
+        "unknown bpm scores nothing rather than guessing",
+    )
+    check(mixing.harmonic("8A", "8A")["relation"] == "same", "same key")
+    check(mixing.harmonic("8A", "9A")["compatible"], "wheel neighbour")
+    check(mixing.harmonic("8A", "8B")["compatible"], "relative major")
+    check(
+        mixing.harmonic("8A", "3B")["compatible"] is False,
+        "distant keys are reported as a clash",
+    )
+    check(
+        mixing.harmonic("8A", None)["compatible"] is None,
+        "unknown key is unknown, not a clash",
+    )
+
+    tight = {"bpm": 125, "camelot": "8A", "cues": [], "energy": []}
+    far = {"bpm": 70, "camelot": "3B", "cues": [], "energy": []}
+    ranked = mixing.techniques(tight, dict(tight))
+    check(
+        [t["name"] for t in ranked][0] in ("Bass Swap", "Long Blend"),
+        f"a perfect pair favours a blend: got {ranked[0]['name']}",
+    )
+    rescue = mixing.techniques(tight, far)
+    check(
+        rescue[0]["name"] == "Echo Out",
+        f"an incompatible pair favours the rescue: got {rescue[0]['name']}",
+    )
+    check(
+        all(t["why"] for t in rescue),
+        "every technique explains itself — a bare score is not advice",
+    )
+    check(
+        {t["name"] for t in ranked} == set(mixing.TECHNIQUES),
+        "every technique is ranked, not just the winner",
+    )
+
     # ---- waveform + heat: the single-track view
     check(spark.waveform([], 10, 4) == [], "no curve, no waveform")
     wf = spark.waveform([0.1, 1.0], 8, 4)
@@ -590,6 +636,11 @@ def main() -> int:
         check(field in snap, f"snapshot carries {field}")
     check(isinstance(snap["mirrors"], list), "mirrors is a list")
     check("Track" in tui.PANES, "single-track mode exists")
+    check("Deck" in tui.PANES, "dual-deck mode exists")
+    check(
+        tui.deck_view(None, None)[0][1] is None,
+        "deck with no selection renders guidance",
+    )
     check(
         {"Library", "Arrange", "Prep"} <= set(tui.PANES),
         "modes use the house vocabulary (ADR-007)",

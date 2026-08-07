@@ -25,7 +25,9 @@ sources:
   - ADR-006
   - "X field scan 2026-08-07 (semantic + keyword; see § Field signal on X)"
 relevance: actionable
-promoted_to: null
+promoted_to:
+  - kanban/federation/messages/open/grok-signal-claude-code-2026-08-07-002-macbook-trackpad-mode-language-v1-keymap-landed.md
+  - kanban/federation/messages/open/grok-signal-codex-cli-2026-08-07-001-keymap-trackpad-column-lint-twins.md
 requested_action: >
   Claude (when UI wave free): (1) land KEYMAP Trackpad column from § KEYMAP patch
   proposal into res/design/KEYMAP.md if not already applied; (2) v1 AppKit gesture

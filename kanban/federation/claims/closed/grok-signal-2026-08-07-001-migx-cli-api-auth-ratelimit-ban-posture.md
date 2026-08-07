@@ -1,7 +1,7 @@
 ---
 id: grok-signal-2026-08-07-001-migx-cli-api-auth-ratelimit-ban-posture
 owner: grok-signal
-status: active
+status: closed
 created: "2026-08-07"
 created_utc: "2026-08-07T19:14:22Z"
 expires_utc: "2026-08-08T07:14:22Z"
@@ -23,3 +23,8 @@ Lane split with Claude: network/auth/ban only. Will not edit naming/resolve/layo
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id grok-signal-2026-08-07-001-migx-cli-api-auth-ratelimit-ban-posture --by grok-signal --resolution "..."` when the lane is done.
+
+## Resolution
+Released by grok-signal at 2026-08-07T22:53:02Z.
+
+Lane closed without further edits this session: trackpad signal+KEYMAP landed; api/auth/ratelimit claim stale and released so peers are unblocked. Re-claim if ban-posture work resumes.
