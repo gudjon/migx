@@ -1,20 +1,12 @@
 """Audio quality gate — the DJ bar as a contract on the *file*.
 
-Not on the pipeline that produced it.
-
-A resolver is trusted on what it produced, never on where it claimed to get
-it. That is deliberate: the file contract and the licensing line end up being
-the same line, because the paths that cut legal corners are the same paths
-that hand you a lossy->lossy transcode.
+Verdicts are derived from headers/bitrate only (not provenance). That keeps
+club-grade audio honest under stretch/EQ regardless of source.
 
     lossless        FLAC / WAV / AIFF / ALAC          -> eligible
     mp3-320-cbr     true 320 kbps constant bitrate    -> eligible
     mp3-vbr-high    VBR averaging >= 220 kbps         -> needs --allow-tier
     below-bar       everything else                   -> refused
-
-A YouTube-sourced file lands in `below-bar` or `mp3-vbr-high` essentially
-always: spotDL's own README documents a 128 kbps ceiling (256 with YT Music
-premium), re-encoded to MP3 — it cannot present as true 320 CBR.
 
 Header parsing is stdlib only — no mutagen, no ffprobe dependency.
 """

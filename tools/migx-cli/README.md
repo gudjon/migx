@@ -59,45 +59,22 @@ This is better than API access would have been: DW is regenerated every Monday a
 RR every Friday, destroying the previous week. Dated mirrors give Migx a
 longitudinal taste corpus Spotify itself does not retain.
 
-## Ban / block posture (hard rules)
+## Spotify Web API client (engineering notes)
 
-Migx is built so a normal user **does not get Spotify API access cut off** for
-using this CLI. That is not a guarantee against every future platform policy
-change, but these are the methods Spotify documents as correct:
+Wave 1 talks to the official Web API with OAuth PKCE. Practical client hygiene:
 
-| Rule | What we do |
+| Practice | Why |
 | --- | --- |
-| Official OAuth only | PKCE to `accounts.spotify.com` — no client secret, no unofficial “free API” |
-| Official Web API only | Requests only to `api.spotify.com` — host allowlist rejects anything else |
-| Read-only scopes | `user-library-read`, `playlist-read-private`, `playlist-read-collaborative` only |
-| Metadata only | Never requests, decrypts, or stores audio / streams |
-| Honest client | Real `User-Agent`; no browser automation of the player |
-| Pace | Min interval between calls (default **0.3s**); honour `Retry-After` |
-| Circuit break | Stop after repeated 429s; distinguish `QUOTA_EXCEEDED` from pace limits |
-| Skip work | `playlist.pull` defaults to **snapshot_id short-circuit** (one meta request when unchanged) |
-| Sparse fields | Request only the fields the mirror schema needs |
-| Token hygiene | Access token cached in Keychain until near expiry; refresh serialised |
+| Host allowlist (`api.spotify.com` / `accounts.spotify.com`) | Stay on documented endpoints |
+| Read-only scopes | Library/playlist identity only |
+| Pace (default 0.3s) + `Retry-After` | Avoid 429 storms |
+| Circuit break on repeated 429s | Fail loud instead of hammering |
+| `snapshot_id` short-circuit on `playlist.pull` | Cheap re-polls |
+| Access token cache + refresh lock | Avoid refresh thrash / silent logout |
 
-**What actually gets people in trouble** (and what we never do):
+## Quality gate (on the file)
 
-- Unofficial clients that reverse-engineer Spotify’s internal APIs (e.g. SpotipyFree-class paths)
-- Stream ripping / librespot / zotify-class tools
-- Driving the web player with computer-use to capture audio
-- Retrying 404s or hammering through 429s without backoff
-- Write scopes that modify the user’s library without need
-
-Rate limits (429) are temporary throttles. **Account bans** are a different axis —
-they attach to DRM circumvention and ToS abuse, not to a well-behaved OAuth
-metadata client. Stay on this path.
-
-## Metadata only — and the quality gate
-
-This CLI reads **identities**, never audio. Spotify's audio is DRM-protected and
-app-bound; ripping it violates their ToS, and routing around it through YouTube is
-copyright infringement with a lossy→lossy transcode attached. See
-`kanban/knowledge/spotify-octave-style-doable-steps.md`.
-
-The bar is enforced as a contract on the **file**, not on the pipeline:
+Classify local audio by **what the file actually is**, not how it was produced:
 
 ```bash
 ./tools/migx-cli/migx library.inspect ~/Music/incoming
@@ -110,14 +87,11 @@ The bar is enforced as a contract on the **file**, not on the pipeline:
 | `mp3-vbr-high` (VBR ≥ 220 kbps) | needs `--allow-tier mp3-vbr-high` |
 | `below-bar` | refused |
 
-That makes the engineering line and the licensing line the same line: the sources
-that cut legal corners are the same ones that cannot produce true 320 CBR.
-
-## The loop
+## Common loop
 
 ```text
-spotify.login → playlist.pull → library.resolve → library.missing (ISRC want-list)
-     → you buy on Beatport/Bandcamp → local resolver fills paths → library.index
+spotify.login → playlist.pull → library.resolve → library.missing
+     → files land under the library root → library.ingest / crate.sync
 ```
 
 ```bash
@@ -127,7 +101,7 @@ spotify.login → playlist.pull → library.resolve → library.missing (ISRC wa
 
 ### The resolver seam
 
-A resolver answers exactly one question: *where is the audio for this identity?*
+A resolver answers: *where is the audio for this identity?*
 
 | Element | Rule |
 | --- | --- |

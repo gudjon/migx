@@ -716,7 +716,7 @@ def main() -> int:
             "an existing Collection path is reported, never overwritten",
         )
 
-    # ---- Spotify ban-safety rails (offline)
+    # ---- Spotify Web API client rails (offline)
     try:
         api.assert_allowed_url("https://evil.example/v1/me")
         check(False, "non-API host must be refused")

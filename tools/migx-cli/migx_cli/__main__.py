@@ -59,8 +59,7 @@ CAPABILITIES: list[dict[str, Any]] = [
         "summary": "Report whether an account is linked, and with"
         " which scopes.",
         "emits": "migx.auth-status/1",
-        "note": "policy=official-oauth-pkce-readonly-metadata-only;"
-        " hosts limited to accounts.spotify.com + api.spotify.com.",
+        "note": "OAuth PKCE read-only; hosts accounts.spotify.com + api.spotify.com.",
     },
     {
         "id": "spotify.logout",

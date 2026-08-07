@@ -15,9 +15,7 @@ Same posture as the Spotify client (`api.py`):
 4. **Paced.** 252k scrobbles is ~1,300 pages; a naive loop is exactly the
    burst that gets a key throttled.
 
-Licensing note: Last.fm's API terms allow free **non-commercial** use.
-Personal signal is fine; shipping a Last.fm-derived feature commercially needs
-a licence from them first. See `kanban/tasks/lastfm-signal-layer.md`.
+See `kanban/tasks/lastfm-signal-layer.md` for product notes.
 """
 
 from __future__ import annotations

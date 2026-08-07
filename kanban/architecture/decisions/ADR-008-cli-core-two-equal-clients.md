@@ -81,15 +81,14 @@ surface first-class and addressable.
 8. **Machine output on stdout, human prose on stderr**, and `--json` accepted on
    either side of the subcommand — so an agent can pipe stdout without filtering.
 
-9. **Acquisition stays out of core, behind a resolver interface.** A resolver
-   answers one question (where is the audio for this identity) and its output
-   **always** passes the quality gate — no resolver self-certifies. Core ships
-   `local-files` only. See `tools/migx-cli/README.md`.
+9. **Audio location is a resolver interface.** A resolver answers where the
+   audio for an identity lives; output **always** passes the quality gate —
+   no resolver self-certifies. Core ships `local-files`. See
+   `tools/migx-cli/README.md`.
 
-10. **Quality is a contract on the file, not the pipeline.** True 320 CBR or
-    lossless is eligible for the library index; anything else needs an explicit
-    override. This makes the engineering line and the licensing line the same
-    line, because the sources that cut legal corners cannot produce true 320 CBR.
+10. **Quality is a contract on the file.** True 320 CBR or lossless is eligible
+    for the library index by default; anything else needs an explicit override
+    (DJ stretch/EQ needs solid masters).
 
 ## Consequences
 

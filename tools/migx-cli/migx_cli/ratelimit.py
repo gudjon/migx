@@ -1,21 +1,11 @@
-"""Be a well-behaved API client — pacing, backoff, and a refresh lock.
+"""API pacing, backoff, and a refresh lock.
 
-What actually gets people cut off from Spotify is ripping streams, driving the
-web player with automation, or hammering the API until 429s pile up. Reading
-your own library through the official Web API is the *sanctioned* path — the
-thing the API exists for. So the goal here is not to disguise a robot as a
-human; it is to be a client Spotify has no reason to throttle.
-
-Three mechanisms, in order of how much they help:
-
-1. **Do not make the request.** A playlist whose `snapshot_id` is unchanged has
-   nothing new to say. Skipping it is worth more than any amount of clever
-   backoff. See `mirror.py` / `playlist.pull --if-changed`.
-2. **Pace.** Spotify's limit is computed over a rolling ~30s window, so a burst
-   is what trips it, not the total. A minimum gap between calls keeps a long
-   pull under the window indefinitely.
-3. **Back off politely.** Honour `Retry-After` exactly, and add jitter so
-   parallel clients do not retry in lockstep.
+1. **Skip when possible** — unchanged `snapshot_id` means no track pages
+   (`playlist.pull` short-circuit).
+2. **Pace** — minimum gap between calls so bursts do not trip rolling windows.
+3. **Back off** — honour `Retry-After` with jitter so parallel clients do not
+   stampede.
+4. **Refresh lock** — serialise token refresh across processes.
 """
 
 from __future__ import annotations

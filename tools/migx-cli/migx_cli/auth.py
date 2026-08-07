@@ -1,21 +1,14 @@
 """Spotify OAuth 2.0 PKCE for a native CLI — no client secret, stdlib only.
 
-PKCE (RFC 7636) is the correct flow for a distributed desktop/CLI app:
-a shipped client *secret* is not a secret, so we never have one. The
-client id is public by design and comes from config / `MIGX_SPOTIFY_CLIENT_ID`
-/ `--client-id`.
+PKCE (RFC 7636) fits a distributed desktop/CLI app: a shipped client secret
+is not a secret. The client id is public and comes from config /
+`MIGX_SPOTIFY_CLIENT_ID` / `--client-id`.
 
-Ban / block posture for auth:
-
-- Official hosts only: `accounts.spotify.com` for authorize + token.
-- Read-only scopes only — never `playlist-modify-*`, `streaming`,
-  `user-modify-playback-state`, etc.
-- Refresh tokens in the macOS Keychain, never in a config file.
-- Access tokens are cached until near expiry so we do **not** hit the token
-  endpoint on every command (refresh thrash is unnecessary load and risks
-  losing a rotated refresh token if two processes race).
-- Refresh is serialised with `RefreshLock` because Spotify rotates refresh
-  tokens and the old one dies when a new one is issued.
+- Hosts: `accounts.spotify.com` for authorize + token.
+- Scopes: read-only library/playlist (see `SCOPES`).
+- Refresh token in the macOS Keychain, not a config file.
+- Access tokens cached until near expiry; refresh serialised with
+  `RefreshLock` (Spotify rotates refresh tokens).
 
 Register the app at https://developer.spotify.com/dashboard with redirect URI:
     http://127.0.0.1:8888/callback
@@ -68,7 +61,7 @@ SCOPES = (
 # Refresh a minute early so a slow command never starts with a dead token.
 _ACCESS_SKEW_S = 60.0
 
-USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx; metadata-only)"
+USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx)"
 
 
 class AuthError(RuntimeError):
@@ -388,5 +381,5 @@ def status() -> dict[str, Any]:
             "token": TOKEN_URL,
             "api": "https://api.spotify.com/v1",
         },
-        "policy": "official-oauth-pkce-readonly-metadata-only",
+        "auth": "oauth-pkce-readonly",
     }

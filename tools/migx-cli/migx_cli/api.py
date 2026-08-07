@@ -1,24 +1,13 @@
-"""Thin Spotify Web API client — stdlib only, read-only, ban-safe by design.
+"""Thin Spotify Web API client — stdlib only, read-only.
 
-Hard invariants (never violate these — they are how we stay off Spotify's
-bad side):
+Engineering constraints for a reliable client:
 
-1. **Official hosts only.** Every request is to `api.spotify.com` (or the
-   accounts host for auth, which lives in `auth.py`). No embed pages, no
-   `spclient`, no SpotipyFree, no reverse-engineered clients.
-2. **User OAuth only.** Bearer tokens come from the user-authorized PKCE
-   flow. No anonymous/client-credentials scraping of personal libraries.
-3. **Metadata only.** This client never requests, decodes, or stores audio.
-   No streaming, no audio-analysis for rip assist, no libreSpot.
-4. **Read-only scopes.** Callers must never request modify/stream scopes
-   (enforced in `auth.SCOPES`).
-5. **Be a polite client.** Pace before every attempt, honour `Retry-After`,
-   circuit-break after repeated 429s, skip work via `snapshot_id`, and
-   request only the fields we need.
-
-Rate limits and quota are *not* the same as an account ban. Hammering the
-API gets temporary 429s; circumventing DRM / unofficial clients is what
-gets products and accounts in real trouble. We do neither.
+1. **Documented hosts only** — `api.spotify.com` (auth lives in `auth.py`).
+2. **User OAuth bearer** — PKCE access tokens only.
+3. **Metadata endpoints** — playlist/library identity; no audio stream handling here.
+4. **Read-only scopes** — enforced in `auth.SCOPES`.
+5. **Polite client** — pace, honour `Retry-After`, circuit-break on repeated 429s,
+   sticky `fields=` across pagination, skip work via `snapshot_id` when possible.
 """
 
 from __future__ import annotations
@@ -44,7 +33,7 @@ MAX_CONSECUTIVE_429 = 3
 
 # Identifies the client honestly. A real User-Agent is the opposite of the
 # evasion pattern that gets clients blocked.
-USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx; metadata-only)"
+USER_AGENT = "migx-cli/1 (+https://github.com/gudjon/migx)"
 
 # Sparse field filters on *stable* endpoints only. We deliberately do not
 # field-filter `/items` or `/me/tracks` body rows: the 2026-03 migration

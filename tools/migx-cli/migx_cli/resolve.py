@@ -1,10 +1,8 @@
-"""Resolver layer — turn a mirror identity into a local file you already own.
+"""Resolver layer — turn a mirror identity into a local file path.
 
-The seam that keeps acquisition out of core. A resolver answers exactly one
-question: *where is the audio for this identity?* Core ships `local-files`
-only. Whatever else gets registered at the edge is not core's business — but
-every resolver's output passes the same quality gate, so nothing can
-self-certify.
+A resolver answers: *where is the audio for this identity?* Core ships
+`local-files`. Other resolvers may register by name; outputs still pass the
+quality gate so nothing self-certifies.
 
     identity -> Resolver.resolve() -> path | None -> quality.verdict() -> index
 
