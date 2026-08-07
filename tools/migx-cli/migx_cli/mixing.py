@@ -173,6 +173,56 @@ def techniques(
     return out
 
 
+# Typical pitch fader ranges. A DJ needs to know not just "how far apart" but
+# "can this deck even get there" — 8% is the default on most gear.
+PITCH_RANGES = ((8.0, "±8%"), (16.0, "±16%"), (50.0, "±50%"))
+
+
+def beatmatch(
+    from_bpm: float | None, to_bpm: float | None, bars: int = 32
+) -> dict[str, Any]:
+    """What it takes to lock these two together.
+
+    On-beat PLAY already handles the phase snap in the engine (see
+    `research-onbeat-play-phase-snap`); what a DJ still has to decide up front
+    is the *tempo* move — how far to pitch, in which direction, and whether
+    the fader reaches. Bar length is included because blends are planned in
+    bars, not seconds.
+    """
+    if not from_bpm or not to_bpm:
+        return {"possible": None, "note": "beatmatch: unknown bpm"}
+
+    best = None
+    for factor, label in ((1.0, ""), (2.0, "double-time"), (0.5, "half-time")):
+        target = float(to_bpm) * factor
+        pct = (float(from_bpm) / target - 1.0) * 100.0
+        if best is None or abs(pct) < abs(best[0]):
+            best = (pct, label, target)
+    pct, relation, target = best
+
+    reach = next(
+        (name for limit, name in PITCH_RANGES if abs(pct) <= limit), None
+    )
+    direction = "up" if pct > 0 else ("down" if pct < 0 else "none")
+    beat_s = 60.0 / float(from_bpm)
+    return {
+        "possible": reach is not None,
+        "pitch_pct": round(pct, 2),
+        "direction": direction,
+        "relation": relation,
+        "target_bpm": round(target, 2),
+        "fits_range": reach,
+        "beat_s": round(beat_s, 3),
+        "bar_s": round(beat_s * 4, 2),
+        "phrase_s": round(beat_s * 4 * bars, 1),
+        "note": (
+            f"beatmatch: pitch B {direction} {abs(pct):.1f}%"
+            f"{' (' + relation + ')' if relation else ''}"
+            f" — {'within ' + reach if reach else 'beyond any normal range'}"
+        ),
+    }
+
+
 def plan(outgoing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema": "migx.transition-plan/1",
@@ -180,5 +230,6 @@ def plan(outgoing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
         "to": incoming.get("name"),
         "tempo": tempo(outgoing.get("bpm"), incoming.get("bpm")),
         "harmonic": harmonic(outgoing.get("camelot"), incoming.get("camelot")),
+        "beatmatch": beatmatch(outgoing.get("bpm"), incoming.get("bpm")),
         "techniques": techniques(outgoing, incoming),
     }

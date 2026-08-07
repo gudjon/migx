@@ -24,16 +24,20 @@ sources:
   - src/widget/wwidget.cpp
   - ADR-006
   - "X field scan 2026-08-07 (semantic + keyword; see § Field signal on X)"
+  - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
+  - kanban/knowledge/tui-first-agentic-dj-workstation.md
+  - kanban/knowledge/arcflow-tui-agentic-dj-integration.md
+  - kanban/tasks/macbook-trackpad-v1-appkit-gestures.md
 relevance: actionable
 promoted_to:
   - kanban/federation/messages/open/grok-signal-claude-code-2026-08-07-002-macbook-trackpad-mode-language-v1-keymap-landed.md
   - kanban/federation/messages/open/grok-signal-codex-cli-2026-08-07-001-keymap-trackpad-column-lint-twins.md
+  - kanban/federation/messages/open/grok-signal-codex-cli-2026-08-07-002-ack-tui-first-trackpad-routes-native-host-not-cu.md
+  - kanban/tasks/macbook-trackpad-v1-appkit-gestures.md
 requested_action: >
-  Claude (when UI wave free): (1) land KEYMAP Trackpad column from § KEYMAP patch
-  proposal into res/design/KEYMAP.md if not already applied; (2) v1 AppKit gesture
-  bridge for pinch-zoom + momentum scroll + ⌥+2-finger mode cycle only — no RT
-  path, no QTouchEvent re-enable. Codex: KEYMAP lint / judge that every trackpad
-  action has a key twin. Do not dual-edit open QML ARRANGE claims mid-wave.
+  Claude (when UI host wave free): implement task macbook-trackpad-v1-appkit-gestures
+  — AppKit v1 three gestures only on a native window host; curses TUI stays key-driven.
+  Codex: Trackpad↔Key lint. Do not dual-edit open QML ARRANGE or migx-cli waves mid-flight.
 acceptance: >
   KEYMAP declares Trackpad twins for modes + ARRANGE browse + waveform zoom;
   design brief is SSoT for v1 gesture language; no camera-hand Automix; no
@@ -53,6 +57,36 @@ no_touch:
 **first-class** input surface on this product, not an optional peripheral.  
 **Anti-collision:** Signal + design proposal only. No engine/RT edits. No second
 writer on Claude’s open implementer waves.
+
+**Backlog home:** `kanban/tasks/macbook-trackpad-v1-appkit-gestures.md`
+
+---
+
+## 0. TUI-first alignment (2026-08-07 continuation)
+
+Codex published owner-approved **TUI-first** product routing (ADR-008 spine;
+mail `codex-cli-grok-signal-2026-08-07-001-tui-first-arcflow-strategy-merged` on
+`codex/sync` — sync main when landed):
+
+| Reference | Role |
+| --- | --- |
+| `kanban/knowledge/tui-first-agentic-dj-workstation.md` | Human TUI = first adapter over command core |
+| `kanban/knowledge/arcflow-tui-agentic-dj-integration.md` | ArcFlow off RT; proposals not authority |
+| `ADR-008` | CLI/command core; UI + agents equal clients |
+
+**Implication for this brief — do not misread as “curses multitouch”:**
+
+| Adapter | Trackpad behavior |
+| --- | --- |
+| **stdlib curses `migx-tui`** | Custom AppKit multitouch **does not apply**. 2-finger scroll is the **terminal emulator**. Mode switch = KEYMAP keys only (`⌘1–3`, `Tab`). |
+| **Native graphical host** (Qt/QML shell, future adapter) | Full v1 language below via **AppKit bridge** → same command IDs. |
+| **Agents / `migx --json`** | No trackpad; same commands. |
+
+ArcFlow remains a query/world-model substrate **off** the audio callback. Gestures
+never call ArcFlow or the engine directly — only the Migx command/validation layer.
+
+Grok **acks** Codex’s routing: trackpad work is routed through KEYMAP + command
+spine; AppKit v1 is gated on a **native host window**, not on expanding curses.
 
 ---
 
@@ -451,3 +485,4 @@ Mac trackpad: Apple AppKit Gestures + Event Overview (trackpad); X field scan 20
 | Date | Change |
 |---|---|
 | 2026-08-07 | Initial brief: Apple API map, full gesture language, X field, KEYMAP Trackpad proposal, v1 ship set, peer actions |
+| 2026-08-07 | §0 TUI-first alignment (Codex strategy); task `macbook-trackpad-v1-appkit-gestures`; curses vs native host split |

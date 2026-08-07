@@ -445,6 +445,87 @@ def main() -> int:
         "every technique is ranked, not just the winner",
     )
 
+    # ---- beatmatch: the number a DJ actually needs before a blend
+    bm = mixing.beatmatch(125, 128)
+    check(bm["direction"] == "down", "faster incoming means pitching down")
+    check(abs(bm["pitch_pct"] + 2.34) < 0.1, f"pitch %: {bm['pitch_pct']}")
+    check(bm["fits_range"] == "±8%", "a small move fits a standard fader")
+    check(
+        mixing.beatmatch(128, 64)["pitch_pct"] == 0.0,
+        "half-time needs no pitch at all, not a 50% move",
+    )
+    check(
+        mixing.beatmatch(128, 64)["relation"] == "double-time",
+        "and the relation is named so it is not a mystery zero",
+    )
+    check(
+        mixing.beatmatch(100, 100)["bar_s"] == 2.4,
+        "a bar at 100 BPM is 2.4s",
+    )
+    check(
+        mixing.beatmatch(120, 120)["phrase_s"] == 64.0,
+        "32 bars at 120 BPM is 64s — blends are planned in bars",
+    )
+    check(
+        mixing.beatmatch(None, 128)["possible"] is None,
+        "unknown bpm is unknown, not impossible",
+    )
+
+    # ---- ARRANGE: find and sort, which is the core job
+    lib = [
+        {
+            "name": "A",
+            "bpm": 128,
+            "camelot": "8A",
+            "tags": ["peak"],
+            "notes": "",
+            "artist": "X",
+            "duration_s": 300,
+            "tier": "lossless",
+        },
+        {
+            "name": "B",
+            "bpm": None,
+            "camelot": None,
+            "tags": [],
+            "notes": "",
+            "artist": "Y",
+            "duration_s": None,
+            "tier": "mp3-320-cbr",
+        },
+        {
+            "name": "C",
+            "bpm": 122,
+            "camelot": "3A",
+            "tags": ["girly"],
+            "notes": "warm",
+            "artist": "Z",
+            "duration_s": 200,
+            "tier": "lossless",
+        },
+    ]
+    by_bpm = tui.sort_collection(lib, "bpm")
+    check(
+        [c["bpm"] for c in by_bpm] == [122, 128, None],
+        f"unknown bpm sorts LAST, not as zero: {[c['bpm'] for c in by_bpm]}",
+    )
+    by_key = tui.sort_collection(lib, "key")
+    check(
+        [c["camelot"] for c in by_key][:2] == ["3A", "8A"],
+        "key sorts round the wheel so neighbours sit together",
+    )
+    check(len(tui.filter_collection(lib, "girly")) == 1, "tags are searchable")
+    check(len(tui.filter_collection(lib, "warm")) == 1, "notes are searchable")
+    check(len(tui.filter_collection(lib, "8a")) == 1, "key is searchable")
+    check(
+        [c["name"] for c in tui.filter_collection(lib, "120-125")] == ["C"],
+        "a BPM range filters on tempo",
+    )
+    check(
+        len(tui.filter_collection(lib, "")) == 3,
+        "an empty query filters out nothing",
+    )
+
     # ---- waveform + heat: the single-track view
     check(spark.waveform([], 10, 4) == [], "no curve, no waveform")
     wf = spark.waveform([0.1, 1.0], 8, 4)

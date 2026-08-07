@@ -16,8 +16,9 @@ Settings cannot silently steal mode switching. Mutations commit on gesture phase
 Legend: `—` = no trackpad binding (keyboard/MIDI only). `†` = v1 target. `‡` = v2+ optional.
 
 ## Global
+
 | Action | Key | Trackpad | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Search / find | `⌘F` | — (optional ‡ 3-finger up → focus search if free) | Serato / rekordbox / universal |
 | Undo | `⌘Z` | — | Serato / universal |
 | Preferences (non-modal) | `⌘,` | — | macOS standard |
@@ -25,12 +26,14 @@ Legend: `—` = no trackpad binding (keyboard/MIDI only). `†` = v1 target. `�
 | Dismiss / back | `Esc` | — | universal |
 
 ## Modes (NextGen — the hot switch)
+
 Mode switching is Migx's own model, so it uses **⌘+number** (the Mac-idiomatic "switch view/tab" gesture
 from browsers/editors — instant muscle memory) plus **Tab** to cycle. It deliberately avoids the bare
 number row (reserved for hotcues below). Trackpad v1 uses **`⌥`+2-finger** so Mission Control cannot
 silently own the gesture.
+
 | Action | Key | Trackpad | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | PERFORM mode | `⌘1` | `⌥`+2-finger × N until PERFORM † | Migx mode model |
 | ARRANGE mode | `⌘2` | `⌥`+2-finger × N until ARRANGE † | Migx mode model |
 | LIBRARY mode | `⌘3` | `⌥`+2-finger × N until LIBRARY † | Migx mode model |
@@ -39,8 +42,9 @@ silently own the gesture.
 | Mode cycle (optional alt) | same keys | 3-finger swipe horizontal ‡ if OS allows | Spaces-like; prefs-sensitive |
 
 ## Deck (current engine map first)
+
 | Action | Key | Trackpad | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Load selected → Deck 1 | `⇧←` | — (ARRANGE/LIBRARY: drag-to-deck-pill only ‡) | `res/keyboard/en_US.kbd.cfg` |
 | Load selected → Deck 2 | `⇧→` | — | `res/keyboard/en_US.kbd.cfg` |
 | Play / pause — Deck 1 / Deck 2 | `D` / `L` | — | `res/keyboard/en_US.kbd.cfg` |
@@ -53,15 +57,17 @@ silently own the gesture.
 they are not active until reconciled with the shared engine map.
 
 ## Hotcues (Serato standard — shared with Mixxx/rekordbox pads)
+
 | Action | Key | Trackpad | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Set / trigger hotcue — Deck 1 | `1 2 3 4 5` | — | Serato standard |
 | Set / trigger hotcue — Deck 2 | `6 7 8 9 0` | — | Serato standard |
 | Delete hotcue | `⇧` + the number | — | Serato standard |
 
 ## Library / ARRANGE (find the next track — the core job)
+
 | Action | Key | Trackpad | Source |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Navigate rows | `↑ / ↓` | 2-finger scroll + momentum † | universal + AppKit |
 | Move focus panel | `Tab` (context) / arrows | — | common |
 | Preview / audition | `Space` (on a library row) | — | common |
@@ -72,7 +78,32 @@ they are not active until reconciled with the shared engine map.
 | Peek identity (no load) | — | Force click / deep click on row ‡ | AppKit / Force Touch |
 | Cover-wall density (LIBRARY) | — | Pinch ‡ | Migx |
 
+## TUI (terminal — `migx-tui`)
+
+The terminal cannot see `⌘`: a TTY never receives it, so the Mac-idiomatic `⌘`+number mode switch has
+no terminal equivalent. The TUI therefore uses **bare numbers for modes**, which does *not* break the
+"bare `1–0` = hotcues" rule — that rule prevents a *collision within a context*, and the TUI has no
+decks and no hotcues to collide with. `Tab` cycles modes exactly as declared above, so the documented
+gesture still works.
+
+| Action | Key | Trackpad | Source |
+| --- | --- | --- | --- |
+| Overview / Library / Arrange mode | `1` / `2` / `3` | — (no TTY gestures) | TUI twin of `⌘1–⌘3` |
+| Prep / Track / Deck mode | `4` / `5` / `6` | — | Migx mode model |
+| Next mode (cycle) | `Tab` | — | matches NextGen |
+| Navigate rows | `↑ / ↓` or `j / k` | — | universal + vi convention |
+| Page / jump | `PgUp / PgDn`, `g / G` | — | less(1) convention |
+| Search / filter | `/` | — | TTY twin of `⌘F` (less/vim) |
+| Clear filter | `Esc` | — | universal |
+| Cycle sort | `s` | — | Migx ARRANGE |
+| Load focused → Deck A / B | `a` / `b` | — | TTY twin of `⇧← / ⇧→` |
+| Open focused in Track mode | `t` | — | Migx |
+| Add focused → crate | `c` | — | Migx ARRANGE (stage action) |
+| Refresh snapshot | `r` | — | common |
+| Quit | `q` | — | universal |
+
 ## Rules (the discipline)
+
 - **No action ships without a KEYMAP entry.** A module's `MODULE.md` lists the shortcuts it adds; the
   judge fails an action with no declared key.
 - **No shortcut collides within a context.** Bare `1–0` = hotcues; modes never use them.
@@ -93,6 +124,7 @@ they are not active until reconciled with the shared engine map.
   `kanban/federation/signal/2026-08-07-macbook-trackpad-mode-language.md`.
 
 ## Sources
+
 Serato DJ Pro shortcut reference (phasedj.com, djmartindus.com); rekordbox/Serato/Traktor/VirtualDJ
 comparison (recordcase.de, djtechreviews.com); Mixxx default keyboard mapping.
 Mac trackpad: Apple AppKit Gestures + Event Overview (trackpad); X field scan 2026-08-07 (grok-signal);
