@@ -131,11 +131,11 @@ Normalisation applies to *matching only*, never to naming.
 
 [spotdl]: https://github.com/spotDL/spotify-downloader
 
-### Own-but-low is an upgrade, never a re-buy
+### Own-but-low is an upgrade, not “missing”
 
-A file you already own that fails the quality bar is **not** missing. It lands in
-`below_bar` and the want-list marks it `upgrade`, so you never pay twice for a
-track you have — you just replace a 128 kbps copy with a proper one.
+A file that fails the quality bar is **not** absent. It lands in `below_bar` and the
+want-list marks it `upgrade` so you can replace a weak encode without treating it
+as a brand-new gap.
 
 ISRC also survives tagger disagreement: it is read from the standard `TSRC`
 frame *and* from `TXXX:ISRC`, which is where ffmpeg and several taggers actually

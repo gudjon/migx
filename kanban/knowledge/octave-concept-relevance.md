@@ -64,10 +64,10 @@ Legend for the last column: **enriches** = folds into an existing note/initiativ
   Love", "velvet rope"/curated exclusivity, listening lounges, curator spotlights, white-glove onboarding
   calls, Feature Draft Days. *Why: Migx is a professional instrument on a Cursor/product model (ADR-003/005),
   not a status-driven consumer membership club; this is brand theater orthogonal to the engine.*
-- **Spotify / streaming DRM unification** — the whole "unify Spotify + Apple Music + YouTube + SoundCloud",
-  Web Playback SDK, "simulated transitions" for DRMed streams, zero-knowledge encrypted DRM cache, licensing
-  logs. *Why: legal/DRM complexity and it directly contradicts Migx's local-DJ-**instrument** thesis — Migx
-  mixes real, owned/local audio through its own RT engine, not one DRM stream at a time.*
+- **Spotify / multi-service stream unification as product core** — "unify Spotify + Apple Music + YouTube +
+  SoundCloud", Web Playback as sole deck path, zero-knowledge stream caches as the only offline story.
+  *Why: Migx's thesis is a local RT multi-deck instrument; streaming is metadata + optional sequential
+  listen, not a rewrite of the engine around one stream at a time.*
 - **Endless-Canvas consumer web UX** — infinite pan/zoom canvas, glassmorphism, column-staggered parallax,
   Gallery/Shelf/Workbench zoom tiers, "polyhedral hero tile", ambient collectables dock, Next.js/React/Framer
   Motion web client, mobile React Native client. *Why: Migx is a native QML/Metal desktop instrument

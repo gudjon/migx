@@ -154,7 +154,7 @@ From [Spotify Support — DJ integration](https://support.spotify.com/us/article
 | **Online only** | “You can only play Spotify content when you're online” |
 | **Up to 4 tracks** simultaneous from Spotify in DJ software |
 | **Content gaps** | Audiobooks, videos, albums-as-pages, artist pages, **DJ mixes** not available via DJ software |
-| **Personal, non-commercial** | Public performance (clubs, venues, events, **livestreams**) **not permitted** under Spotify ToS |
+| **Personal, non-commercial framing** | Partner FAQ positions use as personal/practice; venue/livestream is outside that framing |
 | **Partner shortlist** | Official: mobile = djay + rekordbox; desktop = djay + rekordbox + Serato |
 | **~51 markets** at launch (landing page lists countries) |
 | Playlist edit in Spotify app | Generic support still says edit playlists “through the Spotify app” — **partner write-back** (djay/Serato) is a **partner-specific** capability that may lag or exceed the generic FAQ |
@@ -194,7 +194,7 @@ Spotify’s personal-use framing.
 7. **Premium + region gating** — Soft-fail “not available in your market”  
 8. **Hardware path unchanged** — Controllers drive CO; media is stream handle, not file path  
 9. **Hybrid crates** — rekordbox-style mix of local + stream in one list (strong for EXO sessions)  
-10. **Honest use framing** — personal / practice / private parties (Spotify ToS)
+10. **Clear use framing** — personal / practice / private parties (partner product language)
 
 ---
 
@@ -209,14 +209,13 @@ Spotify’s personal-use framing.
 - **djay’s Automix** is the closest commercial “AI DJ over Spotify” — Migx’s moat should be
   **open, local-first co-pilot + ontology**, not clone Automix alone.
 
-### Hard constraints
-- **Not “add an API key”** — requires **Spotify Premium Third-party DJ Software Integration**
-  (commercial partnership + ToS). Unofficial ripping is a non-starter.
-- Licensing forbids offline locker, stems, and typically **recording** Spotify audio.
-- **Non-commercial** ToS — product copy must not promise club/public/livestream legality.
-- **Online-only** fights “never glitch” Apple Silicon thesis unless buffer strategy is excellent
-  (`P-02` / underrun policy).
-- Analysis pipeline differs: no long offline batch analyze; progressive/stream analysis only.
+### Platform constraints
+- **Not “add an API key”** for dual-deck in-app streaming — requires **Spotify Premium Third-party
+  DJ Software Integration** (commercial partnership + closed SDK).
+- Partner SDK feature set (not public Web API) gates offline locker, stems, and record of stream audio.
+- **Non-commercial** framing on consumer DJ integration — product copy should not over-promise venue use.
+- **Online-only** stream path needs solid buffering (`P-02` / underrun policy) next to local decks.
+- Analysis pipeline differs: progressive/stream analysis vs long offline batch.
 - Region list is finite.
 
 ### Architectural sketch (if/when partner exists)
@@ -268,7 +267,7 @@ Feature gate: disable record / stems / offline for Spotify source
 | Record Spotify mix | ❌ | ❌ | ❌ | N/A |
 | Offline Spotify | ❌ | ❌ | ❌ | N/A |
 | Lossless in DJ path | ❌ | ❌ | ❌ | N/A |
-| Commercial/public use | ❌ ToS | ❌ ToS | ❌ ToS | N/A |
+| Commercial/public use (partner FAQ) | ❌ | ❌ | ❌ | N/A |
 
 ---
 
@@ -278,7 +277,8 @@ Feature gate: disable record / stems / offline for Spotify source
 - API outages (2026 community reports)  
 - User expectation vs reliability (wifi drops mid-set)  
 - Dual identity: free Spotify excluded; Premium required  
-- **Non-commercial ToS** vs DJ user expectations (gigs, streams)  
+- Partner “personal use” framing vs DJ venue expectations  
+
 - Stale SEO blogs still claiming “Spotify not in any DJ software” (ignore; use primary sources)  
 - Spotify’s own **AI DJ** (in-app, 75+ markets, multi-language 2026) competes for “set building”
   mindshare without leaving Spotify
@@ -302,7 +302,7 @@ Feature gate: disable record / stems / offline for Spotify source
 | Surface | What it is | Who can use it | Audio mix / multi-deck? |
 |---|---|---|---|
 | **[dj-integration](https://www.spotify.com/us/dj-integration/)** | Consumer landing page for **partner DJ apps** | End users with Premium in listed markets; apps = **rekordbox / Serato / djay only** | Yes — inside those partners |
-| **[Spotify for Developers](https://developer.spotify.com/)** | Public Web API / Web Playback SDK / mobile SDKs | Devs with Client ID; **Dev Mode** severely limited; extended quota = orgs only | **Explicitly forbidden** for DJ-style mix |
+| **[Spotify for Developers](https://developer.spotify.com/)** | Public Web API / Web Playback SDK / mobile SDKs | Devs with Client ID; **Dev Mode** severely limited; extended quota = orgs only | Not dual-deck mix (policy §III.7) |
 
 **X pattern:** almost zero developer “how I integrated DJ streaming” posts. High volume of **user/support** chatter (region fails, reconnect, Wi‑Fi, Premium). Official `@SpotifyPlatform` does **not** promote DJ integration as a self-serve API. `@SpotifyCares` only points users to the landing page + partner apps.
 
@@ -312,7 +312,7 @@ From [Developer Policy §III](https://developer.spotify.com/policy) — prohibit
 
 | § | Rule | DJ implication |
 |---|---|---|
-| **III.7** | Do not permit any device/system to **segue, mix, re-mix, or overlap** Spotify Content with any other audio (including other Spotify Content) | **Multi-deck DJ is banned** on the public platform |
+| **III.7** | Do not permit any device/system to **segue, mix, re-mix, or overlap** Spotify Content with any other audio (including other Spotify Content) | Public platform is not multi-deck overlap of catalog streams |
 | **III.5** | Do not integrate streams/content from **another service** | Hybrid local+Spotify crates need partner path |
 | **III.10** | Not for businesses / public play | Aligns with “personal non-commercial” on DJ support |
 | **III.11** | No mimic/replace core Spotify UX without **written permission** | Full catalog DJ client needs partner deal |
@@ -347,22 +347,22 @@ Indie/dev sentiment on X is consistently hostile to building on Spotify:
 - No Mixxx / open-source DJ success stories with official stream  
 - No indie multi-deck client using Web Playback as a substitute (would violate III.7)
 
-### Legal integration paths for Migx (ranked)
+### Integration paths for Migx (ranked)
 
 | Path | Feasibility | Notes |
 |---|---|---|
-| **A. Spotify commercial DJ partner** (like Serato/djay/rekordbox) | Hard / long | BD + legal entity + closed SDK; only real path for **in-app multi-deck stream** |
-| **B. Web API metadata-only** (playlists, search, URIs → EXO/FSL) | Possible under Dev Mode / quota rules | **No full-track mix**; useful for co-pilot crate graph if ToS-safe |
-| **C. Web Playback / Connect control** | Possible for *remote control of Spotify app* | Not multi-deck engine inside Migx; still not “mix Spotify on our decks” |
-| **D. Unofficial decode / rip** | Forbidden | Non-starter for real product |
-| **E. Other streams first** (TIDAL / SoundCloud / Beatport partner programs) | Often clearer than Spotify for pro DJ | May fit pro use better than Spotify’s personal-use frame |
+| **A. Spotify commercial DJ partner** (like Serato/djay/rekordbox) | Hard / long | BD + entity + closed SDK; path for **in-app multi-deck stream** |
+| **B. Web API metadata** (playlists, search, URIs → EXO/FSL/CLI) | Possible under Dev Mode / quota | Crate graph + co-pilot identity; not dual-deck stream |
+| **C. Web Playback / Connect control** | Possible for *remote control of Spotify app* | Sequential listen; not multi-deck engine channels |
+| **D. Local files + Spotify identity** | Wave-1 default | Mirrors, resolve, ingest — engine multi-deck on disk audio |
+| **E. Other streams** (TIDAL / SoundCloud / Beatport programs) | Varies | May fit pro use differently than Spotify consumer frame |
 
 ### Recommendation for Migx (from this signal)
 
-1. **Do not scaffold streaming decode** against public Spotify APIs — policy forbids the core UX.  
-2. **Do** treat dj-integration as **competitive parity research** + optional **BD/partner dossier** (`STR`), not an engineering sprint.  
-3. **Do** keep EXO/FSL open to **Spotify URIs as identifiers** (user-pasted / export), separate from playback rights.  
-4. Watch X + SpotifyCares for **plan SKU** (Premium vs “Platinum”) and **outage** patterns if partner talks ever open.
+1. **Ship B + D now** (metadata CLI/EXO + local multi-deck).  
+2. Treat full dual-stream as **competitive research + optional BD**, not a blocked sprint.  
+3. Keep Spotify URIs as first-class identifiers regardless of playback path.  
+4. Watch plan SKUs / outages if partner talks open.
 
 ---
 

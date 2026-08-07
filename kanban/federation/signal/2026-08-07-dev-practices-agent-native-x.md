@@ -137,7 +137,7 @@ development shape behind ADR-008, federation, and the CLI spine. Complements the
 | One agent, one dirty main, no isolation | Known failure mode |
 | Ad-hoc chat instead of AGENTS/ADR | Drift factory |
 | Automix / “AI plays the gig” as identity | Product anti-goal (see strategy signal) |
-| Unofficial scrapers as core path | Product-scope choice (out of wave 1) |
+| Building without a domain CLI | Falls behind agent-native tooling |
 
 ## Actionable upgrades (dev process)
 
