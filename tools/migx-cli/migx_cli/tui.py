@@ -25,7 +25,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from . import config, layout, quality, resolve, sidecar, tags
+from . import config, layout, quality, resolve, sidecar, spark, tags
 
 PANES = ("Overview", "Playlists", "Gaps", "Collection", "Notes")
 
@@ -76,6 +76,7 @@ def _collection(root: Path) -> list[dict[str, Any]]:
                 "bpm": meta.get("bpm") or side.get("bpm"),
                 "camelot": meta.get("camelot"),
                 "duration_s": probe.get("duration_s"),
+                "energy": (side.get("energy_curve") or {}).get("all") or [],
                 "notes": side.get("notes") or "",
                 "tags": side.get("tags") or [],
                 "cues": side.get("cues") or [],
@@ -185,6 +186,13 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             if not (c["notes"] or c["tags"] or c["cues"]):
                 continue
             out.append(f"@{c['name'][:60]}")
+            if c["energy"]:
+                width = 56
+                out.append("  " + spark.sparkline(c["energy"], width))
+                for line in spark.cue_ruler(
+                    c["cues"], c["duration_s"] or 0, width
+                ):
+                    out.append("  " + line)
             if c["notes"]:
                 out.append(f"    {c['notes']}")
             if c["tags"]:

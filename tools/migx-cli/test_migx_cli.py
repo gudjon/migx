@@ -32,6 +32,7 @@ from migx_cli import (  # noqa: E402
     ratelimit,
     resolve,
     sidecar,
+    spark,
     tags,
     tui,
     watch,
@@ -397,6 +398,35 @@ def main() -> int:
             "owned-but-low track -> upgrade, not a second missing entry",
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
+
+    # ---- sparkline: shape of a track in one line, with cue markers
+    check(spark.sparkline([], 10) == "", "empty curve renders empty")
+    check(len(spark.sparkline([0.5] * 64, 24)) == 24, "resamples to width")
+    check(
+        spark.sparkline([0.0, 1.0], 2)[0] == spark.BLOCKS[0]
+        and spark.sparkline([0.0, 1.0], 2)[1] == spark.BLOCKS[-1],
+        "0 and 1 map to the lowest and highest block",
+    )
+    # Downsampling must average, not sample — dropping peaks between samples
+    # would hide exactly the drops a DJ is looking for.
+    check(
+        spark.sparkline([0.0, 1.0, 0.0, 1.0], 2)
+        == spark.sparkline([0.5, 0.5], 2),
+        "downsampling averages rather than dropping values",
+    )
+
+    ruler = spark.cue_ruler(
+        [{"position": 0, "label": "start"}, {"position": 100, "label": "end"}],
+        100,
+        10,
+    )
+    check(ruler and ruler[0][0] == "▲", "first cue marks column 0")
+    check(ruler[0][-1] == "▲", "a cue at the end lands in the last column")
+    check(
+        spark.cue_ruler([{"position": 5}], 0, 10) == [],
+        "unknown duration draws no ruler rather than a wrong one",
+    )
+    check(spark.cue_ruler([], 100, 10) == [], "no cues, no ruler")
 
     # ---- watch: a file still downloading must never be filed
     with tempfile.TemporaryDirectory() as tmp:

@@ -56,6 +56,11 @@ def store(result: dict[str, Any]) -> dict[str, Any]:
     bpm = keys.parse_bpm(result.get("bpm"))
     if bpm is not None:
         data["bpm"] = bpm
+    curve = result.get("energy_curve")
+    if isinstance(curve, dict) and curve.get("all"):
+        data["energy_curve"] = curve
+    if result.get("duration_s"):
+        data["duration_s"] = round(float(result["duration_s"]), 2)
     key_text = result.get("key")
     if key_text:
         data["key"] = key_text

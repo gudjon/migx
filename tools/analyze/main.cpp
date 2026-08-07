@@ -18,14 +18,16 @@
 //
 // Prints one JSON object per line: {"path":…,"bpm":…,"key":…,"duration":…}
 
-#include <QCoreApplication>
 #include <QCommandLineParser>
+#include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTextStream>
-
+#include <cmath>
 #include <memory>
+#include <vector>
 
 #include "analyzer/analyzerbeats.h"
 #include "analyzer/analyzerkey.h"
@@ -39,6 +41,9 @@
 namespace {
 
 constexpr SINT kFramesPerChunk = 4096;
+// Buckets for the energy envelope. Enough resolution for a terminal
+// sparkline and a phrase-level read of the arrangement; not a waveform.
+constexpr int kEnergyBuckets = 64;
 
 // Analysis must not depend on the user's saved preferences — the same file
 // must produce the same answer on any machine. A throwaway config gives the
@@ -93,6 +98,15 @@ QJsonObject analyzeOne(const QString& path, UserSettingsPointer pConfig) {
         return out;
     }
 
+    // Summarise the decode into an RMS envelope while we are streaming it.
+    // This is NOT a reimplementation of AnalyzerWaveform: that produces a
+    // multi-band waveform for GPU rendering and needs a database handle. This
+    // is a 64-bucket loudness summary of samples already passing through, for
+    // a sparkline. Written under the same `energy_curve` key so the richer
+    // version can replace it.
+    std::vector<double> energySum(kEnergyBuckets, 0.0);
+    std::vector<SINT> energyCount(kEnergyBuckets, 0);
+
     // Decode straight through once and fan each chunk out to every analyzer,
     // so a five-minute track is decoded once rather than once per analyzer.
     mixxx::SampleBuffer buffer(kFramesPerChunk * channelCount);
@@ -118,6 +132,18 @@ QJsonObject analyzeOne(const QString& path, UserSettingsPointer pConfig) {
             pAnalyzer->processSamples(
                     readable.readableData(), sampleCount);
         }
+
+        const int bucket = std::min(kEnergyBuckets - 1,
+                static_cast<int>(
+                        (frameIndex * kEnergyBuckets) / std::max<SINT>(1, frameLength)));
+        const CSAMPLE* pSamples = readable.readableData();
+        double sumSquares = 0.0;
+        for (SINT i = 0; i < sampleCount; ++i) {
+            sumSquares += static_cast<double>(pSamples[i]) * pSamples[i];
+        }
+        energySum[bucket] += sumSquares;
+        energyCount[bucket] += sampleCount;
+
         frameIndex += framesRead;
     }
 
@@ -133,6 +159,26 @@ QJsonObject analyzeOne(const QString& path, UserSettingsPointer pConfig) {
     const QString keyText = pTrack->getKeyText();
     if (!keyText.isEmpty()) {
         out["key"] = keyText;
+    }
+
+    // Normalised 0..1 so a sparkline is comparable across tracks of very
+    // different mastering levels.
+    QJsonArray energy;
+    double peak = 0.0;
+    std::vector<double> rms(kEnergyBuckets, 0.0);
+    for (int i = 0; i < kEnergyBuckets; ++i) {
+        if (energyCount[i] > 0) {
+            rms[i] = std::sqrt(energySum[i] / energyCount[i]);
+            peak = std::max(peak, rms[i]);
+        }
+    }
+    if (peak > 0.0) {
+        for (int i = 0; i < kEnergyBuckets; ++i) {
+            energy.append(std::round(rms[i] / peak * 1000.0) / 1000.0);
+        }
+        QJsonObject curve;
+        curve["all"] = energy;
+        out["energy_curve"] = curve;
     }
     return out;
 }
