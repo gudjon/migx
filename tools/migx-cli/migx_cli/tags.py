@@ -12,6 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from . import keys
+
 # ID3v2 text frames we care about -> normalised key.
 _ID3_FRAMES = {
     b"TIT2": "title",
@@ -20,6 +22,8 @@ _ID3_FRAMES = {
     b"TALB": "album",
     b"TRCK": "track_number",
     b"TSRC": "isrc",
+    b"TBPM": "bpm",
+    b"TKEY": "key",
     b"TDRC": "date",
     b"TYER": "date",
 }
@@ -27,6 +31,13 @@ _ID3_FRAMES = {
 # TXXX descriptions that carry a field we care about, upper-cased.
 _TXXX_KEYS = {
     "ISRC": "isrc",
+    # Mixed In Key / Traktor / rekordbox all park these in TXXX.
+    "INITIALKEY": "key",
+    "INITIAL KEY": "key",
+    "KEY": "key",
+    "BPM": "bpm",
+    "ENERGY": "energy",
+    "ENERGYLEVEL": "energy",
     "ALBUMARTIST": "album_artist",
     "ALBUM ARTIST": "album_artist",
 }
@@ -39,6 +50,11 @@ _VORBIS_FIELDS = {
     "tracknumber": "track_number",
     "isrc": "isrc",
     "date": "date",
+    "bpm": "bpm",
+    "initialkey": "key",
+    "key": "key",
+    "energy": "energy",
+    "energylevel": "energy",
 }
 
 
@@ -181,4 +197,13 @@ def read(path: Path | str) -> dict[str, Any]:
         tags["track_number"] = int(head) if head.isdigit() else None
     if tags.get("isrc"):
         tags["isrc"] = tags["isrc"].replace("-", "").upper()
+
+    # Normalise what a tagger wrote into the two fields naming.render wants.
+    # Detection stays in src/analyzer/ (arch-analyzer) — this only reads.
+    bpm = keys.parse_bpm(tags.pop("bpm", None))
+    if bpm is not None:
+        tags["bpm"] = bpm
+    camelot = keys.to_camelot(tags.get("key"))
+    if camelot:
+        tags["camelot"] = camelot
     return {k: v for k, v in tags.items() if v not in ("", None)}

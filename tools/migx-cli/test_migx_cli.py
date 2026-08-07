@@ -23,6 +23,7 @@ from migx_cli import (  # noqa: E402
     api,
     auth,
     ingest,
+    keys,
     layout,
     mirror,
     naming,
@@ -390,6 +391,45 @@ def main() -> int:
             "owned-but-low track -> upgrade, never a re-buy",
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+
+    # ---- key notation: every tagger's spelling folds to one Camelot value
+    for raw, want in [
+        ("Am", "8A"),
+        ("A", "11B"),
+        ("AM", "11B"),
+        ("F#m", "11A"),
+        ("Gbm", "11A"),  # enharmonic
+        ("8A", "8A"),
+        ("8a", "8A"),  # already Camelot
+        ("10m", "5A"),
+        ("10d", "5B"),  # Open Key
+        ("Bbm", "3A"),
+        ("Ebm", "2A"),
+        ("Dbm", "12A"),
+        ("F minor", "4A"),
+        ("C Major", "8B"),
+        ("A min", "8A"),
+    ]:
+        got = keys.to_camelot(raw)
+        check(got == want, f"key {raw!r} -> {got} (want {want})")
+
+    for junk in ["", None, "junk", "H", "Amazing", "  "]:
+        check(
+            keys.to_camelot(junk) is None,
+            f"unparsable key {junk!r} yields None, never a wrong key",
+        )
+    check(
+        keys.to_camelot("F#m") == keys.to_camelot("Gbm"),
+        "enharmonic spellings agree",
+    )
+
+    check(keys.parse_bpm("128") == 128.0, "bpm string parses")
+    check(keys.parse_bpm("126,5") == 126.5, "comma decimal (EU taggers)")
+    for junk in ["0", "999", "abc", None, ""]:
+        check(
+            keys.parse_bpm(junk) is None,
+            f"implausible bpm {junk!r} rejected rather than written to a name",
+        )
 
     # ---- smart_split: boundary-aware truncation (spotDL-adapted)
     long_name = (
