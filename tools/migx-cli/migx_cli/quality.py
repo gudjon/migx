@@ -2,9 +2,9 @@
 
 Not on the pipeline that produced it.
 
-A resolver is trusted or not based on what it produced, never on where
-to get it. That is deliberate: the file contract and the licensing line end up
-being the same line, because the paths that cut legal corners are the
+A resolver is trusted on what it produced, never on where it claimed to get
+it. That is deliberate: the file contract and the licensing line end up being
+the same line, because the paths that cut legal corners are the same paths
 that hand you a lossy->lossy transcode.
 
     lossless        FLAC / WAV / AIFF / ALAC          -> eligible
@@ -12,8 +12,9 @@ that hand you a lossy->lossy transcode.
     mp3-vbr-high    VBR averaging >= 220 kbps         -> needs --allow-tier
     below-bar       everything else                   -> refused
 
-A YouTube-sourced file lands in `below-bar` or `mp3-vbr-high` nearly
-it is Opus re-encoded to MP3, so it cannot present as true 320 CBR.
+A YouTube-sourced file lands in `below-bar` or `mp3-vbr-high` essentially
+always: spotDL's own README documents a 128 kbps ceiling (256 with YT Music
+premium), re-encoded to MP3 — it cannot present as true 320 CBR.
 
 Header parsing is stdlib only — no mutagen, no ffprobe dependency.
 """
@@ -120,7 +121,7 @@ def _parse_frame(header: bytes) -> dict[str, Any] | None:
     }
 
 
-def _inspect_mp3(data: bytes) -> dict[str, Any]:
+def _inspect_mp3(data: bytes, total_size: int) -> dict[str, Any]:
     offset = _skip_id3(data)
     # Find the first frame sync.
     first = None
@@ -145,6 +146,14 @@ def _inspect_mp3(data: bytes) -> dict[str, Any]:
     declared_vbr = marker == b"Xing"
     declared_cbr = marker == b"Info"
 
+    # Xing/Info carries the exact frame count when the FRAMES flag is set —
+    # the only accurate duration for a VBR file.
+    xing_frames = None
+    if declared_vbr or declared_cbr:
+        flags = int.from_bytes(data[tag_at + 4 : tag_at + 8], "big")
+        if flags & 0x01:
+            xing_frames = int.from_bytes(data[tag_at + 8 : tag_at + 12], "big")
+
     # Sample real frame bitrates to catch files with no Xing/Info tag at all.
     rates: list[int] = []
     cursor = offset
@@ -161,6 +170,18 @@ def _inspect_mp3(data: bytes) -> dict[str, Any]:
     avg = sum(rates) / len(rates) if rates else first["bitrate"]
     is_cbr = declared_cbr or (not declared_vbr and len(observed) == 1)
 
+    # Duration: exact from the Xing frame count when present; otherwise derive
+    # from the audio byte length, which is accurate for CBR (the common case)
+    # and only an estimate for an untagged VBR file.
+    samples_per_frame = 1152 if first["version"] == 3 else 576
+    if xing_frames:
+        duration_s = xing_frames * samples_per_frame / first["sample_rate"]
+    elif avg > 0:
+        audio_bytes = max(0, total_size - offset)
+        duration_s = audio_bytes * 8 / (avg * 1000)
+    else:
+        duration_s = None
+
     info = {
         "codec": "mp3",
         "bitrate_kbps": round(avg),
@@ -168,6 +189,7 @@ def _inspect_mp3(data: bytes) -> dict[str, Any]:
         "mode": "cbr" if is_cbr else "vbr",
         "lossless": False,
         "observed_bitrates": observed,
+        "duration_s": round(duration_s, 2) if duration_s else None,
     }
 
     if is_cbr and first["bitrate"] == 320:
@@ -199,25 +221,42 @@ def _inspect_flac(data: bytes) -> dict[str, Any]:
     packed = int.from_bytes(block[10:18], "big")
     sample_rate = (packed >> 44) & 0xFFFFF
     bit_depth = ((packed >> 36) & 0x1F) + 1
+    # STREAMINFO's low 36 bits are the total sample count — an exact duration,
+    # no estimation needed.
+    total_samples = packed & 0xFFFFFFFFF
+    duration_s = (
+        round(total_samples / sample_rate, 2)
+        if sample_rate and total_samples
+        else None
+    )
     return {
         "codec": "flac",
         "lossless": True,
         "sample_rate": sample_rate,
         "bit_depth": bit_depth,
+        "duration_s": duration_s,
         "mode": "lossless",
         "tier": TIER_LOSSLESS,
         "reason": f"FLAC {bit_depth}-bit / {sample_rate} Hz",
     }
 
 
-def _inspect_riff(data: bytes) -> dict[str, Any]:
+def _inspect_riff(data: bytes, total_size: int) -> dict[str, Any]:
     sample_rate = struct.unpack("<I", data[24:28])[0] if len(data) >= 28 else 0
     bit_depth = struct.unpack("<H", data[34:36])[0] if len(data) >= 36 else 0
+    channels = struct.unpack("<H", data[22:24])[0] if len(data) >= 24 else 0
+    byte_rate = sample_rate * channels * (bit_depth // 8)
+    # 44 bytes is the canonical header; good enough for a duration estimate
+    # without walking every chunk.
+    duration_s = (
+        round(max(0, total_size - 44) / byte_rate, 2) if byte_rate else None
+    )
     return {
         "codec": "wav",
         "lossless": True,
         "sample_rate": sample_rate,
         "bit_depth": bit_depth,
+        "duration_s": duration_s,
         "mode": "lossless",
         "tier": TIER_LOSSLESS,
         "reason": f"WAV {bit_depth}-bit / {sample_rate} Hz",
@@ -272,7 +311,7 @@ def inspect(
     if data[:4] == b"fLaC":
         info = _inspect_flac(data)
     elif data[:4] == b"RIFF" and data[8:12] == b"WAVE":
-        info = _inspect_riff(data)
+        info = _inspect_riff(data, path.stat().st_size)
     elif data[:4] == b"FORM" and data[8:12] in (b"AIFF", b"AIFC"):
         info = {
             "codec": "aiff",
@@ -284,7 +323,7 @@ def inspect(
     elif data[4:8] == b"ftyp":
         info = _inspect_mp4(data, path)
     elif data[:3] == b"ID3" or (len(data) > 1 and data[0] == 0xFF):
-        info = _inspect_mp3(data)
+        info = _inspect_mp3(data, path.stat().st_size)
     else:
         info = {
             "codec": "unknown",

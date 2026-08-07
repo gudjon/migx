@@ -106,12 +106,25 @@ A resolver answers exactly one question: *where is the audio for this identity?*
 | Gate | output **always** passes `quality.verdict` — no resolver self-certifies |
 | Registration | by name; core ships `local-files` only |
 
-Match order: **ISRC** (exact, needs no scoring) → **artist+title** (normalised,
-duration-confirmed) → **title-only** (only when unambiguous).
+Match order: **ISRC** (exact, needs no scoring) → **scored** (best candidate
+above the floor wins).
 
-Normalisation strips what differs between a store's metadata and Spotify's for
-the same recording — `(Original Mix)`, `(feat. …)`, `- Remastered 2011`,
-accents — for *matching only*, never for naming.
+The scoring model is adapted from [spotDL's `utils/matching.py`][spotdl] (MIT,
+so compatible with Migx's GPL-2): artist similarity, title similarity, and a
+duration term with exponential decay, with rejection floors rather than a
+single blended threshold.
+
+**One deliberate inversion for DJ use.** spotDL *penalises* `remix`, `live`,
+`instrumental` as likely false positives — correct for a consumer who wants the
+album version. For a DJ those are frequently the track you actually want, so
+here they are treated as **identity**: a variant mismatch in *either* direction
+is penalised, and `Feel It` never silently resolves to `Feel It (Extended Mix)`.
+Words that really are noise for matching — `(Original Mix)`, `Remastered 2011`,
+`(feat. …)`, accents — are stripped instead, and never penalised.
+
+Normalisation applies to *matching only*, never to naming.
+
+[spotdl]: https://github.com/spotDL/spotify-downloader
 
 ### Own-but-low is an upgrade, never a re-buy
 

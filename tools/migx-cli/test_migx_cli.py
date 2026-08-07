@@ -375,8 +375,8 @@ def main() -> int:
             "ISRC matched despite the differing title",
         )
         check(
-            report["below_bar"][0]["method"] == "artist+title",
-            "fuzzy match used when ISRC differs",
+            report["below_bar"][0]["method"] == "scored",
+            "scored match used when ISRC differs",
         )
 
         want = resolve.want_list(report)
@@ -387,6 +387,78 @@ def main() -> int:
             "owned-but-low track -> upgrade, never a re-buy",
         )
         check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+
+    # ---- scoring: the DJ inversion of spotDL's variant handling
+    check(
+        resolve.variants("Song (Extended Mix)")
+        == frozenset({"extended", "mix"}),
+        "variant tokens extracted",
+    )
+    check(
+        resolve.variants("Song (Original Mix)") == frozenset(),
+        "'original mix' is noise, stripped before variant extraction",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Feel It", "artists": ["Amelie Lens"]},
+            {"title": "Feel It", "artist": "Amelie Lens"},
+        )
+        is not None,
+        "identical track scores a match",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Feel It", "artists": ["Amelie Lens"]},
+            {"title": "Feel It (Extended Mix)", "artist": "Amelie Lens"},
+        )
+        is None,
+        "an extended mix is NOT the original — the DJ inversion",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Feel It (Remix)", "artists": ["Amelie Lens"]},
+            {"title": "Feel It (Remix)", "artist": "Amelie Lens"},
+        )
+        is not None,
+        "matching variants still match — remix is not penalised per se",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Feel It", "artists": ["Amelie Lens"]},
+            {"title": "Feel It", "artist": "Someone Else"},
+        )
+        is None,
+        "same title, wrong artist is rejected",
+    )
+    check(
+        resolve.score_candidate(
+            {
+                "title": "Feel It",
+                "artists": ["Amelie Lens"],
+                "duration_ms": 300000,
+            },
+            {"title": "Feel It", "artist": "Amelie Lens", "duration_s": 30.0},
+        )
+        is None,
+        "a 4.5-minute gap in duration rejects the match",
+    )
+    check(
+        resolve.score_candidate(
+            {
+                "title": "Feel It",
+                "artists": ["Amelie Lens"],
+                "duration_ms": 300000,
+            },
+            {"title": "Feel It", "artist": "Amelie Lens", "duration_s": 300.5},
+        )
+        is not None,
+        "a matching duration confirms",
+    )
+    check(
+        resolve.time_score(None, 300.0) is None
+        and resolve.time_score(300000, None) is None,
+        "unknown duration scores None rather than penalising",
+    )
 
     # ---- DJ naming: the prefix appears only once the track is analysed
     analysed = {
