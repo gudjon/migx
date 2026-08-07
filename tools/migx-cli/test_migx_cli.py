@@ -3,7 +3,7 @@
 
 Pins what a later change could silently break:
   - the output naming convention (P-07, one writer per artifact family)
-  - the `migx.playlist-mirror/1` and `migx.want-list/1` shapes agents parse
+  - the `migx.playlist-mirror/1` and `migx.gap-list/1` shapes agents parse
   - the quality bar, which is a contract on the file not the pipeline
   - ISRC reading from both TSRC and TXXX, the strongest match key
 
@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from migx_cli import (  # noqa: E402
+    analyze,
     api,
     auth,
     ingest,
@@ -30,8 +31,11 @@ from migx_cli import (  # noqa: E402
     quality,
     ratelimit,
     resolve,
+    sidecar,
+    spark,
     tags,
     tui,
+    watch,
 )
 
 
@@ -341,7 +345,7 @@ def main() -> int:
         meta_b = tags.read(lib / "b.mp3")
         check(meta_b.get("isrc") == "GBZZZ1111111", "TSRC is read")
 
-        # ---- resolver: ISRC wins, and below-bar is an upgrade not a re-buy
+        # ---- resolver: ISRC wins; below-bar is upgrade, not missing
         resolver = resolve.LocalFilesResolver([lib])
         resolver.scan()
         check(resolver.scanned == 2, f"scanned {resolver.scanned} != 2")
@@ -384,14 +388,195 @@ def main() -> int:
             "scored match used when ISRC differs",
         )
 
-        want = resolve.want_list(report)
-        wants = {i["title"]: i["want"] for i in want["items"]}
-        check(wants.get("Not Owned") == "acquire", "absent track -> acquire")
+        gaps = resolve.gap_list(report)
+        statuses = {i["title"]: i["status"] for i in gaps["items"]}
         check(
-            wants.get("Blue Monday") == "upgrade",
-            "owned-but-low track -> upgrade, never a re-buy",
+            statuses.get("Not Owned") == "missing", "absent track -> missing"
         )
-        check(want["schema"] == "migx.want-list/1", "want-list schema pinned")
+        check(
+            statuses.get("Blue Monday") == "upgrade",
+            "owned-but-low track -> upgrade, not a second missing entry",
+        )
+        check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
+
+    # ---- waveform + heat: the single-track view
+    check(spark.waveform([], 10, 4) == [], "no curve, no waveform")
+    wf = spark.waveform([0.1, 1.0], 8, 4)
+    check(len(wf) == 4, "one entry per row")
+    check(all(len(text) == 8 for text, _ in wf), "rows are `width` wide")
+    check(all(len(heats) == 8 for _, heats in wf), "one heat band per column")
+    # Loud columns must reach the top row; that is what makes it a waveform.
+    # Curves are normalised so the peak is 1.0; that column fills the top row.
+    check("█" in wf[0][0], "a full-scale column reaches the top row")
+    check(
+        "█" not in spark.waveform([0.1, 0.9], 8, 4)[0][0],
+        "a 0.9 column stops short of the top — partial blocks, not rounding up",
+    )
+    check(wf[-1][0].strip() != "", "the bottom row is filled for any signal")
+    check(
+        spark.heat(0.0) == 0 and spark.heat(1.0) == spark.HEAT_LEVELS - 1,
+        "heat spans the full band range",
+    )
+    check(spark.heat(-5) == 0, "negative energy clamps to the coolest band")
+    axis = spark.time_axis(120, 40)
+    check("0:00" in axis and "2:00" in axis, f"time axis ends: {axis!r}")
+    check(len(axis) == 40, "axis matches the width")
+    check(spark.time_axis(0, 40) == "", "no duration, no axis")
+
+    # ---- sparkline: shape of a track in one line, with cue markers
+    check(spark.sparkline([], 10) == "", "empty curve renders empty")
+    check(len(spark.sparkline([0.5] * 64, 24)) == 24, "resamples to width")
+    check(
+        spark.sparkline([0.0, 1.0], 2)[0] == spark.BLOCKS[0]
+        and spark.sparkline([0.0, 1.0], 2)[1] == spark.BLOCKS[-1],
+        "0 and 1 map to the lowest and highest block",
+    )
+    # Downsampling must average, not sample — dropping peaks between samples
+    # would hide exactly the drops a DJ is looking for.
+    check(
+        spark.sparkline([0.0, 1.0, 0.0, 1.0], 2)
+        == spark.sparkline([0.5, 0.5], 2),
+        "downsampling averages rather than dropping values",
+    )
+
+    ruler = spark.cue_ruler(
+        [{"position": 0, "label": "start"}, {"position": 100, "label": "end"}],
+        100,
+        10,
+    )
+    check(ruler and ruler[0][0] == "▲", "first cue marks column 0")
+    check(ruler[0][-1] == "▲", "a cue at the end lands in the last column")
+    check(
+        spark.cue_ruler([{"position": 5}], 0, 10) == [],
+        "unknown duration draws no ruler rather than a wrong one",
+    )
+    check(spark.cue_ruler([], 100, 10) == [], "no cues, no ruler")
+
+    # ---- watch: a file still downloading must never be filed
+    with tempfile.TemporaryDirectory() as tmp:
+        inbox = Path(tmp)
+        exts = {".mp3"}
+        seen: dict = {}
+        growing = inbox / "downloading.mp3"
+        growing.write_bytes(b"x" * 1000)
+        clock = 1000.0
+
+        for step in range(4):
+            clock += 10
+            growing.write_bytes(b"x" * (1000 + step * 500))
+            ready = watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+            check(not ready, "a growing file is never ready")
+
+        clock += 30  # it stops changing
+        ready = watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+        check(
+            [p.name for p in ready] == ["downloading.mp3"],
+            "a quiet file becomes ready once settled",
+        )
+
+        # Downloader debris shares the inbox and is never audio.
+        (inbox / "subs.srt").write_bytes(b"x")
+        (inbox / "half.crdownload").write_bytes(b"x")
+        (inbox / ".thumb").mkdir()
+        (inbox / ".thumb" / "art.mp3").write_bytes(b"x")
+        (inbox / watch.FILED_DIR).mkdir()
+        (inbox / watch.FILED_DIR / "done.mp3").write_bytes(b"x")
+        clock += 60
+        names = {
+            p.name
+            for p in watch.stable_files(inbox, exts, seen, 20.0, now=clock)
+        }
+        check(names == {"downloading.mp3"}, f"debris ignored: got {names}")
+
+        # Parking must move, never delete.
+        parked = watch.park(inbox / "downloading.mp3", inbox)
+        check(parked is not None and parked.is_file(), "parked file exists")
+        check(
+            not (inbox / "downloading.mp3").exists(),
+            "parking removes it from the inbox root",
+        )
+        check(
+            parked.parent.name == watch.FILED_DIR,
+            "parked into _filed/, not deleted",
+        )
+
+    # ---- analyze: results land in the sidecar without losing notes
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "A - B.mp3"
+        audio.write_bytes(_mp3(14))
+        sidecar.set_note(audio, note="keep me", tags=["keep"])
+        sidecar.add_cue(audio, 30.0, "cue stays")
+        analyze.store({"path": str(audio), "bpm": 128.0, "key": "Am"})
+        side = sidecar.read(audio)
+        check(side.get("bpm") == 128.0, "analysis stores bpm")
+        check(side.get("key") == "Am", "analysis stores key text")
+        check(side.get("camelot") == "8A", "key is folded to Camelot")
+        check(side.get("notes") == "keep me", "analysis preserves notes")
+        check(len(side.get("cues") or []) == 1, "analysis preserves cues")
+        # An implausible tempo must not be written into a filename.
+        analyze.store({"path": str(audio), "bpm": 0})
+        check(
+            sidecar.read(audio)["bpm"] == 128.0, "junk bpm does not overwrite"
+        )
+
+    # ---- sidecar: notes + cues, and never clobber the analyzer's work
+    check(sidecar.parse_position("90") == 90.0, "bare seconds")
+    check(sidecar.parse_position("1:30") == 90.0, "mm:ss")
+    check(sidecar.parse_position("1m30s") == 90.0, "1m30s")
+    check(sidecar.parse_position("1:01:00") == 3660.0, "hh:mm:ss")
+    check(sidecar.fmt_position(275) == "4:35", "position formats back")
+    check(sidecar.fmt_position(None) == "--:--", "unknown position is safe")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "Artist - Title.mp3"
+        audio.write_bytes(_mp3(14))
+        check(
+            sidecar.read(audio) == {}, "no sidecar reads as empty, not error"
+        )
+
+        # Pretend the analyzer got there first.
+        sidecar.write(
+            audio,
+            {
+                "bpm": 124.0,
+                "key": "Am",
+                "energy_curve": {"points": [0.1, 0.9]},
+            },
+        )
+        sidecar.set_note(audio, note="girly song", tags=["girly"])
+        sidecar.add_cue(audio, 275.0, "mix out here")
+        sidecar.add_cue(audio, 62.0, "intro over")
+        data = sidecar.read(audio)
+
+        check(data.get("bpm") == 124.0, "note write preserves analyzer bpm")
+        check(data.get("key") == "Am", "note write preserves key")
+        check("energy_curve" in data, "note write preserves energy curve")
+        check(data.get("notes") == "girly song", "note stored")
+        check(data.get("tags") == ["girly"], "tag stored")
+        check(len(data.get("cues") or []) == 2, "both cues stored")
+        check(
+            [c["position"] for c in data["cues"]] == [62.0, 275.0],
+            "cues are kept sorted by position",
+        )
+        check(
+            data["cues"][0]["label"] == "intro over",
+            "cue label survives the sort",
+        )
+
+        sidecar.set_note(audio, tags=["peak"], append=True)
+        check(
+            sidecar.read(audio)["tags"] == ["girly", "peak"],
+            "append extends tags instead of replacing",
+        )
+        check(
+            sidecar.read(audio).get("notes") == "girly song",
+            "appending a tag leaves the note alone",
+        )
+        # The sidecar lives inside Collection; nothing may treat it as audio.
+        check(
+            sidecar.track_file(audio).suffix == ".json",
+            "sidecar is track.json inside <audio>.migx/",
+        )
 
     # ---- TUI: the snapshot is pure data, so it is testable without a screen
     snap = tui.snapshot()
@@ -399,11 +584,20 @@ def main() -> int:
         "library_root",
         "mirror_count",
         "collection_count",
-        "want_acquire",
+        "missing_count",
         "template",
     ):
         check(field in snap, f"snapshot carries {field}")
     check(isinstance(snap["mirrors"], list), "mirrors is a list")
+    check("Track" in tui.PANES, "single-track mode exists")
+    check(
+        {"Library", "Arrange", "Prep"} <= set(tui.PANES),
+        "modes use the house vocabulary (ADR-007)",
+    )
+    check(
+        tui.track_view(None) and tui.track_view(None)[0][1] is None,
+        "no selection renders guidance, not a crash",
+    )
     for pane in tui.PANES:
         rows = tui._rows(pane, snap)
         check(isinstance(rows, list), f"{pane} renders a list of lines")
@@ -413,14 +607,14 @@ def main() -> int:
         **snap,
         "collection": [],
         "mirrors": [],
-        "want": [],
+        "gaps": [],
         "crates": [],
         "collection_count": 0,
         "mirror_count": 0,
         "mirror_tracks": 0,
         "analysed_count": 0,
-        "want_acquire": 0,
-        "want_upgrade": 0,
+        "missing_count": 0,
+        "upgrade_count": 0,
     }
     for pane in tui.PANES:
         rows = tui._rows(pane, blank)
@@ -588,6 +782,33 @@ def main() -> int:
         )
         is None,
         "same title, wrong artist is rejected",
+    )
+    # A store may credit the featured artist as `artist` and the headliner as
+    # `album_artist`. Beatport did exactly that for Jon Hopkins / Imogen Heap,
+    # and scoring only `artist` rejected a track bought off the want-list.
+    check(
+        resolve.score_candidate(
+            {"title": "Reckoning", "artists": ["Jon Hopkins"]},
+            {
+                "title": "Reckoning",
+                "artist": "Imogen Heap",
+                "album_artist": "Jon Hopkins",
+            },
+        )
+        is not None,
+        "matches when the headliner is only in album_artist",
+    )
+    check(
+        resolve.score_candidate(
+            {"title": "Reckoning", "artists": ["Jon Hopkins"]},
+            {
+                "title": "Reckoning",
+                "artist": "Someone Else",
+                "album_artist": "Nobody At All",
+            },
+        )
+        is None,
+        "both artist fields wrong is still rejected",
     )
     check(
         resolve.score_candidate(

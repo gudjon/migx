@@ -34,7 +34,21 @@ import subprocess
 import sys
 from pathlib import Path
 
-ARCFLOW = Path.home() / ".arcflow" / "bin" / "arcflow"
+DEFAULT_ARCFLOW = Path.home() / ".arcflow" / "bin" / "arcflow"
+
+
+def arcflow_bin(explicit: str | None) -> Path:
+    """Which arcflow to drive: --arcflow > $MIGX_ARCFLOW_BIN > installed.
+
+    The override exists because the released binary and a locally patched
+    build can disagree — the UTF-8 panic is fixed in the checkout long before
+    a release carries it. Pointing at a build is reversible; replacing the
+    binary in ~/.arcflow/bin is not.
+    """
+    import os as _os
+
+    chosen = explicit or _os.environ.get("MIGX_ARCFLOW_BIN") or ""
+    return Path(chosen).expanduser() if chosen else DEFAULT_ARCFLOW
 
 
 def cy(value: str | None) -> str:
@@ -112,22 +126,26 @@ def statements(mirror_dir: Path, limit: int | None) -> tuple[list[str], dict]:
     return out, stats
 
 
-def run_repl(stmts: list[str], data_dir: Path) -> int:
+def run_repl(stmts: list[str], data_dir: Path, binary: Path) -> int:
     """Feed every statement to one REPL process.
 
     14k subprocesses would be absurd; one process handles the batch.
     """
     proc = subprocess.run(
-        [str(ARCFLOW), "--data-dir", str(data_dir)],
+        [str(binary), "--data-dir", str(data_dir)],
         input="\n".join(stmts) + "\n",
         capture_output=True,
         text=True,
         timeout=1800,
     )
+    # Match how arcflow actually reports failure. A bare "error" substring
+    # also matches result rows whose data contains the word, which reported
+    # four phantom failures on a clean load.
     errors = [
         ln
         for ln in proc.stdout.splitlines()
-        if "error" in ln.lower() and "no results" not in ln.lower()
+        if ln.lstrip().startswith(("Compile error", "Runtime error", "error:"))
+        or "panicked at" in ln
     ]
     for line in errors[:5]:
         print(f"  ! {line.strip()[:150]}", file=sys.stderr)
@@ -144,6 +162,12 @@ def main() -> int:
     )
     ap.add_argument("--data-dir", default=str(Path.home() / ".migx" / "graph"))
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--arcflow",
+        default=None,
+        help="arcflow binary to drive (else $MIGX_ARCFLOW_BIN, "
+        "else ~/.arcflow/bin/arcflow)",
+    )
     args = ap.parse_args()
 
     data_dir = Path(args.data_dir).expanduser()
@@ -157,7 +181,12 @@ def main() -> int:
         flush=True,
     )
 
-    errors = run_repl(stmts, data_dir)
+    binary = arcflow_bin(args.arcflow)
+    if not binary.is_file():
+        print(f"error: no arcflow binary at {binary}", file=sys.stderr)
+        return 2
+    print(f"driving {binary}", flush=True)
+    errors = run_repl(stmts, data_dir, binary)
     print(
         f"loaded into {data_dir}"
         + (f" with {errors} errors" if errors else ""),

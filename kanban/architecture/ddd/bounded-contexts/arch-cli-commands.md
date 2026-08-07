@@ -80,7 +80,7 @@ claiming those later capabilities ship today.
 | `collection` | the one on-disk home for audio files | `TrackCollection`, the DB aggregate (arch-library-db) |
 | `mirror` | a dated local snapshot of a remote playlist | a mixer/monitor "mirror" of audio |
 | `resolver` | identity → local file strategy | a DNS resolver, or `Path.resolve()` |
-| `want-list` | ISRC-keyed list of what to acquire or upgrade | a wishlist UI feature |
+| `gap-list` | ISRC-keyed missing + upgrade report (`migx.gap-list/1`) | a wishlist UI feature |
 | `tier` | a quality classification of a file | a subscription tier |
 | `spotify` | the remote catalogue this context reads identities from | a playback source (Migx has none) |
 | `system` | the reserved namespace for surface introspection | the OS |

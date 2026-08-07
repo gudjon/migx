@@ -2,7 +2,7 @@
 
 Why this exists: a Spotify mirror says a track is *on a list*. A scrobble says
 you played it, how often, and **what you played next**. Play counts turn an
-undifferentiated want-list into a priority order, and consecutive scrobbles are
+undifferentiated gap list into a priority order, and consecutive scrobbles are
 the transition corpus `initiative-ai-djing-product` is built on.
 
 Same posture as the Spotify client (`api.py`):

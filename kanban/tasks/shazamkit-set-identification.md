@@ -16,14 +16,14 @@ acceptance: |
   `set.identify <audio-file>` emits migx.setlist/1 with one entry per matched
   track carrying isrc, title, artist, matchOffset (seconds into the set) and
   confidence; the output feeds `library.missing` unchanged so an identified
-  set produces an ISRC-keyed want-list. Verified against a real mixed set with
+  set produces an ISRC-keyed gap list. Verified against a real mixed set with
   at least one pitched track.
 ---
 
 # ShazamKit set identification
 
 Deferred, not rejected: the individual-song path (Spotify identity → mirror →
-want-list) lands first. This card exists so the API research is not re-done.
+`library.missing`) lands first. This card exists so the API research is not re-done.
 
 ## Why it fits Migx specifically
 
@@ -51,8 +51,7 @@ a DJ does to a track. `matchOffset` is what turns a match list into a
 It is identification, not acquisition — no audio is copied or redistributed, so
 it sits cleanly on the legitimate side of the line the CLI already draws
 (`tools/migx-cli/README.md`). Output is ISRC-keyed, so it feeds the existing
-`migx.want-list/1` path with no new plumbing: *set → tracklist → what I don't
-own → buy*.
+`migx.gap-list/1` path with no new plumbing: *set → tracklist → library.missing*.
 
 It also feeds the co-pilot moat directly (`kanban/Strategy-Current.md`): a
 corpus of what good DJs actually play together is stronger signal than the

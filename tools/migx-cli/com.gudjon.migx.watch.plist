@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent: file new purchases from _Inbox automatically.
+
+  Why launchd rather than a daemon of our own: it is macOS-native, needs no
+  third-party dependency, survives logout and reboot, and WatchPaths wakes it
+  on directory change instead of burning a poll loop all day.
+
+  It runs `library.watch --once`, so each wake is a single pass that exits.
+  A long-lived process holding the SSD open would keep the volume from
+  ejecting cleanly.
+
+  Install:
+    cp tools/migx-cli/com.gudjon.migx.watch.plist ~/Library/LaunchAgents/
+    launchctl load  ~/Library/LaunchAgents/com.gudjon.migx.watch.plist
+
+  Stop:
+    launchctl unload ~/Library/LaunchAgents/com.gudjon.migx.watch.plist
+
+  Watch it work:
+    tail -f ~/Library/Logs/migx-watch.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gudjon.migx.watch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/gudjon/code/migx/tools/migx-cli/migx</string>
+        <string>library.watch</string>
+        <string>--once</string>
+        <!-- 60s of quiet before a file is touched: generous enough that a
+             slow download over hotel wifi is never mistaken for finished. -->
+        <string>--settle</string>
+        <string>60</string>
+    </array>
+
+    <!-- Wake on change instead of polling. Two things learned the hard way:
+         (1) WatchPaths fires the instant a file ARRIVES, when it is zero
+             seconds old and cannot have settled. `library.watch --once`
+             therefore drains rather than taking one snapshot, or nothing
+             would ever be filed.
+         (2) WatchPaths is NOT recursive — a download into
+             _Inbox/SomeFolder/ never fires it. StartInterval below is what
+             catches those. -->
+    <key>WatchPaths</key>
+    <array>
+        <string>/Volumes/Code/Music/_Inbox</string>
+    </array>
+
+    <!-- Catches subfolder drops (WatchPaths cannot see them), missed
+         events, and the SSD being plugged back in. Five minutes: a drain
+         pass over an empty inbox costs milliseconds. -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Never let library filing compete with audio playback for CPU. -->
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/gudjon/Library/Logs/migx-watch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/gudjon/Library/Logs/migx-watch.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+    </dict>
+</dict>
+</plist>

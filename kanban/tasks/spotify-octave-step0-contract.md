@@ -1,7 +1,7 @@
 ---
 id: spotify-octave-step0-contract
 type: task
-title: "Freeze Octave-style Spotify contract (no dual-stream in core)"
+title: "Freeze Octave-style Spotify contract (metadata + prep first)"
 status: done
 owner: gudjon
 priority: high
@@ -12,39 +12,38 @@ authored_by: grok-signal
 authored_kind: agent
 triggered_by: "Octave concept doc + spotify-octave-style-doable-steps"
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-07"
 acceptance: |
   In/out scope written and pointed from EXO + knowledge notes; dual Spotify multi-deck
-  and DRM rip/cache explicitly out of core.
+  via public APIs deferred; wave-1 is metadata + prep + local multi-deck.
 ---
 
 # Spotify Step 0 — contract (done)
 
 SSoT for the stepwise plan: `kanban/knowledge/spotify-octave-style-doable-steps.md`  
-Landscape (partner reality): `kanban/knowledge/spotify-dj-integration-landscape-2026.md`
+Landscape: `kanban/knowledge/spotify-dj-integration-landscape-2026.md`
 
-## In scope (core / EXO)
+## In scope (core / EXO / CLI)
 
 1. **Metadata identity** — Spotify URIs / ISRC on ontology + FSL later  
 2. **Hybrid crates** — local files + Spotify-id tracks in one session graph  
 3. **Prep station** — cues/notes/order as **local session state** on any source  
-4. **Agent reasoning** — EXO transitions over hybrid sets (no RT, no stream decode)  
-5. **Later (not this task)** — sequential listen via official player surface; OAuth metadata sync  
+4. **Agent reasoning** — EXO transitions over hybrid sets (no RT)  
+5. **Later** — sequential listen via official player surface; OAuth metadata sync (CLI wave-1 landed much of this)
 
-## Out of scope (core — never “just ship”)
+## Deferred / harder (not wave-1 acceptance)
 
-1. Dual-deck / overlap mix of two Spotify streams via public APIs  
-2. Offline full-track Spotify locker / re-host / rip  
-3. Stems or recording of Spotify audio in core  
-4. Reverse-engineering partner (djay/Serato/rekordbox) stream SDKs  
-5. Grey-zone circumvention modules as a v1 dependency  
+1. Dual-deck overlap of two Spotify catalog streams via public APIs alone  
+2. Offline re-host of catalog streams as a core dependency  
+3. Stems / record of stream audio without a supported SDK feature  
+4. Reverse-engineering closed partner stream clients  
 
 ## Product rule
 
-If the user tries two Spotify tracks on decks A/B → offer **sequence Automix / prep**,  
-not silent illegal dual stream. True multi-deck remains **local / open audio**.
+If the user tries two Spotify catalog tracks on decks A/B → offer **sequence Automix / prep** until
+a supported dual-stream path exists. True multi-deck remains **local / open audio** for wave 1.
 
 ## Verified
 
 - Contract mirrored in EXO fixtures Wave “Spotify hybrid” (schema + session-hybrid).  
-- Follow-ons: `spotify-octave-step2-metadata-oauth` (open), prep UI after fixtures.  
+- Follow-ons: CLI OAuth + playlist mirrors; prep UI after fixtures.  

@@ -1,10 +1,10 @@
-"""Resolve a batch of Spotify track links into an actionable sheet.
+"""Resolve a batch of Spotify track links into an identity sheet.
 
 The workflow this serves: you have a handful of links you care about and you
 want to know, for each one, *what it actually is* (exact recording, via ISRC)
-and *whether you already own it*.
+and *whether a matching file is already in the library*.
 
-Deliberately mirror-first. The 83 mirrors already hold 3,700+ recordings with
+Deliberately mirror-first. Local playlist mirrors already hold recordings with
 their `spotify_id`, so a link you have saved anywhere is almost always a local
 lookup — zero API calls, works offline, and immune to the development-mode
 restriction that 403s `/v1/tracks` outright.
@@ -16,7 +16,6 @@ import glob
 import json
 import os
 import re
-import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -66,28 +65,6 @@ def index_mirrors(mirror_root: Path) -> tuple[dict, dict]:
     return by_id, on_lists
 
 
-def store_links(entry: dict[str, Any]) -> dict[str, str]:
-    """Search URLs. ISRC first — it resolves to one exact recording."""
-    artist = (entry.get("artists") or [""])[0]
-    query = urllib.parse.quote(f"{artist} {entry.get('title') or ''}".strip())
-    isrc = entry.get("isrc")
-    links = {
-        "beatport": f"https://www.beatport.com/search?q={query}",
-        "bandcamp": f"https://bandcamp.com/search?q={query}",
-    }
-    if entry.get("spotify_id"):
-        links["spotify"] = (
-            f"https://open.spotify.com/track/{entry['spotify_id']}"
-        )
-    if isrc:
-        # An ISRC search disambiguates radio edit vs extended mix vs remix,
-        # which a title search cannot.
-        links["beatport_isrc"] = (
-            f"https://www.beatport.com/search?q={urllib.parse.quote(isrc)}"
-        )
-    return links
-
-
 def build(
     ids: list[str], mirror_root: Path, resolver: Any | None = None
 ) -> dict[str, Any]:
@@ -111,7 +88,6 @@ def build(
                 "on_playlists": sorted(on_lists.get(sid, [])),
                 "owned": bool(owned),
                 "path": (owned or {}).get("path"),
-                "links": store_links(entry),
             }
         )
 
@@ -137,15 +113,12 @@ def to_tsv(sheet: dict[str, Any]) -> str:
         "length",
         "owned",
         "on_playlists",
-        "beatport_isrc",
-        "beatport",
-        "bandcamp",
-        "spotify",
+        "spotify_id",
+        "path",
     ]
     lines = ["\t".join(head)]
     for r in sheet["tracks"]:
         ms = r.get("duration_ms") or 0
-        links = r["links"]
         lines.append(
             "\t".join(
                 [
@@ -156,10 +129,8 @@ def to_tsv(sheet: dict[str, Any]) -> str:
                     f"{ms // 60000}:{(ms // 1000) % 60:02d}",
                     "yes" if r["owned"] else "",
                     "; ".join(r["on_playlists"]),
-                    links.get("beatport_isrc", ""),
-                    links.get("beatport", ""),
-                    links.get("bandcamp", ""),
-                    links.get("spotify", ""),
+                    r.get("spotify_id") or "",
+                    r.get("path") or "",
                 ]
             )
         )

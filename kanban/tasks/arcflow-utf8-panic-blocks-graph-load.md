@@ -2,7 +2,7 @@
 id: arcflow-utf8-panic-blocks-graph-load
 type: task
 title: "ArcFlow 0.11.9 panics on non-ASCII during relationship CREATE — blocks the mirror graph"
-status: blocked
+status: done
 owner: gudjon
 priority: high
 initiative: initiative-ai-djing-product
@@ -14,7 +14,7 @@ created: "2026-08-07"
 lastUpdated: "2026-08-07"
 acceptance: |
   The 3-line repro below completes without a panic on the installed ArcFlow,
-  and `mirrors-to-graph` loads all 83 mirrors (3727 tracks, 2102 artists)
+  and `mirrors-to-graph` loads all 83 mirrors (3720 tracks, 2962 artists)
   with zero errors. Verified by re-running the loader and querying
   `MATCH (t:Track)-[:BY]->(a:Artist) RETURN count(*)`.
 ---
@@ -41,9 +41,10 @@ thread 'main' panicked at crates/arcflow-runtime/src/lib.rs:23872:45:
 start byte index 60 is not a char boundary; it is inside 'é' (bytes 59..61 of string)
 ```
 
-Replace `Ysée` with `Ysee` and it is clean. The panic is a byte-index slice
-at a fixed offset (60) that does not check UTF-8 char boundaries — in the
-failing statement, byte 60 lands mid-`é`:
+Replace `Ysée` with `Ysee` and it is clean. The panic came from a byte-wise
+cursor in query-cache normalization forming `query[i..]` after advancing into
+a UTF-8 continuation byte. In the failing statement, the incidental cursor
+position 60 lands mid-`é`:
 
 ```python
 b" 'Ys\xc3\xa9e'})"   # bytes 55..65 of the query
@@ -59,19 +60,19 @@ b" 'Ys\xc3\xa9e'})"   # bytes 55..65 of the query
 | Same statement, `é` moved off offset 60 (padded key) | no |
 | `CREATE` of a non-ASCII node alone, any length | no |
 
-So the trigger is **statement text, not stored data**: a multi-byte character
-straddling the hard-coded offset. Any long-enough query with non-ASCII can hit
-it; relationship CREATEs are simply the longest statements we emit.
+So the trigger is **statement text, not stored data**: the byte-wise scan can
+stop inside any multi-byte character. Relationship CREATEs were simply the
+first long statements in this corpus to expose it.
 
 Impact on the load: the process dies mid-batch, so nothing after it is applied
-and the snapshot is partial (we saw 50 of 3727 nodes).
+and the snapshot is partial (the original failed run stopped at 50 nodes).
 
 ## Fix (arcflow-core)
 
-`crates/arcflow-runtime/src/lib.rs:23872` — replace the raw `&s[..60]`-style
-slice with a char-safe truncation, e.g. `s.char_indices().take_while(|(i, _)|
-*i < 60)` or `floor_char_boundary`. Then add a UTF-8 case to the query-parsing
-tests; a Nordic/CJK fixture would have caught this.
+`QueryCache::normalize_query_literals` now detects ASCII keywords through
+bounded byte slices and advances ordinary text by complete Unicode scalar
+values. Public runtime and Python FFI regressions cover the three-statement
+Nordic fixture. There was no fixed truncation boundary to round down.
 
 ## Workarounds considered
 
@@ -82,7 +83,27 @@ tests; a Nordic/CJK fixture would have caught this.
 - **Strip accents before loading** — corrupts the data to suit the bug; the
   graph would no longer match the mirrors. Rejected.
 
-Blocked pending the upstream fix. The loader is committed and ready.
+**Resolved.** Fixed in the arcflow-core checkout; the installed local CLI now
+passes the 3-line repro with the relationship created and `Ysée` intact.
+
+Because the published 0.11.9 binary lags the source fix, the loader also takes
+`--arcflow` (or `$MIGX_ARCFLOW_BIN`) for explicit build selection. The local
+installation was updated recoverably, with the published binary retained as a
+timestamped backup.
+
+The first successful UTF-8 load exposed a second transport bug: the REPL split
+on semicolons inside quoted strings, omitting `Chicane;Máire Brennan` and its
+`BY` edge. ArcFlow's shared CLI/PG-wire splitter is now quote-aware, with unit
+and subprocess REPL regressions.
+
+Full load against the patched build:
+
+```text
+83 mirrors -> 3720 tracks, 2962 artists, 83 playlists (16248 statements), 0:12
+graph: 3720 Track · 2962 Artist · 83 Playlist · 5067 BY · 4416 ON
+snapshot: generation 16248 · 6765 nodes · 9483 relationships
+non-ASCII and punctuation intact: Ysée, trentemøller, Chicane;Máire Brennan
+```
 
 ## Related
 

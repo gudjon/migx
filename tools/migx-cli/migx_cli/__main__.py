@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from . import (
+    analyze,
     api,
     auth,
     config,
@@ -32,8 +33,11 @@ from . import (
     naming,
     quality,
     ratelimit,
+    rename,
     resolve,
+    sidecar,
     tracklist,
+    watch,
 )
 
 REPO = Path(__file__).resolve().parents[3]
@@ -126,15 +130,15 @@ CAPABILITIES: list[dict[str, Any]] = [
     {
         "id": "library.missing",
         "kind": "query",
-        "summary": "The want-list: what to acquire, and what to upgrade.",
+        "summary": "Missing tracks and quality upgrades vs Collection.",
         "args": {
             "mirror": "mirror document, or a resolution report",
             "--root": "library root to scan (repeatable)",
-            "--out": "write the want-list here",
+            "--out": "write the gap list here",
         },
-        "emits": "migx.want-list/1",
-        "note": "ISRC-keyed so store lookup is exact. Owning a file below"
-        " the bar is an upgrade, never a re-buy.",
+        "emits": "migx.gap-list/1",
+        "note": "ISRC-keyed. A file below the bar is an upgrade, not a"
+        " second missing entry.",
     },
     {
         "id": "library.ingest",
@@ -198,7 +202,7 @@ CAPABILITIES: list[dict[str, Any]] = [
     {
         "id": "track.pull",
         "kind": "query",
-        "summary": "Resolve Spotify track links into an actionable sheet.",
+        "summary": "Resolve Spotify track links into an identity sheet.",
         "args": {
             "links": "track URLs, URIs, ids, or - to read stdin",
             "--out": "write a TSV here (opens in Numbers/Excel)",
@@ -207,6 +211,80 @@ CAPABILITIES: list[dict[str, Any]] = [
         "note": "Mirror-first: reads your local mirrors, so it needs no API"
         " call and works offline. /v1/tracks is 403 for development-mode"
         " apps anyway.",
+    },
+    {
+        "id": "track.note",
+        "kind": "command",
+        "summary": "Set a DJ note and tags on a track ('girly song').",
+        "args": {
+            "track": "path, or a fragment matched against the Collection",
+            "--note": "free text",
+            "--tag": "repeatable short tag",
+            "--append": "extend instead of replacing",
+        },
+        "writes": "<track>.migx/track.json (sidecar is the SSoT)",
+    },
+    {
+        "id": "track.cue",
+        "kind": "command",
+        "summary": "Bookmark a moment: 'mix out here, 1:30'.",
+        "args": {
+            "track": "path or Collection fragment",
+            "at": "position — 90, 1:30, or 1m30s",
+            "label": "the reminder",
+            "--color": "hex, for the deck display",
+            "--hotcue": "hotcue slot number",
+        },
+        "writes": "<track>.migx/track.json cues[]",
+    },
+    {
+        "id": "track.show",
+        "kind": "query",
+        "summary": "Notes, tags and cues for a track.",
+        "emits": "migx.track-sidecar/1",
+    },
+    {
+        "id": "library.analyze",
+        "kind": "command",
+        "summary": "Detect BPM and key, storing them in the sidecar.",
+        "args": {
+            "paths": "files or directories (default: the Collection)",
+            "--force": "re-analyze tracks that already have bpm+key",
+            "--bin": "path to migx-analyze",
+        },
+        "writes": "<track>.migx/track.json (bpm, key, camelot)",
+        "note": "Runs the app's own AnalyzerBeats/AnalyzerKey via the"
+        " migx-analyze binary — there is no second detector.",
+    },
+    {
+        "id": "library.watch",
+        "kind": "command",
+        "summary": "Watch _Inbox and file new purchases automatically.",
+        "args": {
+            "--inbox": "directory to watch (default: <library>/_Inbox)",
+            "--interval": "seconds between polls (default 10)",
+            "--settle": "seconds a file must be unchanged (default 20)",
+            "--once": "single pass, then exit (for launchd/cron)",
+            "--copy": "copy instead of moving out of the inbox",
+            "--no-analyze": "skip BPM/key detection",
+        },
+        "emits": "migx.ingest-report/1 per batch",
+        "note": "Never touches a file until its size and mtime have been"
+        " stable — a download in progress is indistinguishable from a"
+        " finished file by name alone.",
+    },
+    {
+        "id": "library.rename",
+        "kind": "command",
+        "summary": "Re-file tracks under their current name after analysis.",
+        "args": {
+            "--dry-run": "show what would move",
+            "--template": "dj | library | flat",
+        },
+        "emits": "migx.rename-report/1",
+        "note": "Moves the audio, its .migx sidecar, and every crate entry"
+        " sharing the inode — a sidecar or crate left behind is worse than"
+        " a stale name.",
     },
     {
         "id": "system.capabilities",
@@ -549,30 +627,71 @@ def cmd_library_resolve(args: argparse.Namespace) -> int:
 
 
 def cmd_library_missing(args: argparse.Namespace) -> int:
-    want = resolve.want_list(_run_resolve(args))
+    if args.all:
+        cfg = config.load()
+        root = Path(config.get(cfg, "spotify.mirror_root")).expanduser()
+        mirrors = sorted(
+            f
+            for f in root.rglob("*.json")
+            if not f.name.startswith("_pull-all")
+        )
+        # Scan the Collection once, not once per mirror — 83 rescans of the
+        # same tree is the difference between seconds and minutes.
+        resolver = resolve.get_resolver(
+            args.resolver or "local-files", _config_roots(cfg)
+        )
+        resolver.scan()
+        allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+        per = []
+        for path in mirrors:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            per.append(
+                resolve.gap_list(
+                    resolve.resolve_mirror(doc, resolver, allow_tiers=allow)
+                )
+            )
+        gaps = resolve.merge_gap_lists(per)
+        gaps["mirrors"] = len(per)
+        gaps["scanned_files"] = resolver.scanned
+        # Land in the one place the TUI and everything else look.
+        if not args.out:
+            args.out = str(
+                layout.gap_list_path(Path(config.get(cfg, "library.root")))
+            )
+    else:
+        gaps = resolve.gap_list(_run_resolve(args))
     if args.out:
         out = Path(args.out).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(
-            json.dumps(want, indent=2, ensure_ascii=False) + "\n",
+            json.dumps(gaps, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
 
     if args.json:
-        _out(want, True)
+        _out(gaps, True)
     else:
         print(
-            f"acquire {want['acquire_count']} · "
-            f"upgrade {want['upgrade_count']}"
+            f"missing {gaps['missing_count']} · "
+            f"upgrade {gaps['upgrade_count']}"
         )
-        for item in want["items"]:
-            tag = "BUY " if item["want"] == "acquire" else "UPGR"
+        if args.all:
+            print(
+                f"across {gaps.get('mirrors')} mirrors · "
+                f"{gaps.get('scanned_files')} local files scanned"
+            )
+        shown = gaps["items"] if not args.all else gaps["items"][:25]
+        for item in shown:
+            tag = "UPGR" if item.get("status") == "upgrade" else "MISS"
             isrc = item.get("isrc") or "-"
-            print(f"{tag} {isrc:14} {item['store_query']}")
-        print(
-            "\nISRC is exact — search it at your store before the text query.",
-            file=sys.stderr,
-        )
+            rank = f"x{item['on_playlists']:<2}" if args.all else "   "
+            print(f"{tag} {rank} {isrc:14} {item.get('label') or ''}")
+        if args.all and len(gaps["items"]) > len(shown):
+            print(
+                f"... {len(gaps['items']) - len(shown)} more "
+                f"(--json or --out for all)",
+                file=sys.stderr,
+            )
     return 0
 
 
@@ -811,6 +930,304 @@ def cmd_track_pull(args: argparse.Namespace) -> int:
     return 0
 
 
+def _find_track(fragment: str) -> Path | None:
+    """A path, or the single Collection file whose name contains fragment."""
+    direct = Path(fragment).expanduser()
+    if direct.is_file():
+        return direct
+    root = Path(config.get(config.load(), "library.root"))
+    needle = fragment.lower()
+    hits = [
+        p
+        for p in layout.collection_dir(root).rglob("*")
+        if p.is_file()
+        and not p.name.startswith(".")
+        and needle in p.name.lower()
+    ]
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        print(f"error: no track matching {fragment!r}", file=sys.stderr)
+    else:
+        print(
+            f"error: {fragment!r} matches {len(hits)} tracks:", file=sys.stderr
+        )
+        for h in hits[:8]:
+            print(f"  {h.name}", file=sys.stderr)
+    return None
+
+
+def cmd_track_note(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    data = sidecar.set_note(
+        track, note=args.note, tags=args.tag or None, append=args.append
+    )
+    _out(
+        {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+        args.json,
+        f"{track.name}\n  notes: {data.get('notes') or '—'}\n"
+        f"  tags : {', '.join(data.get('tags') or []) or '—'}",
+    )
+    return 0
+
+
+def cmd_track_cue(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    try:
+        position = sidecar.parse_position(args.at)
+    except ValueError:
+        print(
+            f"error: cannot read position {args.at!r} — try 90, 1:30, 1m30s",
+            file=sys.stderr,
+        )
+        return 2
+    data = sidecar.add_cue(
+        track, position, args.label, color=args.color, hotcue=args.hotcue
+    )
+    _out(
+        {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+        args.json,
+        f"{track.name}\n  + {sidecar.fmt_position(position)}  {args.label}",
+    )
+    return 0
+
+
+def cmd_track_show(args: argparse.Namespace) -> int:
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    data = sidecar.read(track)
+    if args.json:
+        _out(
+            {"schema": "migx.track-sidecar/1", "track": str(track), **data},
+            True,
+        )
+        return 0
+    print(track.name)
+    print(f"  notes: {data.get('notes') or '—'}")
+    print(f"  tags : {', '.join(data.get('tags') or []) or '—'}")
+    cues = data.get("cues") or []
+    if not cues:
+        print("  cues : —")
+    for index, cue in enumerate(cues):
+        print(
+            f"  [{index}] {sidecar.fmt_position(cue.get('position')):>6}  "
+            f"{cue.get('label') or cue.get('type') or ''}"
+        )
+    return 0
+
+
+def cmd_library_analyze(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    roots = args.paths or [
+        str(layout.collection_dir(Path(config.get(cfg, "library.root"))))
+    ]
+    targets: list[Path] = []
+    for raw in roots:
+        p = Path(raw).expanduser()
+        if p.is_dir():
+            targets += sorted(
+                f
+                for f in p.rglob("*")
+                if f.suffix.lower() in AUDIO_EXTS and not f.is_symlink()
+            )
+        elif p.is_file():
+            targets.append(p)
+
+    if not args.force:
+        todo = []
+        for t in targets:
+            side = sidecar.read(t)
+            if not (side.get("bpm") and side.get("camelot")):
+                todo.append(t)
+        skipped = len(targets) - len(todo)
+        targets = todo
+    else:
+        skipped = 0
+
+    bin_path = analyze.binary(args.bin)
+    if not bin_path.is_file():
+        print(
+            f"error: migx-analyze not built at {bin_path}\n"
+            f"  build it with: ninja -C build migx-analyze",
+            file=sys.stderr,
+        )
+        return 2
+    if not targets:
+        print(f"nothing to analyze ({skipped} already analysed)")
+        return 0
+
+    print(
+        f"analyzing {len(targets)} track(s)"
+        f"{f' ({skipped} already done)' if skipped else ''}...",
+        flush=True,
+    )
+    results = analyze.run(targets, bin_path)
+    stored = []
+    for result in results:
+        if result.get("error"):
+            print(
+                f"  ! {Path(result['path']).name}: {result['error']}",
+                file=sys.stderr,
+            )
+            continue
+        stored.append({**result, **analyze.store(result)})
+
+    doc = {
+        "schema": "migx.analysis-report/1",
+        "analyzed": len(stored),
+        "skipped": skipped,
+        "failed": len(results) - len(stored),
+        "tracks": stored,
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        for s in stored:
+            print(
+                f"  {round(s.get('bpm') or 0):>3} "
+                f"{s.get('camelot') or '--':3} {s.get('key') or '':4} "
+                f"{Path(s['path']).name[:50]}"
+            )
+    return 0
+
+
+def cmd_library_watch(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    inbox = (
+        Path(args.inbox).expanduser() if args.inbox else root / layout.INBOX
+    )
+    if not inbox.is_dir():
+        print(f"error: no inbox at {inbox}", file=sys.stderr)
+        return 2
+
+    mirror_doc = _load_mirror(args.mirror) if args.mirror else None
+    allow = tuple(quality.DEFAULT_ELIGIBLE) + tuple(args.allow_tier or ())
+    template = args.template or config.get(cfg, "library.template", "dj")
+
+    def on_ready(paths: list[Path]) -> dict[str, Any]:
+        report = ingest.ingest(
+            paths,
+            root,
+            mirror=mirror_doc,
+            template=template,
+            move=not args.copy,
+            allow_tiers=allow,
+        )
+        for row in report["filed"]:
+            print(f"  + {Path(row['destination']).name}")
+        for row in report["refused"]:
+            print(
+                f"  ! {row['tier']:12} {Path(row['source']).name}"
+                f"  ({row.get('reason', '')})"
+            )
+        for row in report["duplicates"]:
+            source = Path(row["source"])
+            note = ""
+            if not args.keep_duplicates:
+                parked = watch.park(source, inbox)
+                note = (
+                    f" -> {watch.FILED_DIR}/" if parked else " (park failed)"
+                )
+            print(f"  = already present: {source.name}{note}")
+
+        if report["filed"] and not args.no_analyze:
+            bin_path = analyze.binary(None)
+            if bin_path.is_file():
+                targets = [Path(r["destination"]) for r in report["filed"]]
+                for result in analyze.run(targets, bin_path):
+                    if result.get("error"):
+                        continue
+                    stored = analyze.store(result)
+                    print(
+                        f"    {round(stored.get('bpm') or 0):>3} "
+                        f"{stored.get('camelot') or '--':3} "
+                        f"{Path(result['path']).name[:44]}"
+                    )
+            else:
+                print(
+                    "    (migx-analyze not built — skipping analysis)",
+                    file=sys.stderr,
+                )
+        return report
+
+    watch.run(
+        inbox,
+        AUDIO_EXTS,
+        on_ready,
+        interval_s=args.interval,
+        settle_s=args.settle,
+        once=args.once,
+        max_wait_s=args.max_wait,
+    )
+    return 0
+
+
+def cmd_library_rename(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    template = ingest.TEMPLATES.get(
+        args.template or config.get(cfg, "library.template", "dj"),
+        naming.TEMPLATE_DJ,
+    )
+    rows = rename.plan(root, template)
+    if not rows:
+        print("every track is already correctly named")
+        return 0
+
+    done, conflicts = [], []
+    for row in rows:
+        if args.dry_run:
+            mark = "!" if row["conflict"] else "→"
+            print(
+                f"  {mark} {Path(row['from']).name[:42]:44} "
+                f"{Path(row['to']).name[:42]}"
+            )
+            continue
+        result = rename.apply(row)
+        (conflicts if result["status"] == "conflict" else done).append(result)
+        if result["status"] == "renamed":
+            links = len(result.get("renamed_links") or [])
+            print(
+                f"  → {Path(result['to']).name[:52]}"
+                f"{f'  (+{links} crate)' if links else ''}"
+            )
+        else:
+            print(
+                f"  ! target exists, skipped: "
+                f"{Path(result['to']).name[:44]}",
+                file=sys.stderr,
+            )
+
+    if args.dry_run:
+        print(
+            f"\n{len(rows)} would be renamed "
+            f"({sum(1 for r in rows if r['conflict'])} conflicts)"
+        )
+        return 0
+
+    playlists = rename.rebuild_playlists(root) if done else []
+    doc = {
+        "schema": "migx.rename-report/1",
+        "renamed": len(done),
+        "conflicts": len(conflicts),
+        "playlists_rebuilt": len(playlists),
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        print(
+            f"\n{len(done)} renamed · {len(conflicts)} conflicts · "
+            f"{len(playlists)} playlist(s) rebuilt"
+        )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -929,8 +1346,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(fn=cmd_library_resolve)
 
-    p = sub.add_parser("library.missing", help="the ISRC-keyed want-list")
-    p.add_argument("mirror")
+    p = sub.add_parser("library.missing", help="missing + upgrade gap list")
+    p.add_argument("mirror", nargs="?", default=None)
+    p.add_argument(
+        "--all",
+        action="store_true",
+        help="every mirror, deduped and ranked by playlist count",
+    )
     p.add_argument("--root", action="append", default=[])
     p.add_argument("--out", default=None)
     p.add_argument(
@@ -996,6 +1418,67 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("links", nargs="*", default=[])
     p.add_argument("--out", default=None)
     p.set_defaults(fn=cmd_track_pull)
+
+    p = sub.add_parser("track.note", help="set a DJ note / tags on a track")
+    p.add_argument("track")
+    p.add_argument("--note", default=None)
+    p.add_argument("--tag", action="append", default=[])
+    p.add_argument("--append", action="store_true")
+    p.set_defaults(fn=cmd_track_note)
+
+    p = sub.add_parser("track.cue", help="bookmark a moment in a track")
+    p.add_argument("track")
+    p.add_argument("at")
+    p.add_argument("label")
+    p.add_argument("--color", default=None)
+    p.add_argument("--hotcue", type=int, default=None)
+    p.set_defaults(fn=cmd_track_cue)
+
+    p = sub.add_parser("track.show", help="notes, tags and cues for a track")
+    p.add_argument("track")
+    p.set_defaults(fn=cmd_track_show)
+
+    p = sub.add_parser("library.analyze", help="detect BPM and key")
+    p.add_argument("paths", nargs="*", default=[])
+    p.add_argument("--force", action="store_true")
+    p.add_argument("--bin", default=None)
+    p.set_defaults(fn=cmd_library_analyze)
+
+    p = sub.add_parser("library.watch", help="auto-file new purchases")
+    p.add_argument("--inbox", default=None)
+    p.add_argument("--mirror", default=None)
+    p.add_argument(
+        "--template", default=None, choices=sorted(ingest.TEMPLATES)
+    )
+    p.add_argument("--interval", type=float, default=watch.DEFAULT_INTERVAL_S)
+    p.add_argument("--settle", type=float, default=watch.DEFAULT_SETTLE_S)
+    p.add_argument(
+        "--once",
+        action="store_true",
+        help="drain the inbox, then exit (launchd)",
+    )
+    p.add_argument("--max-wait", type=float, default=600.0)
+    p.add_argument("--copy", action="store_true")
+    p.add_argument("--no-analyze", action="store_true")
+    p.add_argument(
+        "--keep-duplicates",
+        action="store_true",
+        help="leave already-filed files in the inbox",
+    )
+    p.add_argument(
+        "--allow-tier",
+        action="append",
+        default=[],
+        choices=[quality.TIER_MP3_VBR, quality.TIER_UNKNOWN],
+    )
+    p.set_defaults(fn=cmd_library_watch)
+
+    p = sub.add_parser("library.rename", help="re-file under current names")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--template", default=None, choices=sorted(ingest.TEMPLATES)
+    )
+    p.set_defaults(fn=cmd_library_rename)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

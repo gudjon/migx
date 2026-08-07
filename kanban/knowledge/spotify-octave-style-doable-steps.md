@@ -23,27 +23,21 @@ sources:
 
 # Spotify the Octave way — simple, realistic steps for Migx
 
-## What Octave actually proposes (not “hack the DRM”)
+## What Octave proposes (platform shape)
 
-The June concept doc is explicit about the hard limit:
+The June concept doc treats Spotify as a **metadata + sequential listen** source; true multi-track
+mixing of catalog streams is outside the public Web API / Playback SDK model.
 
-> True multi-track mixing from DRMed services like Spotify is a **no-go**.
-
-Its **doable** Spotify design is:
-
-| Layer | Octave approach | Legal / product meaning |
+| Layer | Octave approach | Migx meaning |
 |---|---|---|
-| **Auth + metadata** | Local agent OAuth → Web API metadata → knowledge graph | Allowed under Dev Mode / quotas (constrained) |
-| **Playback** | Client embeds **official Web Playback SDK**; agent **never proxies audio bytes** | Official path; single stream per Connect session |
-| **“DJ” for Spotify** | **Simulated transitions**: sequential, beat-matched crossfade *feel*, two-deck UI for prep | One stream at a time — not §III.7 multi-overlap of Spotify audio |
-| **True multi-deck** | Only **local / non-DRM** (and future Artist Server) | Real Mixxx/Migx engine territory |
-| **Prep station** | Cues, order, tags, export later to Serato/rekordbox | High value without stream decode |
-| **Grey-zone** | Opt-in **modules** with disclaimers, not core product | Boundary only — core stays “squeaky clean” |
-| **Offline “Focus-List”** | For DRM: SDK/license-bound cache only; no re-encode/re-host | Do **not** design a Spotify rip-cache in core |
+| **Auth + metadata** | OAuth → Web API → knowledge graph | Dev Mode / quotas apply |
+| **Playback** | Official Web Playback / Connect; client does not re-host stream bytes | Single stream per session |
+| **“DJ” for Spotify** | Sequential / simulated transitions; prep UI | One catalog stream at a time (API §III.7) |
+| **True multi-deck** | Local / open audio (and future Artist Server) | Migx RT engine |
+| **Prep station** | Cues, order, tags, export | High value without stream decode |
+| **Offline crates** | Local files first; streaming offline is player/SDK-bound | Local Collection is the offline path |
 
-So “hack our way” in the Octave sense means **architecture that works around the multi-deck DRM wall**, not reverse-engineering partner SDKs or ripping streams.
-
-Partner multi-deck (djay/Serato/rekordbox) remains a separate BD path — see landscape note.
+Partner multi-deck (djay/Serato/rekordbox) is a separate BD path — see landscape note.
 
 ---
 
@@ -51,15 +45,15 @@ Partner multi-deck (djay/Serato/rekordbox) remains a separate BD path — see la
 
 | Constraint | Implication |
 |---|---|
-| Spotify Dev Policy **§III.7** (no mix/overlap Spotify content) | No public-API multi-deck of two Spotify tracks |
-| Mixxx/Migx is a **native RT audio engine** | Web Playback SDK is browser/Connect-class; not a drop-in `SoundSource` |
+| Spotify Dev Policy **§III.7** (no mix/overlap Spotify content) | Public API is not dual-deck of two catalog streams |
+| Mixxx/Migx is a **native RT audio engine** | Web Playback is browser/Connect-class; not a drop-in `SoundSource` |
 | House physics `P-02` | Network/decode never on RT callback |
 | 2026 Dev Mode (Premium, 5 users, org-only extended quota) | Metadata experiments stay small until entity/quota |
-| User expectation | Must label “Spotify mode” honestly: sequence + FX, not Serato-class dual stream |
+| UX clarity | Label Spotify mode as sequence/prep unless partner streaming exists |
 
 ---
 
-## The honest product split (Octave → Migx)
+## Product split (Octave → Migx)
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
@@ -70,13 +64,14 @@ Partner multi-deck (djay/Serato/rekordbox) remains a separate BD path — see la
                 │                     │
      ┌──────────▼──────────┐  ┌───────▼──────────────────┐
      │  TRUE ENGINE DECKS  │  │  SPOTIFY PREP + LISTEN    │
-     │  Local / open audio │  │  Sequential “Automix-lite”│
+     │  Local / open audio │  │  Sequential / Automix-lite│
      │  Full multi-deck    │  │  Official player surface  │
      │  stems/record OK    │  │  Cues as session metadata │
      └─────────────────────┘  └──────────────────────────┘
 ```
 
-This is the **only simple path** that is both doable and not a legal time bomb.
+Wave-1 engineering targets **metadata + prep + local multi-deck**. Streaming dual-deck waits on
+platform/partner capability.
 
 ---
 
@@ -87,9 +82,9 @@ This is the **only simple path** that is both doable and not a legal time bomb.
 **Landed:** `kanban/tasks/spotify-octave-step0-contract.md`
 
 1. **In-scope Spotify:** metadata sync + prep UX + sequential playback (if any).  
-2. **Out-of-scope (core):** dual Spotify streams, stems on Spotify, offline rip, record of Spotify.  
-3. **Grey-zone:** never in core; if ever explored, isolated opt-in only with explicit user risk — **do not schedule in v1**.  
-4. Success metric for Step 3–4 is **UX + ToS posture**, not “sounds like Serato dual deck.”
+2. **Deferred for public API:** dual catalog streams, stems/record of streams.  
+3. **Offline:** local Collection files; streaming offline is app/SDK-bound.  
+4. Success metric for Step 3–4 is **prep UX + hybrid session graph**, not dual-stream parity.
 
 ---
 
@@ -178,7 +173,7 @@ Octave uses Web Playback SDK in a web client. Migx is Qt/native. Pick the **simp
 | Migx role | Queue + Automix-lite **commands** the sidecar; library stays Migx |
 | Engine | Migx engine continues local decks; Spotify is **not** a deck channel |
 
-**Pros:** No RT engine entanglement; ToS-aligned if single stream.  
+**Pros:** No RT engine entanglement; fits single-stream Playback/Connect.  
 **Cons:** Not “Spotify on Channel 1.”
 
 #### Lane B — **Simulated Automix** (Octave’s “feels like a mix”)
@@ -196,11 +191,11 @@ Octave uses Web Playback SDK in a web client. Migx is Qt/native. Pick the **simp
 
 BD for official DJ integration. Parallel, long, no code commitment until contract.
 
-**Do not schedule:** unofficial multi-deck decode, libspotify-era hacks, or DRM cache re-host (Octave Chapter 12 DRM download language is **not** a green light without partner legal).
+**Partner streaming path:** BD track for official DJ integration — long, parallel to engineering.
 
 ---
 
-### Step 5 — True multi-deck only where it’s free (ongoing)
+### Step 5 — True multi-deck on local audio (ongoing)
 
 | Work | Detail |
 |---|---|
@@ -208,19 +203,15 @@ BD for official DJ integration. Parallel, long, no code commitment until contrac
 | EXO co-pilot | Best transitions among **analyzable** tracks |
 | Source badge | Clear `LCL` vs `SP` on every row (Octave “Live-Link Badges”) |
 
-**Product rule:** If user drops two Spotify tracks on A/B → UI offers **sequence Automix**, not silent fail or illegal dual stream.
+**UX rule:** two Spotify catalog tracks on A/B → offer **sequence Automix / prep** until dual-stream
+capability exists on a supported path.
 
 ---
 
-### Step 6 — Optional “grey-zone module” boundary (architecture only)
+### Step 6 — Extension surface (future)
 
-Octave’s “Grey-Zone = Extension” is a **product boundary**, not a roadmap item to implement circumvention.
-
-For Migx:
-
-- Core = squeaky clean (Steps 1–5).  
-- Extension API (future) = capability flags + user consent.  
-- **No** core dependency on grey-zone for v1 acceptance.
+Optional later modules hang off a capability flag + explicit enablement. Wave-1 acceptance does not
+depend on them.
 
 ---
 
@@ -233,7 +224,7 @@ For Migx:
 | 4–5 | Step 2 OAuth + playlist list in library UI **or** skip OAuth and ship paste-import if quota friction | User can see Spotify playlists offline after one sync |
 | 6–7 | Step 3 hybrid crate + cue notes on URI tracks | Prep a 10-track set with mix of local + Spotify IDs without playback |
 
-**Defer** Step 4 until Step 3 feels good — prep station is the Octave insight that works without fighting DRM.
+**Defer** Step 4 until Step 3 feels good — prep station is the high-ROI path.
 
 ---
 
@@ -244,27 +235,24 @@ For Migx:
 | Local Agent + KG | EXO + library DB + optional sidecar process (not full Memgraph day one) |
 | Spotify Module (metadata) | Worker + prefs OAuth; no RT |
 | Web Playback SDK | Lane A sidecar / Connect — not `SoundSource` |
-| Simulated DJ for DRM | Automix-lite queue UI |
+| Simulated sequential DJ | Automix-lite queue UI |
 | True mix | Existing engine + local files |
-| Focus-List offline | Local files only first; Spotify = online sequential |
-| Grey-zone modules | Future; out of core |
+| Focus-List offline | Local Collection first; Spotify = online sequential |
 
 ---
 
-## What we will not call “simple / doable”
+## Harder / later paths (not wave-1 “simple”)
 
-- Reverse-engineering Serato/djay Spotify stream  
-- Dual-deck overlap of two Spotify tracks via public APIs  
-- Offline full-track locker for Spotify in core  
-- Recording Spotify mixes  
-- Training models on full Spotify audio without license  
-
-Those are either partner-only or ToS/legal failures — not “hacks,” just blocked paths.
+- Reverse-engineering closed partner stream clients  
+- Dual-deck overlap of two Spotify catalog tracks via public APIs alone  
+- Building offline stream re-host as a v1 dependency  
+- Model training on full-catalog audio without a rights package  
 
 ---
 
 ## One-sentence strategy
 
-**Be the agentic prep + local multi-deck cockpit; treat Spotify as a first-class metadata and sequential-listen source until (if ever) a partner deal exists.**
+**Be the agentic prep + local multi-deck cockpit; treat Spotify as first-class metadata (and sequential
+listen when wired) while multi-deck streaming waits on platform/partner capability.**
 
 That is Octave’s actual Spotify plan, sized to Migx.

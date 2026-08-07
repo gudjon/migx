@@ -41,7 +41,7 @@ worktrees as default.
 2. When UI work resumes: plan a **parity lint** (QML/UI intent ↔ command ID) as the
    falsifiable form of "two equal clients" (ADR-008) — can be a small task card if not now.
 3. Optional: DESIGN.md ↔ Theme.qml key lint when nextgen/theme work is hot.
-4. No need to re-litigate ban-safe API path — already landed and verified.
+4. Spotify Web API client hygiene (pace, sticky fields) already landed; no re-litigation needed.
 
 ## Blockers
 

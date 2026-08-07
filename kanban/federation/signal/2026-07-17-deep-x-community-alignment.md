@@ -134,16 +134,15 @@ landing pages alone.
 - **rekordbox**: Spotify collection/playlist registration + **Automix on Spotify tracks** improvements
   (unofficial JP release notes, 2026-07-09)
   ([@RbRelease_UO_jp](https://x.com/RbRelease_UO_jp/status/2075146018568691834)).
-- **Beginner education**: streaming OK for **home practice**; **USB export / club loadout forbidden**
-  ([@dj44tk](https://x.com/dj44tk/status/2064633672352092657)).
+- **Beginner education**: streaming framed as **home practice**; USB export / club loadout is a
+  separate problem ([@dj44tk](https://x.com/dj44tk/status/2064633672352092657)).
 - Region / plan friction (Kenya unavailable; “Premium Platinum” support lines) continues.
 
 ### Migx alignment
-Octave-style **prep + identity + sequence**, not dual-stream DRM fantasy, remains correct.
-Partner shortlist still owns multi-deck Spotify. X reinforces **practice-not-USB** narrative —
-use that in product copy for any future sequential listen path.
+Octave-style **prep + identity + sequence** remains the wave-1 path. Partner shortlist still owns
+in-app multi-deck catalog streaming. X reinforces practice/prep framing for sequential listen.
 
-**Verdict:** **No strategy change.** Keep Steps 0–1b; OAuth metadata optional; no core dual-deck.
+**Verdict:** **No strategy change.** Keep Steps 0–1b; OAuth metadata optional; dual-stream deferred.
 
 ---
 
@@ -258,8 +257,6 @@ X does **not** reorder Strategy §6 much; it **sharpens** copy and sequencing:
 - Web3 AI Music-Fi infrastructure as product core  
 - Chasing 46 gen-music tools  
 - Rebuilding as Electron Automix clone  
-- Unofficial Spotify rip tools  
-
 ---
 
 ## One-line alignment
