@@ -2758,6 +2758,16 @@ endif()
 
 find_package(GTest CONFIG)
 default_option(BUILD_TESTING "Build with Unittests" "GTest_FOUND")
+# migx-analyze — headless BPM/key using the real analyzers (P-11: no second
+# detector). Batch/worker class; never linked into the RT audio path.
+# Top-level on purpose: nesting this in if(BUILD_TESTING) made it vanish from
+# any configure without testing enabled, which is exactly how it disappeared.
+add_executable(migx-analyze EXCLUDE_FROM_ALL tools/analyze/main.cpp)
+target_link_libraries(
+  migx-analyze
+  PRIVATE mixxx-lib mixxx-gitinfostore mixxx-xwax
+)
+
 if(BUILD_TESTING)
   if(GTest_FOUND)
     message(STATUS "Found GTest: Unittests enabled")
@@ -3014,13 +3024,6 @@ if(BUILD_TESTING)
     )
   endif()
 
-  # migx-analyze — headless BPM/key using the real analyzers (P-11: no second
-  # detector). Batch/worker class; never linked into the RT audio path.
-  add_executable(migx-analyze EXCLUDE_FROM_ALL tools/analyze/main.cpp)
-  target_link_libraries(
-    migx-analyze
-    PRIVATE mixxx-lib mixxx-gitinfostore mixxx-xwax
-  )
 
   add_executable(mixxx-test ${src-mixxx-test})
   target_compile_definitions(
