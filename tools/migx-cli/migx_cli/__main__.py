@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from . import (
+    analyze,
     api,
     auth,
     config,
@@ -239,6 +240,19 @@ CAPABILITIES: list[dict[str, Any]] = [
         "kind": "query",
         "summary": "Notes, tags and cues for a track.",
         "emits": "migx.track-sidecar/1",
+    },
+    {
+        "id": "library.analyze",
+        "kind": "command",
+        "summary": "Detect BPM and key, storing them in the sidecar.",
+        "args": {
+            "paths": "files or directories (default: the Collection)",
+            "--force": "re-analyze tracks that already have bpm+key",
+            "--bin": "path to migx-analyze",
+        },
+        "writes": "<track>.migx/track.json (bpm, key, camelot)",
+        "note": "Runs the app's own AnalyzerBeats/AnalyzerKey via the"
+        " migx-analyze binary — there is no second detector.",
     },
     {
         "id": "system.capabilities",
@@ -975,6 +989,81 @@ def cmd_track_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_analyze(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    roots = args.paths or [
+        str(layout.collection_dir(Path(config.get(cfg, "library.root"))))
+    ]
+    targets: list[Path] = []
+    for raw in roots:
+        p = Path(raw).expanduser()
+        if p.is_dir():
+            targets += sorted(
+                f
+                for f in p.rglob("*")
+                if f.suffix.lower() in AUDIO_EXTS and not f.is_symlink()
+            )
+        elif p.is_file():
+            targets.append(p)
+
+    if not args.force:
+        todo = []
+        for t in targets:
+            side = sidecar.read(t)
+            if not (side.get("bpm") and side.get("camelot")):
+                todo.append(t)
+        skipped = len(targets) - len(todo)
+        targets = todo
+    else:
+        skipped = 0
+
+    bin_path = analyze.binary(args.bin)
+    if not bin_path.is_file():
+        print(
+            f"error: migx-analyze not built at {bin_path}\n"
+            f"  build it with: ninja -C build migx-analyze",
+            file=sys.stderr,
+        )
+        return 2
+    if not targets:
+        print(f"nothing to analyze ({skipped} already analysed)")
+        return 0
+
+    print(
+        f"analyzing {len(targets)} track(s)"
+        f"{f' ({skipped} already done)' if skipped else ''}...",
+        flush=True,
+    )
+    results = analyze.run(targets, bin_path)
+    stored = []
+    for result in results:
+        if result.get("error"):
+            print(
+                f"  ! {Path(result['path']).name}: {result['error']}",
+                file=sys.stderr,
+            )
+            continue
+        stored.append({**result, **analyze.store(result)})
+
+    doc = {
+        "schema": "migx.analysis-report/1",
+        "analyzed": len(stored),
+        "skipped": skipped,
+        "failed": len(results) - len(stored),
+        "tracks": stored,
+    }
+    if args.json:
+        _out(doc, True)
+    else:
+        for s in stored:
+            print(
+                f"  {round(s.get('bpm') or 0):>3} "
+                f"{s.get('camelot') or '--':3} {s.get('key') or '':4} "
+                f"{Path(s['path']).name[:50]}"
+            )
+    return 0
+
+
 def cmd_capabilities(args: argparse.Namespace) -> int:
     doc = {
         "schema": "migx.capability-manifest/1",
@@ -1184,6 +1273,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("track.show", help="notes, tags and cues for a track")
     p.add_argument("track")
     p.set_defaults(fn=cmd_track_show)
+
+    p = sub.add_parser("library.analyze", help="detect BPM and key")
+    p.add_argument("paths", nargs="*", default=[])
+    p.add_argument("--force", action="store_true")
+    p.add_argument("--bin", default=None)
+    p.set_defaults(fn=cmd_library_analyze)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

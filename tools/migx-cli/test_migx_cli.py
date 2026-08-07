@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from migx_cli import (  # noqa: E402
+    analyze,
     api,
     auth,
     ingest,
@@ -395,6 +396,25 @@ def main() -> int:
             "owned-but-low track -> upgrade, not a second missing entry",
         )
         check(gaps["schema"] == "migx.gap-list/1", "gap-list schema pinned")
+
+    # ---- analyze: results land in the sidecar without losing notes
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "A - B.mp3"
+        audio.write_bytes(_mp3(14))
+        sidecar.set_note(audio, note="keep me", tags=["keep"])
+        sidecar.add_cue(audio, 30.0, "cue stays")
+        analyze.store({"path": str(audio), "bpm": 128.0, "key": "Am"})
+        side = sidecar.read(audio)
+        check(side.get("bpm") == 128.0, "analysis stores bpm")
+        check(side.get("key") == "Am", "analysis stores key text")
+        check(side.get("camelot") == "8A", "key is folded to Camelot")
+        check(side.get("notes") == "keep me", "analysis preserves notes")
+        check(len(side.get("cues") or []) == 1, "analysis preserves cues")
+        # An implausible tempo must not be written into a filename.
+        analyze.store({"path": str(audio), "bpm": 0})
+        check(
+            sidecar.read(audio)["bpm"] == 128.0, "junk bpm does not overwrite"
+        )
 
     # ---- sidecar: notes + cues, and never clobber the analyzer's work
     check(sidecar.parse_position("90") == 90.0, "bare seconds")

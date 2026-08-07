@@ -502,7 +502,13 @@ endif()
 # Migx product floor without vcpkg triplet path (host Darwin configure)
 if(APPLE AND NOT IOS)
   if(NOT CMAKE_OSX_ARCHITECTURES)
-    set(CMAKE_OSX_ARCHITECTURES arm64 CACHE STRING "The target architecture" FORCE)
+    set(
+      CMAKE_OSX_ARCHITECTURES
+      arm64
+      CACHE STRING
+      "The target architecture"
+      FORCE
+    )
   endif()
   if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64|i386")
     message(
@@ -510,7 +516,10 @@ if(APPLE AND NOT IOS)
       "Migx supports Apple Silicon (arm64) only — refuse x86_64/Rosetta. See ADR-006."
     )
   endif()
-  if(NOT CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "26.0")
+  if(
+    NOT CMAKE_OSX_DEPLOYMENT_TARGET
+    OR CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "26.0"
+  )
     set(
       CMAKE_OSX_DEPLOYMENT_TARGET
       26.0
@@ -519,7 +528,10 @@ if(APPLE AND NOT IOS)
       FORCE
     )
   endif()
-  message(STATUS "Migx platform floor: macOS ${CMAKE_OSX_DEPLOYMENT_TARGET}+ / ${CMAKE_OSX_ARCHITECTURES} (ADR-006)")
+  message(
+    STATUS
+    "Migx platform floor: macOS ${CMAKE_OSX_DEPLOYMENT_TARGET}+ / ${CMAKE_OSX_ARCHITECTURES} (ADR-006)"
+  )
 endif()
 
 project(mixxx VERSION 2.7.0 LANGUAGES C CXX)
@@ -2608,8 +2620,7 @@ install(
 
 # Licenses
 install(
-  FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/COPYING"
+  FILES "${CMAKE_CURRENT_SOURCE_DIR}/COPYING"
   DESTINATION "${MIXXX_INSTALL_LICENSEDIR}"
 )
 
@@ -3002,6 +3013,14 @@ if(BUILD_TESTING)
       src/test/enginefilterbenchmark.cpp
     )
   endif()
+
+  # migx-analyze — headless BPM/key using the real analyzers (P-11: no second
+  # detector). Batch/worker class; never linked into the RT audio path.
+  add_executable(migx-analyze EXCLUDE_FROM_ALL tools/analyze/main.cpp)
+  target_link_libraries(
+    migx-analyze
+    PRIVATE mixxx-lib mixxx-gitinfostore mixxx-xwax
+  )
 
   add_executable(mixxx-test ${src-mixxx-test})
   target_compile_definitions(
