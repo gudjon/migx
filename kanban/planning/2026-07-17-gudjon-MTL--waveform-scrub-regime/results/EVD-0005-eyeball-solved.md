@@ -36,6 +36,15 @@ Codex reran the gate on `2026-07-18` after commit `3e31ed7`.
 - SHA-256: `waveform_B.png`
   `a8c5e08bc7d46adae6b926ac385190fa344fde948d69a5955c23b2b18de8844a`.
 
+**The artifacts live beside this card** (`waveform_A.png`, `waveform_A2.png`, `waveform_B.png` in this
+`results/` directory), so the hashes above can actually be checked. They had been left untracked in the
+repo root; a re-render on 2026-08-08 reproduced all three **byte-identically** against the hashes
+recorded here, which independently re-confirms the determinism this card claims.
+
+```bash
+shasum -a 256 kanban/planning/2026-07-17-gudjon-MTL--waveform-scrub-regime/results/waveform_*.png
+```
+
 ## What this closes
 - **VBO win** (persistent buffer) — render correctness now has pixel evidence.
 - **Wave-2a idle-skip** — the paused-frame `A == A2` pixel equality is the exact "does a paused waveform
