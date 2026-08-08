@@ -15,6 +15,8 @@ defers_to:
   - kanban/AGENTS.md
 related:
   - kanban/federation/signal/2026-08-08-multimodal-session-coaching-x.md
+  - kanban/federation/signal/2026-08-08-agent-fs-hooks-x.md
+  - kanban/knowledge/agent-filesystem-hooks-integration.md
   - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
   - kanban/knowledge/arrange-nexttrack-copilot-scoring.md
   - kanban/architecture/decisions/ADR-005-open-core-plus-proprietary-intelligence.md
@@ -22,6 +24,7 @@ note: >
   Product research: continuous human feedback (voice/chat/keys/trackpad) bound to
   the currently playing track identity, captured as durable session/track memory.
   CLI-direct agent surface preferred over MCP. Co-pilot / learn — never silent Automix.
+  Integration spine (state files + hooks + lock): agent-filesystem-hooks-integration.md.
 ---
 
 # Session coaching — multimodal agent while Migx plays
@@ -211,6 +214,8 @@ energy placement — into living scoring (`arrange-nexttrack-copilot-scoring`) n
 | **4 voice I/O** | STT into agent (host OS / Whisper / agent voice mode) | Latency OK between phrases |
 | **5 arrange priors** | Feedback adjusts next-track rank | **Shipped:** retire exclude; opener/peak; `weak`/`worked` + transition 1..5 via `feedback.candidate_bias` in `setplan.transition_score` (Arrange + set.plan share it) |
 | **6 optional perform proposals** | Armed only | Free-deck precondition |
+| **7 session lock + state dir** | One session/user; `session/now.json` | See `agent-filesystem-hooks-integration.md` build order |
+| **8 hooks** | TrackPlaying / TransitionStarted / … | After trustworthy now.json; never RT |
 
 **Wont-do:** MCP-required path; agent Automix; RT thread listening to STT; voice-only EQ.
 

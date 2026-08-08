@@ -109,6 +109,9 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `track.feedback` (+ `now`) | shipped | sidecar + night log; weak/worked/transition bias rank | set.plan + Arrange |
 | Session coach skill (speech→CLI) | shipped | `.claude/skills/migx-session-coach/` | dogfood voice→flags |
 | Engine-driven live position in `_live.json` | gap | app writes playposition off-RT | later engine bridge |
+| Session lock (one live session / OS user) | gap | lockfile in Application Support; stale detectable | before multi-writer hooks |
+| `session/now.json` + `history.jsonl` (state dir) | gap | level-triggered agent truth; atomic off-RT | agent-filesystem-hooks-integration |
+| Hooks (TrackPlaying / Transition* / Session*) | gap | config → command + JSON stdin + timeout | **after** now.json; never RT |
 
 ### MCP is a non-goal (decided 2026-08-08)
 

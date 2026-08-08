@@ -63,6 +63,7 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + matrix §B4 + distinct-playlist task |
 | Trackpad / MacBook gestures | `signal/2026-08-07-macbook-trackpad-mode-language.md` + task `macbook-trackpad-v1-appkit-gestures` |
 | Session coaching (voice/chat while playing) | `knowledge/session-coaching-multimodal-agent.md` + signal `2026-08-08-multimodal-session-coaching-x` |
+| Agent integrate (CLI / FS / hooks, Claude Code shape) | `knowledge/agent-filesystem-hooks-integration.md` + signal `2026-08-08-agent-fs-hooks-x` + `install.sh` |
 | Multimodal UI research (voice+keys+trackpad+LLM) | same knowledge + field signal; CLI-direct agent surface preferred |
 | Native graphical performance adapter | ADR-004 + ADR-007 + `src/qml/AGENTS.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
