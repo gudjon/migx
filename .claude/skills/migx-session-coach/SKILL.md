@@ -17,7 +17,7 @@ defers_to:
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
 audit_gate: "python3 tools/migx-cli/test_migx_cli.py (session + feedback cases)"
 verifiable_output_shape: >
-  Shell commands run: session.now/bind/room and track.feedback/note/cue with
+  Shell commands run: session.now/bind/room/show and track.feedback/note/cue with
   structured flags; no free-form writes except --note text.
 ---
 
@@ -61,7 +61,8 @@ SSoT: [`session-coaching-multimodal-agent.md`](../../../kanban/knowledge/session
 | tag / vibe note | `track.note now --tag outdated --note "…"` if note path supports now; else bind path |
 | crowd melodic / peak / cool-down | `session.room --theme melodic --energy mid` |
 | next tracks higher energy | `session.room --energy high --note "next few: more energy"` |
-| clear end of set | `session.clear` |
+| what happened tonight / recap | `session.show` or `session.show --json` |
+| clear end of set | `session.clear` *(log kept for show)* |
 
 If `track.cue` / `track.note` do not accept `now`, resolve path from `session.now --json` → `.path`.
 
@@ -85,5 +86,6 @@ If `track.cue` / `track.note` do not accept `now`, resolve path from `session.no
 ```bash
 ./tools/migx-cli/migx session.bind "Reckoning" --deck A
 ./tools/migx-cli/migx session.now --json
+./tools/migx-cli/migx session.show --json   # night plays + feedback arc
 # TUI: press t on a Library row also binds (source=tui)
 ```

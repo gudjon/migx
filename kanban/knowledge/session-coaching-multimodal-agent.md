@@ -139,17 +139,20 @@ Map free speech into **typed feedback events** so learning is queryable.
 
 ```text
 migx session.now --json
-migx session.note --text "..." --bind now
-migx track.feedback <track> --fit worked|retire|weak --note "..."
+migx session.bind <track> [--deck A]
+migx session.room --theme melodic --energy mid
+migx session.show --json
+migx session.clear
+migx track.feedback now --fit worked|retire|weak --note "..."
 migx track.cue <track> <at> "mix out — keep this"
 migx track.note <track> --tag outdated --note "felt tired on floor"
-migx session.room --theme melodic --energy mid
 migx transition.feedback --from A --to B --verdict weak --prefer echo-out
 ```
 
-Existing today: `track.note`, `track.cue`, `track.show`, library/analyze — enough for a **v0 dogfood**
-where the coding agent maps speech → these commands.
-
+**Shipped for dogfood:** `session.now/bind/room/show/clear`, `track.feedback` (incl. `now`),
+`track.note`, `track.cue`, `track.show`. Night memory is `_session.jsonl` (append-only);
+lifetime judgments stay on the track sidecar. Still open: engine-driven `position_s`,
+`transition.feedback` pair memory, voice I/O.
 ---
 
 ## Modes of the agent (authority)
@@ -203,7 +206,7 @@ energy placement — into living scoring (`arrange-nexttrack-copilot-scoring`) n
 | --- | --- | --- |
 | **0 dogfood** | Skill + bind + feedback | **Shipped:** `session.*`, `track.feedback now`, `migx-session-coach` skill |
 | **1 live status** | `_live.json` / `session.now` | **Shipped** (CLI + TUI bind); engine position still gap |
-| **2 session log** | Append-only play + feedback events | `session.show` reconstructs night |
+| **2 session log** | Append-only play + feedback events | **Shipped:** `<library>/_session.jsonl` + `session.show` / `--json` |
 | **3 typed feedback CLI** | `track.feedback` / `session.room` | **Shipped** (fit/placement/segment/transition + room) |
 | **4 voice I/O** | STT into agent (host OS / Whisper / agent voice mode) | Latency OK between phrases |
 | **5 arrange priors** | Feedback adjusts next-track rank | Fixture + offline judge (`set.plan` already reads retire/opener/peak) |
@@ -252,5 +255,6 @@ No second chat product required for v0 — the **coding agent is the session coa
 ## Next docs / tasks
 
 - Signal (X detail): `kanban/federation/signal/2026-08-08-multimodal-session-coaching-x.md`  
-- Matrix rows: `session.now`, `track.feedback`, `session.room` (gap)  
-- Skill for Claude: “session coach — map speech to migx track.note/cue”  
+- Skill: `.claude/skills/migx-session-coach/` (speech → session.* / track.feedback)  
+- Next waves: engine `position_s` on `_live.json` (off-RT), richer arrange priors (wave 5),
+  optional armed perform proposals (wave 6). Voice STT is host/agent — not Migx core.  

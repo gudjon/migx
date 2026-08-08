@@ -105,7 +105,8 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
 | `session.now` / `session.bind` / `session.clear` | shipped | `_live.json` off-RT | — |
 | `session.room` | shipped | theme/energy/note on `_live.json` | — |
-| `track.feedback` (+ `now`) | shipped | fit/placement/segment/transition → sidecar | — |
+| `session.show` | shipped | `_session.jsonl` → plays[] + events[] | night reconstruct |
+| `track.feedback` (+ `now`) | shipped | sidecar + mirror to `_session.jsonl` | — |
 | Session coach skill (speech→CLI) | shipped | `.claude/skills/migx-session-coach/` | dogfood voice→flags |
 | Engine-driven live position in `_live.json` | gap | app writes playposition off-RT | later engine bridge |
 
@@ -218,8 +219,8 @@ Reorder weekly from Strategy + this matrix. **Current recommendation (2026-08-07
 | 8 | Trackpad AppKit v1 | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
 | 9 | MTL waveform Metal | claude-code | p99 bench vs baseline |
 | 10 | Community signal offline enrich | grok→claude | fixtures only hot path |
-| 11 | Session coach v0 (skill + track.note/cue) | claude-code | speech→sidecar bound to selected track |
-| 12 | `session.now` / `_live.json` | claude-code | agent always knows playing file id |
+| 11 | Session coach v0 (skill + track.note/cue) | claude-code | **shipped** speech→sidecar bound to selected track |
+| 12 | `session.now` / `_live.json` + `session.show` | claude-code | **shipped** file id + night log; engine position still gap |
 
 **Wont-do / anti-identity (do not queue):** silent Automix, dual Spotify multi-deck stream, camera-hand EQ as core, ArcFlow on audio callback, QTouchEvent re-enable as trackpad plan.
 

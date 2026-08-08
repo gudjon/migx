@@ -373,7 +373,8 @@ CAPABILITIES: list[dict[str, Any]] = [
             "--transition": "1-5, how well the blend INTO this track worked",
             "--note": "free text, kept verbatim for a human",
         },
-        "writes": "the track's sidecar (append-only, timestamped)",
+        "writes": "the track's sidecar (append-only, timestamped); "
+        "also mirrors into <library>/_session.jsonl",
         "emits": "migx.feedback/1",
         "note": "Takes STRUCTURED verdicts, never free speech — the agent"
         " interpreting the DJ turns talk into flags, so no language guessing"

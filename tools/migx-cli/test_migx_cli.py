@@ -1302,7 +1302,7 @@ def main() -> int:
             and roomed["room"].get("energy") == "mid",
             "session.room is session-local",
         )
-        # feedback against bound path
+        # feedback against bound path (lifetime sidecar + night log)
         doc = feedback.record(
             audio, fit="retire", note="felt outdated on floor"
         )
@@ -1310,10 +1310,48 @@ def main() -> int:
             feedback.latest(doc).get("fit") == "retire",
             "track.feedback fit=retire sticks",
         )
+        session.log_feedback(
+            root, audio, fit="retire", note="felt outdated on floor"
+        )
+        night = session.reconstruct(root)
+        check(
+            night.get("schema") == "migx.session-log/1"
+            and night.get("event_count", 0) >= 3,
+            "session log has bind/room/feedback events",
+        )
+        types = [e.get("type") for e in night.get("events") or []]
+        check(
+            types[:3] == ["bind", "room", "feedback"],
+            "session log order is bind → room → feedback",
+        )
+        check(
+            len(night.get("plays") or []) >= 1
+            and (night["plays"][0].get("feedback") or [{}])[0].get("fit")
+            == "retire",
+            "session.show attaches feedback to the play",
+        )
+        check(
+            night.get("room", {}).get("theme") == "melodic",
+            "session.show reconstructs room arc",
+        )
+        human = session.format_show(night)
+        check(
+            "bind" in human and "feedback" in human and "Live Track" in human,
+            "format_show is a readable timeline",
+        )
         session.clear(root)
         check(
             session.resolve_now_track(root) is None,
             "session.clear removes binding",
+        )
+        after = session.reconstruct(root)
+        check(
+            (after.get("events") or [])[-1].get("type") == "clear",
+            "session.clear appends to night log (log survives)",
+        )
+        check(
+            session.log_path(root).is_file(),
+            "_session.jsonl remains after clear",
         )
 
     # ---- embedded APIC extract + library.covers backfill

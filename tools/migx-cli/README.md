@@ -112,8 +112,13 @@ floor judgment without guessing which file you mean — **CLI only, no MCP**.
 ./tools/migx-cli/migx session.room --theme melodic --energy mid
 ./tools/migx-cli/migx track.feedback now --fit retire --note "felt tired"
 ./tools/migx-cli/migx track.feedback now --segment shorter --transition 2
-./tools/migx-cli/migx session.clear
+./tools/migx-cli/migx session.show              # reconstruct the night
+./tools/migx-cli/migx session.show --json       # plays[] + events[] for agents
+./tools/migx-cli/migx session.clear             # unbind; log stays for show
 ```
+
+Files (library root, off-RT): `_live.json` (current bind + room),
+`_session.jsonl` (append-only bind / room / feedback / clear).
 
 TUI: open Track mode (`t`) also runs `session.bind` (source=`tui`).  
 Agent skill: `.claude/skills/migx-session-coach/` — maps speech → these commands.  
