@@ -2097,6 +2097,25 @@ def main() -> int:
                               "library_exists": True, "selected": 0})),
         "an empty deck explains itself")
 
+    # ---- reload must not discard the session ------------------------------
+    prev = {"selected": 5, "deck_a": 3, "deck_b": 4, "compat": True,
+            "query": "house", "show_help": True,
+            "stage": [{"id": "library.dedupe", "argv": ["migx", "library.dedupe"],
+                       "mutates": False, "args": [], "summary": ""}]}
+    fresh = tui.reload_snapshot(prev)
+    check(len(fresh["stage"]) == 1, "reload keeps staged actions")
+    check(fresh["compat"] is True, "reload keeps the compatible-with-now filter")
+    check(fresh["query"] == "house", "reload keeps the active search")
+    check(fresh["show_help"] is True, "reload keeps the help toggle")
+    check("collection" in fresh, "reload actually re-reads the library")
+
+    # Indices must land inside the NEW collection: the library can shrink while
+    # a drive is out, and a stale index would point past the end.
+    rows_n = len(fresh.get("collection") or [])
+    for field in ("selected", "deck_a", "deck_b"):
+        check(0 <= fresh[field] <= max(0, rows_n - 1),
+              f"{field} clamped into the new collection ({fresh[field]} of {rows_n})")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

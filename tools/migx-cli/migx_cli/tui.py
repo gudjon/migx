@@ -662,6 +662,37 @@ def deck_view(
     return out
 
 
+# UI state that a reload must NOT discard. snapshot() rebuilds the world from
+# disk, so anything the DJ set during this session lives only in the old dict.
+CARRIED_ACROSS_RELOAD = (
+    "selected", "deck_a", "deck_b", "query", "sort",
+    "compat", "show_help", "stage", "composer_msg",
+)
+
+
+def reload_snapshot(previous: dict[str, Any]) -> dict[str, Any]:
+    """Re-read the library, keeping what the DJ set in this session.
+
+    A bare `snapshot()` replaces the whole dict, which silently drops STAGED
+    actions, the selected row, deck assignments and the active filter. Losing
+    a stage you spent a minute building — because you pressed reload after
+    plugging the drive back in — is data loss from where the DJ is standing,
+    and reload is exactly the key you press when something went wrong.
+    """
+    fresh = snapshot()
+    for key in CARRIED_ACROSS_RELOAD:
+        if key in previous:
+            fresh[key] = previous[key]
+    # Selection must stay inside the NEW collection: the library may have
+    # shrunk while the drive was out, and a stale index would point past the
+    # end or at a different track than the one highlighted a moment ago.
+    rows = fresh.get("collection") or []
+    fresh["selected"] = min(max(0, fresh.get("selected", 0)), max(0, len(rows) - 1))
+    for deck in ("deck_a", "deck_b"):
+        fresh[deck] = min(max(0, fresh.get(deck, 0)), max(0, len(rows) - 1))
+    return fresh
+
+
 def compatible_now(snap: dict[str, Any]) -> list[str]:
     """Library, filtered to what mixes with the track on deck A.
 
@@ -1025,7 +1056,7 @@ def run() -> int:  # pragma: no cover - needs a terminal
             elif key in (ord("G"),):
                 top = max(0, len(rows) - view)
             elif key == ord("r"):
-                snap = snapshot()
+                snap = reload_snapshot(snap)
             elif key == ord("\t"):
                 pane, top = (pane + 1) % len(PANES), 0
             elif key == ord("a") and PANES[pane] == "Library":
