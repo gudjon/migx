@@ -103,6 +103,9 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | jobs strip (non-blocking) | gap | mode switch during analyze | claude-code | field P1 |
 | three-column PREP workspace | gap | Yazi grammar | claude-code | after composer |
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
+| `session.now` live status JSON | gap | path+ISRC+position off-RT | claude-code | session-coaching knowledge |
+| `track.feedback` / `session.room` | gap | typed floor judgment → sidecar | claude-code | session-coaching knowledge |
+| Session coach skill (speech→CLI) | gap | Claude skill maps voice/chat→note/cue | claude-code | no MCP; CLI only |
 
 ### MCP is a non-goal (decided 2026-08-08)
 
@@ -213,6 +216,8 @@ Reorder weekly from Strategy + this matrix. **Current recommendation (2026-08-07
 | 8 | Trackpad AppKit v1 | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
 | 9 | MTL waveform Metal | claude-code | p99 bench vs baseline |
 | 10 | Community signal offline enrich | grok→claude | fixtures only hot path |
+| 11 | Session coach v0 (skill + track.note/cue) | claude-code | speech→sidecar bound to selected track |
+| 12 | `session.now` / `_live.json` | claude-code | agent always knows playing file id |
 
 **Wont-do / anti-identity (do not queue):** silent Automix, dual Spotify multi-deck stream, camera-hand EQ as core, ArcFlow on audio callback, QTouchEvent re-enable as trackpad plan.
 

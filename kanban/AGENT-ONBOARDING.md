@@ -62,6 +62,8 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | TUI / CLI / JSON / agent product work | ADR-008 + `knowledge/tui-first-agentic-dj-workstation.md` + `arch-cli-commands` + matrix §A2 |
 | ArcFlow / music world model / live derived state | `knowledge/arcflow-tui-agentic-dj-integration.md` + ADR-008 + matrix §B4 + distinct-playlist task |
 | Trackpad / MacBook gestures | `signal/2026-08-07-macbook-trackpad-mode-language.md` + task `macbook-trackpad-v1-appkit-gestures` |
+| Session coaching (voice/chat while playing) | `knowledge/session-coaching-multimodal-agent.md` + signal `2026-08-08-multimodal-session-coaching-x` |
+| Multimodal UI research (voice+keys+trackpad+LLM) | same knowledge + field signal; CLI-direct agent surface preferred |
 | Native graphical performance adapter | ADR-004 + ADR-007 + `src/qml/AGENTS.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |
 | Field signal (X alignment) | `kanban/federation/signal/2026-07-17-deep-x-community-alignment.md` + `2026-08-07-strategy-ui-adr-x-alignment.md` + `2026-08-07-dev-practices-agent-native-x.md` + `2026-08-07-tui-first-dj-workstation-field.md` |
