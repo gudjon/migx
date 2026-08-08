@@ -1,5 +1,3 @@
-// !! NOT YET COMPILED — see enginebridge.h !!
-
 #include "bridge/enginebridge.h"
 
 #include <QDir>
@@ -7,6 +5,7 @@
 #include <QJsonDocument>
 #include <QStandardPaths>
 
+#include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "mixer/playermanager.h"
 #include "moc_enginebridge.cpp"

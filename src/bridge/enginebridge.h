@@ -4,11 +4,11 @@
 // into deck actions. The C++ half of the contract defined and tested in
 // tools/migx-cli/migx_cli/engine.py.
 //
-// !! NOT YET COMPILED !!  This file is deliberately NOT in CMakeLists.txt.
-// It was authored from a verified API contract but has never been built, so
-// wiring it in unbuilt would break bisectability (every commit must build).
-// Wiring step is recorded in
-// kanban/tasks/replace-set-play-render-with-live-transport.md.
+// Built as part of mixxx-lib. NOT yet constructed by anything — no call site
+// creates an EngineBridge, so it compiles and links but never listens. The
+// remaining step is deciding where it is owned (MixxxMainWindow, alongside the
+// controller manager) and calling listen(). Until then this is inert code, not
+// a working feature.
 //
 // Thread domain: MAIN/GUI thread only. QLocalServer is a Qt event-loop object
 // and every write goes through ControlProxy, exactly as a MIDI controller
