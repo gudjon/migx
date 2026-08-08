@@ -817,7 +817,11 @@ def run() -> int:  # pragma: no cover - needs a terminal
                 1, 0, " " + "-" * max(0, min(width - 2, 78)), width - 1
             )
 
-            rows = _rows(PANES[pane], snap)
+            rows = (
+                help_view(width - 2)
+                if snap.get("show_help")
+                else _rows(PANES[pane], snap)
+            )
             view = height - 4
             top = max(0, min(top, max(0, len(rows) - view)))
             for offset, line in enumerate(rows[top : top + view]):
@@ -829,17 +833,19 @@ def run() -> int:  # pragma: no cover - needs a terminal
                     _line_attr(PANES[pane], line, colours),
                 )
 
-            footer = (
-                f" {PANES[pane]}  {top + 1}-"
-                f"{min(len(rows), top + view)} of {len(rows)}"
-                "   j/k move  1-6 mode  a/b deck  t track  d deck  q quit"
-            )
+            # The tested pure function, not a second hand-written summary:
+            # a footer that counts rows itself is a second source of truth and
+            # drifts the moment a pane filters (MG-3).
+            footer = status_line(snap, PANES[pane], width - 1)
             stdscr.addnstr(height - 1, 0, footer, width - 1, curses.A_REVERSE)
             stdscr.refresh()
 
             key = stdscr.getch()
             if key in (ord("q"), 27):
                 return
+            if key == ord("?"):
+                snap["show_help"] = not snap.get("show_help")
+                continue
             if key in (ord("j"), curses.KEY_DOWN):
                 if PANES[pane] == "Library":
                     snap["selected"] = min(
