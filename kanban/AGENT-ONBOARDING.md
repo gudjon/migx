@@ -65,6 +65,7 @@ this file. Fifteen minutes; it changes how you work. If another agent is live on
 | Session coaching (voice/chat while playing) | `knowledge/session-coaching-multimodal-agent.md` + signal `2026-08-08-multimodal-session-coaching-x` |
 | Agent integrate (CLI / FS / hooks, Claude Code shape) | `knowledge/agent-filesystem-hooks-integration.md` + signal `2026-08-08-agent-fs-hooks-x` + `install.sh` |
 | Track as portable skill package (song knowledge) | `knowledge/track-as-skill-portable-package.md` + `filesystem-driven-architecture.md` |
+| PREP set research (enrich packages from field sets) | `knowledge/prep-set-research-harness.md` + `nextgen-community-signal-data-sourcing.md` |
 | Multimodal UI research (voice+keys+trackpad+LLM) | same knowledge + field signal; CLI-direct agent surface preferred |
 | Native graphical performance adapter | ADR-004 + ADR-007 + `src/qml/AGENTS.md` |
 | Brand / positioning / messaging | `kanban/playbook/branding/` (`BRND-*`) + `knowledge/migx-brand-positioning-experience-designer.md` |

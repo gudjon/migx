@@ -15,6 +15,8 @@ defers_to:
 related:
   - tools/migx-cli/migx_cli/sidecar.py
   - tools/migx-cli/migx_cli/feedback.py
+  - kanban/knowledge/prep-set-research-harness.md
+  - kanban/knowledge/nextgen-community-signal-data-sourcing.md
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
 note: >
   Research: treat each recording like a Claude Code skill — progressive disclosure,
