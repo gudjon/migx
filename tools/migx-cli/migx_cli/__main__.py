@@ -48,6 +48,7 @@ from . import (
     termart,
     tracklist,
     tui,
+    vocab,
     watch,
 )
 
@@ -462,6 +463,17 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.pair-report/1",
         "note": "The PERSONAL layer: evidence, not assertion. A gap beyond"
         " --gap breaks the chain rather than inventing an edge across a break.",
+    },
+    {
+        "id": "library.vocab",
+        "kind": "query",
+        "summary": "Loaded vocabulary packs, and frontmatter terms that drift from them.",
+        "args": {"--json": "machine-readable"},
+        "emits": "migx.vocab-report/1",
+        "note": "Warns, never rewrites. An unknown mood is a curation problem,"
+        " not a correctness one — blocking a DJ who invents a word would train"
+        " people to stop annotating. Packs live at <library>/Vocabulary/*.md"
+        " and are additive: techno and disco keep separate vocabularies.",
     },
     {
         "id": "system.capabilities",
@@ -1609,6 +1621,57 @@ def cmd_library_pairs(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_vocab(args: argparse.Namespace) -> int:
+    """Show the loaded vocabulary and any frontmatter that drifts from it."""
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    if not root.is_dir():
+        payload = {
+            "schema": "migx.vocab-report/1",
+            "status": "library-unreachable",
+            "library_root": str(root),
+            "error": f"{root} is not mounted — packs live on the library volume",
+        }
+        _out(payload, args.json, payload["error"])
+        return 2
+
+    loaded = vocab.load(root)
+    drift = []
+    for track in tui._collection(root):
+        for issue in vocab.check(track.get("meta") or {}, loaded):
+            drift.append({**issue, "track": track.get("name")})
+
+    payload = {
+        "schema": "migx.vocab-report/1",
+        "packs": loaded["packs"],
+        "terms": loaded["terms"],
+        "drift": drift,
+    }
+    if not loaded["loaded"]:
+        _out(payload, args.json,
+             f"no vocabulary packs — add one at {vocab.vocab_dir(root)}/<domain>.md")
+        return 0
+
+    lines = [f"packs: {', '.join(loaded['packs'])}", ""]
+    for field, terms in sorted(loaded["terms"].items()):
+        lines.append(f"  {field:<8} {', '.join(terms)}")
+    if drift:
+        lines.append("")
+        lines.append(f"{len(drift)} term(s) off-vocabulary:")
+        for issue in drift:
+            hint = (
+                f"  did you mean {', '.join(issue['did_you_mean'])}?"
+                if issue["did_you_mean"] else ""
+            )
+            lines.append(
+                f"  {issue['field']}={issue['term']}"
+                f"  in {(issue['track'] or '')[:40]}{hint}"
+            )
+    _out(payload, args.json, "\n".join(lines))
+    # Drift is a finding, not a failure of the command itself.
+    return 1 if drift else 0
+
+
 def cmd_library_covers(args: argparse.Namespace) -> int:
     """Backfill cover art for tracks already in Collection."""
     cfg = config.load()
@@ -2352,6 +2415,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "library.suspects", help="flag analysis a human should re-check"
     ).set_defaults(fn=cmd_library_suspects)
+
+    sub.add_parser(
+        "library.vocab", help="vocabulary packs and frontmatter drift"
+    ).set_defaults(fn=cmd_library_vocab)
 
     p = sub.add_parser(
         "library.pairs", help="transitions you actually played"
