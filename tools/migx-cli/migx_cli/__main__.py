@@ -378,8 +378,10 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.feedback/1",
         "note": "Takes STRUCTURED verdicts, never free speech — the agent"
         " interpreting the DJ turns talk into flags, so no language guessing"
-        " happens near the library. set.plan honours these: retire excludes,"
-        " opener/peak move the opening slot, segment changes set.play length.",
+        " happens near the library. set.plan / Arrange honour these: retire"
+        " excludes; opener/peak move the opening slot; weak/worked and"
+        " transition 1..5 nudge next-track rank; segment changes set.play"
+        " length.",
     },
     {
         "id": "session.now",

@@ -71,7 +71,12 @@ def opening_energy(track: dict[str, Any]) -> float:
 def transition_score(
     outgoing: dict[str, Any], incoming: dict[str, Any]
 ) -> tuple[int, dict[str, Any]]:
-    """Score this pair, and return the plan that justifies the score."""
+    """Score this pair, and return the plan that justifies the score.
+
+    Floor judgments on the *incoming* track (weak / worked / transition rating)
+    are folded here so Arrange, `set.plan`, and Deck never disagree about the
+    same pair (`P-11`). Physics still dominate the magnitude.
+    """
     plan = mixing.plan(outgoing, incoming)
     best = plan["techniques"][0]
     score = best["score"]
@@ -87,6 +92,7 @@ def transition_score(
     if beatmatch.get("relation"):  # "double-time" / "half-time"
         score += TIME_TRICK_PENALTY
 
+    score += feedback.candidate_bias(incoming)
     return score, plan
 
 

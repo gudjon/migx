@@ -120,6 +120,16 @@ floor judgment without guessing which file you mean — **CLI only, no MCP**.
 Files (library root, off-RT): `_live.json` (current bind + room),
 `_session.jsonl` (append-only bind / room / feedback / clear).
 
+**What feedback does to the next set** (lifetime sidecar → `set.plan` / TUI Arrange):
+
+| Verdict | Effect |
+| --- | --- |
+| `--fit retire` | excluded from the set (reported, never silent) |
+| `--fit weak` / `worked` | demotes / promotes as next-track candidate |
+| `--placement opener` / `peak` | opening-slot preference |
+| `--transition 1..5` | how well blends *into* this track landed |
+| `--segment shorter` / `longer` | play length for offline audition (`set.play`) |
+
 TUI: open Track mode (`t`) also runs `session.bind` (source=`tui`).  
 Agent skill: `.claude/skills/migx-session-coach/` — maps speech → these commands.  
 Research: `kanban/knowledge/session-coaching-multimodal-agent.md`.

@@ -209,7 +209,7 @@ energy placement — into living scoring (`arrange-nexttrack-copilot-scoring`) n
 | **2 session log** | Append-only play + feedback events | **Shipped:** `<library>/_session.jsonl` + `session.show` / `--json` |
 | **3 typed feedback CLI** | `track.feedback` / `session.room` | **Shipped** (fit/placement/segment/transition + room) |
 | **4 voice I/O** | STT into agent (host OS / Whisper / agent voice mode) | Latency OK between phrases |
-| **5 arrange priors** | Feedback adjusts next-track rank | Fixture + offline judge (`set.plan` already reads retire/opener/peak) |
+| **5 arrange priors** | Feedback adjusts next-track rank | **Shipped:** retire exclude; opener/peak; `weak`/`worked` + transition 1..5 via `feedback.candidate_bias` in `setplan.transition_score` (Arrange + set.plan share it) |
 | **6 optional perform proposals** | Armed only | Free-deck precondition |
 
 **Wont-do:** MCP-required path; agent Automix; RT thread listening to STT; voice-only EQ.

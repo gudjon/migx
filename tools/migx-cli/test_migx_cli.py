@@ -1649,6 +1649,67 @@ def main() -> int:
         f"DJ placement outranks energy for the opener, got {led['tracks'][0]['name']}",
     )
 
+    # Wave 5: weak / worked / transition rating move next-track rank (same
+    # path Arrange uses via transition_score).
+    lead = {**base, "name": "lead.mp3", "path": "/x/lead.mp3"}
+    weak_t = {
+        **base,
+        "name": "weak.mp3",
+        "path": "/x/weak.mp3",
+        "feedback": [{"at": "n", "fit": "weak"}],
+    }
+    worked_t = {
+        **base,
+        "name": "worked.mp3",
+        "path": "/x/worked.mp3",
+        "feedback": [{"at": "n", "fit": "worked"}],
+    }
+    plain_t = {**base, "name": "plain.mp3", "path": "/x/plain.mp3"}
+    ranked = setplan.plan_set([lead, weak_t, worked_t, plain_t], opener=lead["path"])
+    order_names = [r["name"] for r in ranked["tracks"]]
+    check(
+        order_names[0] == "lead.mp3",
+        f"forced opener leads, got {order_names}",
+    )
+    check(
+        order_names.index("worked.mp3") < order_names.index("weak.mp3"),
+        f"worked ranks before weak when mixable equal, got {order_names}",
+    )
+    check(
+        order_names.index("worked.mp3") < order_names.index("plain.mp3"),
+        f"worked outranks plain, got {order_names}",
+    )
+    check(
+        order_names.index("plain.mp3") < order_names.index("weak.mp3"),
+        f"plain outranks weak, got {order_names}",
+    )
+    bad_blend = {
+        **base,
+        "name": "hard.mp3",
+        "path": "/x/hard.mp3",
+        "feedback": [{"at": "n", "transition": 1}],
+    }
+    good_blend = {
+        **base,
+        "name": "easy.mp3",
+        "path": "/x/easy.mp3",
+        "feedback": [{"at": "n", "transition": 5}],
+    }
+    s_hard, _ = setplan.transition_score(lead, bad_blend)
+    s_easy, _ = setplan.transition_score(lead, good_blend)
+    check(
+        s_easy > s_hard,
+        f"transition 5 beats transition 1 on same physics ({s_easy} vs {s_hard})",
+    )
+    check(
+        feedback.candidate_bias(weak_t) == feedback.WEAK_PENALTY,
+        "candidate_bias exposes weak penalty",
+    )
+    check(
+        feedback.candidate_bias(worked_t) == feedback.WORKED_BONUS,
+        "candidate_bias exposes worked bonus",
+    )
+
     # segment notes change how much of a track set.play uses.
     check(feedback.seconds_for({"feedback": [{"at": "n", "segment": "shorter"}]}, 100) == 60.0,
           "shorter segment shortens play time")

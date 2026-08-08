@@ -79,7 +79,10 @@ If `track.cue` / `track.note` do not accept `now`, resolve path from `session.no
 - **Structured flags only** near the library (`feedback.py` law). You own NL→flags.  
 - **No RT / no ControlObject** from this skill.  
 - **No silent deck load.** Prep suggestions only unless user explicitly asks and a load command is armed.  
-- Prefer **`now`** after bind so speech stays bound to the playing file id.
+- Prefer **`now`** after bind so speech stays bound to the playing file id.  
+- Floor flags **change the next set**: `retire` removes; `weak`/`worked` and
+  `--transition` nudge Arrange / `set.plan` rank; `opener`/`peak` move the open.
+  After recording, you may re-run `set.plan` / glance Arrange to confirm.
 
 ## Bind helpers
 

@@ -106,7 +106,7 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `session.now` / `session.bind` / `session.clear` | shipped | `_live.json` off-RT | — |
 | `session.room` | shipped | theme/energy/note on `_live.json` | — |
 | `session.show` | shipped | `_session.jsonl` → plays[] + events[] | night reconstruct |
-| `track.feedback` (+ `now`) | shipped | sidecar + mirror to `_session.jsonl` | — |
+| `track.feedback` (+ `now`) | shipped | sidecar + night log; weak/worked/transition bias rank | set.plan + Arrange |
 | Session coach skill (speech→CLI) | shipped | `.claude/skills/migx-session-coach/` | dogfood voice→flags |
 | Engine-driven live position in `_live.json` | gap | app writes playposition off-RT | later engine bridge |
 

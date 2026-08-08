@@ -31,17 +31,19 @@ again.
 
 ## What each verdict does to the next set
 
-| flag / value          | effect on `set.plan` |
-| --------------------- | -------------------- |
+| flag / value          | effect on `set.plan` / Arrange |
+| --------------------- | ------------------------------ |
 | `--fit retire`        | excluded entirely — the strongest thing a DJ can say |
-| `--fit weak`          | recorded; it played but did not land |
-| `--fit worked`        | recorded; no ordering change |
+| `--fit weak`          | soft demotion as next-track candidate (`candidate_bias`) |
+| `--fit worked`        | mild promotion — it earned another look |
 | `--placement opener`  | strongly preferred as the set's first track |
 | `--placement peak`    | biased away from the opening; it wants a built room |
+| `--transition 1..5`   | how well blends *into* this track landed; nudges rank |
 
-Segment and transition notes ride along for `set.play`: `shorter`/`longer`
-change how much of the track is used, and a poor transition rating is a signal
-the *pair* did not work, recorded on the incoming track.
+Segment notes ride along for `set.play`: `shorter`/`longer` change how much of
+the track is used. Transition rating is stored on the *incoming* track (the one
+just mixed into) until pair memory exists — still enough to prefer tracks that
+usually take a blend well.
 """
 
 from __future__ import annotations
@@ -65,6 +67,15 @@ SEGMENTS = ("shorter", "longer")
 # here because it is an exclusion, not a penalty — a retired track is gone.
 PEAK_OPENING_PENALTY = -60
 OPENER_BONUS = 80
+
+# Floor-judgment nudges on *next-track* rank. Sized below harmonic (+30) and
+# in-range (+25) so physics still win; large enough that two equal-mixable
+# candidates order by what the DJ said. Applied in setplan.transition_score
+# so Arrange / set.plan / Deck never disagree (P-11).
+WEAK_PENALTY = -28
+WORKED_BONUS = 12
+# transition 1..5 → bias for choosing this track as the *incoming* side.
+TRANSITION_BIAS = {1: -22, 2: -12, 3: 0, 4: 8, 5: 14}
 
 
 def _now() -> str:
@@ -149,6 +160,26 @@ def placement_bias(track: dict[str, Any], position: int) -> int:
         if placement == "peak":
             return PEAK_OPENING_PENALTY
     return 0
+
+
+def candidate_bias(track: dict[str, Any]) -> int:
+    """Nudge for picking this track as the *next* in a set / Arrange list.
+
+    Fit and transition-into ratings only. Placement belongs to the opener
+    picker; retire is exclusion, not a number. Never invents a verdict — missing
+    fields contribute zero.
+    """
+    v = latest(track)
+    score = 0
+    fit = v.get("fit")
+    if fit == "weak":
+        score += WEAK_PENALTY
+    elif fit == "worked":
+        score += WORKED_BONUS
+    rating = v.get("transition")
+    if isinstance(rating, int) and rating in TRANSITION_BIAS:
+        score += TRANSITION_BIAS[rating]
+    return score
 
 
 def seconds_for(track: dict[str, Any], default_s: float) -> float:
