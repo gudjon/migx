@@ -45,29 +45,39 @@ def desired_name(path: Path, template: str, ext: str | None = None) -> str:
     )
 
 
-def crate_links(track: Path, crates_root: Path) -> list[Path]:
-    """Crate entries that are the same inode as this track.
+def crate_links(track: Path, crates_root: Path) -> tuple[list[Path], int]:
+    """Crate entries that are the same inode as this track, plus a miss count.
 
     Matched by inode rather than by name: that is the whole point, since the
     crate entry still carries the *old* name we are trying to fix.
+
+    Returns `(links, unreadable)`. The count is not decoration — it is the
+    difference between "this track has no crate links" and "I could not tell".
+    Both used to return `[]`, so a stat failure made the rename proceed and
+    skip relinking, leaving crates pointing at a name that no longer exists.
+    That is exactly the "stale crate silently disagrees with Collection"
+    hazard this module's own docstring warns about (`P-34`).
     """
     if not crates_root.is_dir():
-        return []
+        return [], 0
     try:
         target = track.stat()
     except OSError:
-        return []
-    out = []
+        # Cannot identify the track at all, so EVERY crate entry is unknown.
+        return [], 1
+    out: list[Path] = []
+    unreadable = 0
     for path in crates_root.rglob("*"):
         if not path.is_file():
             continue
         try:
             st = path.stat()
         except OSError:
+            unreadable += 1
             continue
         if st.st_ino == target.st_ino and st.st_dev == target.st_dev:
             out.append(path)
-    return out
+    return out, unreadable
 
 
 def plan(
@@ -99,12 +109,15 @@ def plan(
         target = collection / shelf / want
         if target == path:
             continue
+        links, unreadable = crate_links(path, crates_root)
         rows.append(
             {
                 "from": str(path),
                 "to": str(target),
                 "conflict": target.exists(),
-                "links": [str(p) for p in crate_links(path, crates_root)],
+                "links": [str(p) for p in links],
+                # Surfaced so `apply` can refuse rather than half-rename.
+                "unreadable_links": unreadable,
             }
         )
     return rows
@@ -116,6 +129,12 @@ def apply(row: dict[str, Any]) -> dict[str, Any]:
     target = Path(row["to"])
     if target.exists():
         return {**row, "status": "conflict"}
+    # Refuse rather than half-rename. If some crate entries could not be read,
+    # renaming the audio would strand them under the old name with no record
+    # of which ones — worse than not renaming at all, because the next run
+    # cannot find them either.
+    if row.get("unreadable_links"):
+        return {**row, "status": "unreadable-links"}
 
     target.parent.mkdir(parents=True, exist_ok=True)
     side_from = sidecar.sidecar_dir(source)
