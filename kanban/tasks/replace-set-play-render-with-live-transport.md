@@ -106,6 +106,32 @@ Two traps this closes:
 - `src/test/co_dumps/co_dump_inital.csv` is a **full dump of every ControlObject at startup** — the
   fastest way to confirm a key exists before writing code against it.
 
+### The P-06 ownership question — RESOLVED (2026-08-08)
+
+This looked like the blocker: `P-06` says exactly one component is the authoritative writer of each
+`[Group], key`, so what happens when the bridge writes `[Channel1],play` while the GUI and a mapped
+controller can too?
+
+**It is not a conflict, because the precedent already exists.** MIDI/HID controller scripts write deck
+controls today through `ControlObjectScript` (a `ControlProxy` subclass) —
+`src/controllers/scripting/legacy/controllerscriptinterfacelegacy.cpp`. Keyboard and GUI do the same.
+So `[ChannelN],play` already has several concurrent writers and always has.
+
+The resolution is that deck controls of this kind are **user-intent** controls, not owned state. `P-06`
+binds the writer of authoritative *state* — and for a deck that is the **engine**, which owns what
+`play` actually means and reflects it back. Every input surface is a peer requesting a change.
+
+**So the bridge is another input surface, exactly like a controller mapping.** It gets no special
+ownership and needs none:
+
+- it **writes intents** (`play`, `rate`, load) the same way a controller script does
+- it **reads state** back through `ControlProxy`, never caching its own idea of what is playing
+- it must **never** assume it is the only writer — the DJ can hit play on the hardware mid-command, and
+  the receipt must report what the engine actually did, not what the bridge asked for
+
+That last point is what makes the receipt load-bearing rather than cosmetic: it is the difference
+between reporting the intent and reporting the truth (`P-34`).
+
 ### First wave (smallest thing that proves the route)
 Load a track onto deck 1 and start it, from the CLI, with the engine running — then read back
 `[Channel1],play` as a receipt. Everything else (tempo, blends, the live re-plan) is worthless until
