@@ -34,11 +34,9 @@ the first ArcFlow-backed product insight confidently wrong.
 
 ## Resolution
 
-ArcFlow commit `ef944443` on branch
-`codex/arcflow-distinct-playlist-count` closes the semantic defect. The complete
-four-commit fix series is in ArcFlow PR
-[`#27`](https://github.com/ozinc/arcflow-core/pull/27), with protected-branch
-auto-merge enabled.
+ArcFlow PR [`#27`](https://github.com/ozinc/arcflow-core/pull/27) closes the
+semantic defect and merged to `main` as `9c2f4ad8`. The installed local runtime
+was subsequently built from `main` at `83c86311`, which contains that merge.
 
 The reduction found three runtime defects rather than a parser defect:
 
@@ -85,7 +83,10 @@ one recording named `Home`).
 
 ## Evidence
 
-- Patched ArcFlow branch: `codex/arcflow-distinct-playlist-count` at `ef944443`.
+- ArcFlow fix merge: PR #27 at `9c2f4ad8`; installed local build from later
+  `main` commit `83c86311`.
+- Installed binary SHA-256:
+  `fbd29f7b6428e9b52fa26f99d54e3334a7100f3a83924ca7063b524a741f3b69`.
 - Corpus: 3,720 tracks, 2,962 artists, 83 playlists, 5,067 `BY`, 4,416 `ON`.
 - Independent set reference: 4,300 distinct track/playlist memberships, so the
   116 extra `ON` relationships are repeated placements rather than additional
@@ -95,11 +96,15 @@ one recording named `Home`).
   (feat. Ali Love)`, and `Your Loving Arms - Original`.
 - Native artist ranking matched the reference: CamelPhat and UNKLE span 12
   playlists; ANNA, Gui Boratto, and NTO span 11. Unicode names including
-  `RÜFÜS DU SOL` and `Röyksopp` sort without a panic.
+  `RÜFÜS DU SOL` and `Röyksopp` sort without a panic. The fresh installed-main
+  proof also preserved `Ysée`, `trentemøller`, and `Chicane;Máire Brennan`.
 - Rust runtime regression: 3 passed. Python FFI smoke plus the UTF-8 cache
   smoke: 2 passed. Scoped Clippy, formatting, and diff checks passed.
-- A full runtime run reached 1,937 passed, 3 failed, and 3 ignored. The three
-  failures are pre-existing unrelated GPU shortest-path, WITH pipeline, and
-  optional-scope cases on the branch base. Full TCK was not rerun.
+- All protected PR checks passed, including Test in 39m45s and Fitness in
+  12m35s. Full TCK was not rerun.
+- A clean `arcflow-cli` release build from `83c86311` completed in 3m30s. Its
+  fresh 83-mirror store restored as 6,765 nodes and 9,483 relationships; both
+  native ranking forms returned identical top-12 rows, and native counts
+  remained 4,300 distinct memberships versus 4,416 placements.
 - Integration boundary:
   `kanban/knowledge/arcflow-tui-agentic-dj-integration.md`.

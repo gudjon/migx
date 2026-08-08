@@ -55,48 +55,49 @@ thread. A derived result is a proposal until the Migx application handler valida
 
 ## Verified local baseline
 
-Evidence captured on 2026-08-07 from the installed macOS command:
+Evidence refreshed on 2026-08-08 from the installed macOS command:
 
 | Check | Observed result | Claim boundary |
 | --- | --- | --- |
 | Installation | `arcflow` resolves via `~/.local/bin/arcflow` to `~/.arcflow/bin/arcflow` | Available to Claude Code, Codex, Grok, and shells using the user PATH |
-| Release | `arcflow v0.11.9`; identity source revision `6168ed04322040c7735473093b625e5dc20d18bd` | This is the runtime evaluated here, not the current `arcflow-core` checkout |
+| Runtime identity | `arcflow v0.11.9`, built from ArcFlow `main` at `83c86311b5f85c5af19e571f87152f0ae33937d3` | Local source build containing PR #27 merge `9c2f4ad8`; not a newly published installer artifact |
 | Local workspace | `workspace init`, persistence, content-addressed snapshot IDs | Suitable for isolated prototypes; not yet a Migx production store |
 | Migx-shaped proof | Three `Track` nodes, two `COMPATIBLE_WITH` edges, ordered JSON query | World Graph + Query Engine are directly useful now |
-| Mirror loader | `tools/migx-cli/mirrors-to-graph` maps Track/Artist/Playlist and BY/ON edges | Full corpus completed against the patched ArcFlow branch |
+| Mirror loader | `tools/migx-cli/mirrors-to-graph` maps Track/Artist/Playlist and BY/ON edges | Fresh full corpus completed against the installed merged-main build |
 | Query/runtime surface | `db.capabilities()` reported CPU backend, delta engine, e-graph rules, and Z-set operators | Confirms a substantial shipped query/incremental surface, not production performance |
 | Service boundary | Daemon help exposes Unix-socket JSON-RPC plus optional HTTP/SSE and durability controls | Unix socket is the preferred first integration seam |
 | Health ambiguity | `doctor --json` returned `status: ok` but `workspace_valid: false` after init | Must be resolved before relying on doctor as a release gate |
 
-The real loader exposed four ArcFlow `v0.11.9` defects. Query-cache normalization
+The real loader exposed five ArcFlow `v0.11.9` defects. Query-cache normalization
 advanced byte by byte and could stop inside a Unicode scalar; the shared
 REPL/PG-wire statement splitter also split semicolons inside quoted strings;
 grouped `count(DISTINCT ...)` omitted its aggregate; and plain-variable
 `WITH DISTINCT` could discard every grouping row after the first. Ranking then
 found a second UTF-8 byte-boundary panic in `ORDER BY` temporal probing.
 
-All four are fixed with Rust/Python/CLI regressions through ArcFlow commit
-`ef944443` on `codex/arcflow-distinct-playlist-count`. The complete series is in
-ArcFlow PR [`#27`](https://github.com/ozinc/arcflow-core/pull/27), with
-protected-branch auto-merge enabled. The patched build preserves `Ysée`,
-`trentemøller`, and `Chicane;Máire Brennan`, and ranks `RÜFÜS DU SOL` and
-`Röyksopp` without panic. The published release still lags those source fixes,
-so Migx must pin an identified patched build until a release containing them
-exists.
+All five are fixed with Rust/Python/CLI regressions in ArcFlow PR
+[`#27`](https://github.com/ozinc/arcflow-core/pull/27), merged to `main` as
+`9c2f4ad8`. The installed local build is from later `main` commit `83c86311` and
+preserves `Ysée`, `trentemøller`, and `Chicane;Máire Brennan`, while ranking
+`RÜFÜS DU SOL` and `Röyksopp` without panic.
 
-Verification reported for that branch: 1,942 runtime tests, scoped CLI suites,
-Clippy, formatting, and the complete Migx corpus load passed. Full TCK was not
-rerun. Two later isolated rebuild attempts were terminated with exit 143 during
-dependency compilation; those are incomplete rebuilds, not test failures.
+All protected PR #27 checks passed, including Test in 39m45s and Fitness in
+12m35s. Full TCK was not rerun. A clean dedicated release build from `83c86311`
+then completed locally in 3m30s, followed by a fresh full-corpus load and native
+query verification.
 
-The installed binary, `agent-context`, `paths`, source README, and procedure catalogue report different
-crate/procedure/algorithm counts. The current `arcflow-core` checkout is also ahead of the installed
-release. Treat the binary's behavior and identity as shipped truth. Treat source-only documentation as
-design evidence until the corresponding runtime command is demonstrated.
+The old and new executables both report `v0.11.9`, so the version string alone
+cannot identify the fix. The installed local binary is pinned by source commit
+`83c86311` and SHA-256
+`fbd29f7b6428e9b52fa26f99d54e3334a7100f3a83924ca7063b524a741f3b69`.
+The published installer artifact has not been cut or revalidated with these
+fixes and must not overwrite this source-built runtime. Treat demonstrated local
+behavior as runtime truth and source-only documentation as design evidence until
+the corresponding command is exercised.
 
 ## Full corpus proof
 
-The patched loader completed 16,248 statements in about 12 seconds:
+The installed merged-main build completed 16,248 statements in about 10 seconds:
 
 | Graph element | Count |
 | --- | ---: |
@@ -188,7 +189,7 @@ must never overwrite a measured or source-supplied fact without provenance.
 Use the existing one-process REPL loader only for the offline A0 corpus proof;
 ArcFlow `v0.11.9` rejects the bulk forms the loader needs, so spawning one process
 per statement is not viable. For ongoing product integration, prefer the local
-daemon over a Unix socket once the patched runtime and daemon contract are proved.
+daemon over a Unix socket once the merged runtime and daemon contract are proved.
 That gives the Python TUI/CLI process isolation while preserving the option of a
 native Rust/C++ integration later.
 
@@ -208,10 +209,11 @@ native Rust/C++ integration later.
 ### A0 - contract proof (loader and distinct semantics complete)
 
 The Track/Artist/Playlist loader and full UTF-8 corpus proof are complete against
-the patched branch. Distinct-playlist aggregation is fixed and independently
-checked. Finish A0 by pinning the merged runtime identity, adding the remaining
-bounded queries, and proving snapshot export/rebuild. Then extend the graph with
-the minimal `Observation`/`SetSession` mapping. No engine connection.
+the installed merged-main runtime. Distinct-playlist aggregation is fixed,
+independently checked, and pinned to a source commit plus binary hash. Finish A0
+by adding the remaining bounded queries and proving snapshot export/rebuild.
+Then extend the graph with the minimal `Observation`/`SetSession` mapping. No
+engine connection.
 
 **Gate:** the achieved 83-mirror/3,720-track/2,962-artist load stays green; all
 ranking queries count distinct playlists correctly in the engine; one JSON query
@@ -262,7 +264,7 @@ disconnect takeover, and audio-underrun acceptance all pass.
 
 ## Next concrete dossier
 
-The next implementation dossier should remain **A0 only**: pin the merged
-runtime identity, add the remaining bounded queries, prove export/rebuild, and
-decide whether the Unix-socket daemon contract is stable enough for A1. It must
-not touch the audio engine or ControlObjects.
+The next implementation dossier should remain **A0 only**: add the remaining
+bounded queries, prove export/rebuild, and decide whether the Unix-socket daemon
+contract is stable enough for A1. It must not touch the audio engine or
+ControlObjects.
