@@ -42,6 +42,7 @@ from . import (
     setplan,
     suspect,
     session,
+    sessionlock,
     setplay,
     sidecar,
     termart,
@@ -872,6 +873,10 @@ def cmd_library_missing(args: argparse.Namespace) -> int:
 
 
 def cmd_library_ingest(args: argparse.Namespace) -> int:
+    blocked = _hold_session_lock("library.ingest")
+    if blocked is not None:
+        _out(blocked, args.json, blocked["error"])
+        return 2
     cfg = config.load()
     args.library = config.resolve(args.library, cfg, "library.root")
     if args.template is None:
@@ -1817,7 +1822,37 @@ def cmd_library_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def _hold_session_lock(command: str) -> dict[str, Any] | None:
+    """Take the one-session-per-user lock, or explain who has it.
+
+    Only wrapped around commands that MUTATE the library. Two of these running
+    at once is not slow, it is wrong: library.watch already proved it, when
+    launchd started a second drain over the first and two processes ingested
+    one inbox. Queries stay unlocked -- reading while a filing run is in
+    progress is harmless and blocking it would make the TUI unusable.
+
+    The lock is released by process exit rather than a finally block: a killed
+    run must not leave a lock nobody can clear, and sessionlock treats a lock
+    whose pid+start-time no longer match as stale and reclaimable.
+    """
+    result = sessionlock.acquire()
+    if result.get("ok"):
+        return None
+    held = result.get("held_by") or {}
+    return {
+        "schema": "migx.session-lock/1",
+        "ok": False,
+        "command": command,
+        "held_by_pid": held.get("pid"),
+        "error": result.get("error"),
+    }
+
+
 def cmd_library_watch(args: argparse.Namespace) -> int:
+    blocked = _hold_session_lock("library.watch")
+    if blocked is not None:
+        _out(blocked, args.json, blocked["error"])
+        return 2
     cfg = config.load()
     root = Path(config.get(cfg, "library.root"))
     inbox = (
@@ -1891,6 +1926,10 @@ def cmd_library_watch(args: argparse.Namespace) -> int:
 
 
 def cmd_library_rename(args: argparse.Namespace) -> int:
+    blocked = _hold_session_lock("library.rename")
+    if blocked is not None:
+        _out(blocked, args.json, blocked["error"])
+        return 2
     cfg = config.load()
     root = Path(config.get(cfg, "library.root"))
     template = ingest.TEMPLATES.get(
