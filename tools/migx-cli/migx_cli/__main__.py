@@ -33,12 +33,14 @@ from . import (
     layout,
     mirror,
     notes,
+    pairs,
     naming,
     quality,
     ratelimit,
     rename,
     resolve,
     setplan,
+    suspect,
     session,
     setplay,
     sidecar,
@@ -436,6 +438,29 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.session-log/1",
         "note": "Reads <library>/_session.jsonl (append-only). Bind/room/feedback/"
         "clear all append; agents use this for night harvest / Dream loop.",
+    },
+    {
+        "id": "library.suspects",
+        "kind": "query",
+        "summary": "Tracks whose analysis looks wrong, queued for human review.",
+        "args": {"--json": "machine-readable"},
+        "emits": "migx.suspect-report/1",
+        "note": "Fixes nothing. Flags implausible BPM, likely double/half-time"
+        " detections, missing keys and suspiciously short files so a human can"
+        " judge. A wrong number that yields a plausible-looking set is worse"
+        " than one that yields an obvious mess.",
+    },
+    {
+        "id": "library.pairs",
+        "kind": "query",
+        "summary": "Transitions you actually played, mined from the night log.",
+        "args": {
+            "--min-count": "edges seen fewer times are dropped (default 2)",
+            "--gap": "seconds after which a gap breaks the chain (default 600)",
+        },
+        "emits": "migx.pair-report/1",
+        "note": "The PERSONAL layer: evidence, not assertion. A gap beyond"
+        " --gap breaks the chain rather than inventing an edge across a break.",
     },
     {
         "id": "system.capabilities",
@@ -1424,6 +1449,18 @@ def cmd_session_now(args: argparse.Namespace) -> int:
         bits = [f"{k}={v}" for k, v in room.items() if v]
         if bits:
             human += f"\nroom: {', '.join(bits)}"
+    if not session.library_reachable(root):
+        payload = {
+            "schema": "migx.live-status/1",
+            "status": "library-unreachable",
+            "library_root": str(root),
+            "error": (
+                f"{root} is not mounted — cannot tell what is playing "
+                "(this is NOT the same as nothing playing)"
+            ),
+        }
+        _out(payload, args.json, payload["error"])
+        return 2
     _out(doc, args.json, human)
     return 0 if doc.get("path") else 1
 
@@ -1495,6 +1532,76 @@ def cmd_session_show(args: argparse.Namespace) -> int:
     human = session.format_show(doc)
     _out(doc, args.json, human)
     return 0 if doc.get("event_count") else 1
+
+
+def cmd_library_suspects(args: argparse.Namespace) -> int:
+    """Flag analysis a human should re-check."""
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    rows = tui._collection(root)
+    found = suspect.inspect(rows)
+    payload = {
+        "schema": "migx.suspect-report/1",
+        "scanned": len(rows),
+        "suspect": len(found),
+        "items": found,
+    }
+    if not found:
+        _out(payload, args.json, f"nothing suspicious in {len(rows)} track(s)")
+        return 0
+    lines = [f"{len(found)} of {len(rows)} track(s) want a human ear", ""]
+    for row in found:
+        lines.append(
+            f"  {row['bpm']:>5.0f} {row['camelot'] or '--':>4}  "
+            f"{(row['name'] or '')[:44]:<44} {row['reasons'][0][:52]}"
+        )
+        for extra in row["reasons"][1:]:
+            lines.append(f"  {'':>5} {'':>4}  {'':<44} {extra[:52]}")
+    _out(payload, args.json, "\n".join(lines))
+    return 1
+
+
+def cmd_library_pairs(args: argparse.Namespace) -> int:
+    """Mine what you actually played after what, from the night log."""
+    import datetime as _dt
+
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    plays = []
+    for event in session.read_events(root):
+        if event.get("type") != "bind" or not event.get("path"):
+            continue
+        stamp = event.get("at") or ""
+        try:
+            when = _dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        plays.append({"key": event["path"], "at": when.timestamp()})
+
+    tallied = pairs.tally(plays, max_gap_s=args.gap, min_count=args.min_count)
+    edges = pairs.as_edges(tallied, "migx:night-log")
+    payload = {
+        "schema": "migx.pair-report/1",
+        "plays": len(plays),
+        "edges": len(edges),
+        "items": edges,
+    }
+    if not plays:
+        _out(payload, args.json,
+             "no play history yet — bind tracks with `session.bind` during a set")
+        return 0
+    if not edges:
+        _out(payload, args.json,
+             f"{len(plays)} play(s), no edge seen {args.min_count}+ times yet")
+        return 0
+    lines = [f"{len(edges)} transition(s) from {len(plays)} play(s)", ""]
+    for edge in edges:
+        lines.append(
+            f"  x{edge['count']}  {Path(edge['from']).name[:34]:<34} -> "
+            f"{Path(edge['to']).name[:34]}"
+        )
+    _out(payload, args.json, "\n".join(lines))
+    return 0
 
 
 def cmd_library_covers(args: argparse.Namespace) -> int:
@@ -2199,6 +2306,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="only the last N events",
     )
     p.set_defaults(fn=cmd_session_show)
+
+    sub.add_parser(
+        "library.suspects", help="flag analysis a human should re-check"
+    ).set_defaults(fn=cmd_library_suspects)
+
+    p = sub.add_parser(
+        "library.pairs", help="transitions you actually played"
+    )
+    p.add_argument("--min-count", type=int, default=pairs.DEFAULT_MIN_COUNT)
+    p.add_argument("--gap", type=int, default=pairs.MAX_GAP_S)
+    p.set_defaults(fn=cmd_library_pairs)
 
     p = sub.add_parser(
         "set.play",

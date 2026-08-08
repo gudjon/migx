@@ -395,7 +395,10 @@ def stage_view(stage: list[dict[str, Any]], width: int = 72) -> list[str]:
     """
     if not stage:
         return ["(nothing staged — actions land here before they run)"]
-    out = [f"{len(stage)} staged  ·  enter=apply  d=discard one  D=discard all", ""]
+    # Advertises only what run() actually handles. The header used to promise
+    # "enter=apply" with no key handler behind it — a UI that offers an action
+    # it cannot perform is the same lie as a gate that cannot fail (P-34).
+    out = [f"{len(stage)} staged  ·  apply not wired yet — run them yourself", ""]
     for i, entry in enumerate(stage):
         mark = "!" if entry["mutates"] else " "
         line = f" {mark} {i + 1:>2}. {' '.join(entry['argv'][1:])}"

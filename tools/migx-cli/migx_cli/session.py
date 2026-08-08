@@ -51,6 +51,17 @@ def _now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def library_reachable(root: Path | str) -> bool:
+    """Is the library volume actually mounted?
+
+    `path: null` from a missing file and `path: null` from an ejected USB SSD
+    are different answers, and an agent that cannot tell them apart will coach
+    confidently from its last known track. "Nothing is playing" and "I cannot
+    tell" must never look alike (P-34).
+    """
+    return Path(root).is_dir()
+
+
 def read(root: Path | str) -> dict[str, Any]:
     """Current live status, or an empty schema shell if missing."""
     path = live_path(root)
