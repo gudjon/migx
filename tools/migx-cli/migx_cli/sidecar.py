@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -51,13 +52,43 @@ def track_file(audio: Path | str) -> Path:
 
 
 def read(audio: Path | str) -> dict[str, Any]:
-    """The sidecar object, or {} when there is none. Never raises."""
+    """The sidecar object, or {} when there is none. Never raises.
+
+    A CORRUPT sidecar is preserved before `{}` is returned. Returning `{}` for
+    damaged JSON is indistinguishable from "this track has no sidecar", so the
+    track reads as merely unanalysed — and the next `library.analyze` rewrites
+    it, destroying the DJ's cues, notes and feedback for good. The audio is
+    replaceable; hand-made cue points are not.
+
+    So the bad file is moved aside to `track.json.corrupt` and the damage is
+    reported on stderr. `{}` is still returned, because callers legitimately
+    rely on this never raising — but the data survives and a human is told
+    (`P-34`: classified failure, never a silent default).
+    """
     path = track_file(audio)
     if not path.is_file():
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"warning: cannot read sidecar {path}: {exc}", file=sys.stderr)
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        salvage = path.with_suffix(path.suffix + ".corrupt")
+        try:
+            if not salvage.exists():
+                path.rename(salvage)
+                where = f" — preserved at {salvage.name}"
+            else:
+                where = f" — earlier copy already at {salvage.name}"
+        except OSError:
+            where = " — could NOT preserve it"
+        print(
+            f"warning: corrupt sidecar {path} ({exc}){where}",
+            file=sys.stderr,
+        )
         return {}
     return data if isinstance(data, dict) else {}
 
