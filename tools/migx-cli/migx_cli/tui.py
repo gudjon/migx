@@ -341,6 +341,64 @@ ARRANGE_CANDIDATES = 12
 KEYMAP_PATH = Path(__file__).resolve().parents[3] / "res" / "design" / "KEYMAP.md"
 
 
+def stage_add(stage: list[dict[str, Any]], spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Queue a validated command spec for later apply. Returns a NEW list.
+
+    Stage-before-apply exists because the destructive moment and the deciding
+    moment should not be the same keystroke. A DJ mid-set who presses `c` twice
+    should see two staged actions and be able to drop one, not discover it
+    afterwards in the library.
+
+    Immutable by construction — every helper returns a new list rather than
+    mutating in place, so the pane stays a pure function of state and an undo
+    is just holding the previous list.
+    """
+    if not spec.get("ok"):
+        return list(stage)
+    entry = {
+        "id": spec["id"],
+        "args": list(spec.get("args") or []),
+        "argv": list(spec.get("argv") or []),
+        "mutates": bool(spec.get("mutates")),
+        "summary": spec.get("summary"),
+    }
+    # Exact duplicates are dropped: staging the same command twice is nearly
+    # always a double keypress, and applying it twice can double-file a track.
+    if any(e["argv"] == entry["argv"] for e in stage):
+        return list(stage)
+    return [*stage, entry]
+
+
+def stage_discard(
+    stage: list[dict[str, Any]], index: int | None = None
+) -> list[dict[str, Any]]:
+    """Drop one staged action, or all of them when `index` is None."""
+    if index is None:
+        return []
+    if 0 <= index < len(stage):
+        return [e for i, e in enumerate(stage) if i != index]
+    return list(stage)
+
+
+def stage_view(stage: list[dict[str, Any]], width: int = 72) -> list[str]:
+    """What is about to happen, before it happens.
+
+    Mutating actions are marked, because "find duplicates" and "move files"
+    should never look alike in a list you are about to approve at 2am.
+    """
+    if not stage:
+        return ["(nothing staged — actions land here before they run)"]
+    out = [f"{len(stage)} staged  ·  enter=apply  d=discard one  D=discard all", ""]
+    for i, entry in enumerate(stage):
+        mark = "!" if entry["mutates"] else " "
+        line = f" {mark} {i + 1:>2}. {' '.join(entry['argv'][1:])}"
+        out.append(line[:width])
+    if any(e["mutates"] for e in stage):
+        out.append("")
+        out.append(" ! = changes the library")
+    return out
+
+
 def compose_parse(text: str, commands: list[dict[str, Any]]) -> dict[str, Any]:
     """Turn a typed line into a validated command spec, or an explained refusal.
 

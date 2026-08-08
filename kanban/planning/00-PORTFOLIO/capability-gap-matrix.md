@@ -99,7 +99,7 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | engine command bridge | gap | guarded perform intents | claude-code | LIVE preconditions |
 | composer in TUI | partial | pure parse+validate against the manifest, tested; input loop + dispatch remain | claude-code | field P1 |
 | TUI status line + `?` help | shipped | pure snapshot + KEYMAP; help parsed from KEYMAP.md | claude-code | 2026-08-08 |
-| stage-before-apply Prep | gap | preview/apply/discard | claude-code | field P1 |
+| stage-before-apply Prep | partial | pure stage/discard/view, tested; apply loop remains | claude-code | field P1 |
 | jobs strip (non-blocking) | gap | mode switch during analyze | claude-code | field P1 |
 | three-column PREP workspace | gap | Yazi grammar | claude-code | after composer |
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |

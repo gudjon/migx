@@ -1861,6 +1861,43 @@ def main() -> int:
     tui.compose_parse("library.ingest --move /x", caps)
     check(caps == frozen, "compose_parse leaves the manifest untouched")
 
+    # ---- TUI Prep staging (field P1) -------------------------------------
+    st = []
+    st = tui.stage_add(st, tui.compose_parse("library.dedupe", caps))
+    st = tui.stage_add(st, tui.compose_parse("library.ingest /x --move", caps))
+    check(len(st) == 2, f"two distinct actions stage, got {len(st)}")
+    check(st[1]["mutates"] is True, "a mutating action is flagged in the stage")
+
+    # A double keypress must not stage the same thing twice: applying it twice
+    # can double-file a track.
+    st2 = tui.stage_add(st, tui.compose_parse("library.dedupe", caps))
+    check(len(st2) == 2, f"an exact duplicate is not staged again, got {len(st2)}")
+
+    # A refused parse never reaches the stage.
+    st3 = tui.stage_add(st, tui.compose_parse("library.nope", caps))
+    check(len(st3) == 2, "an invalid command is never staged")
+
+    # Immutability: helpers return new lists, so undo is just the old list.
+    before = list(st)
+    tui.stage_add(st, tui.compose_parse("set.plan", caps))
+    tui.stage_discard(st, 0)
+    check(st == before, "staging helpers never mutate in place")
+
+    check(len(tui.stage_discard(st, 0)) == 1, "discard one drops exactly one")
+    check(tui.stage_discard(st, None) == [], "discard all empties the stage")
+    check(len(tui.stage_discard(st, 99)) == 2, "an out-of-range discard is a no-op")
+
+    view = tui.stage_view(st)
+    check("2 staged" in view[0], f"stage view counts actions, got {view[0]}")
+    check(any("!" in ln and "ingest" in ln for ln in view),
+          "the mutating action is marked in the view")
+    check(any("changes the library" in ln for ln in view),
+          "the view explains what the mark means")
+    check(
+        "nothing staged" in tui.stage_view([])[0],
+        "an empty stage explains itself",
+    )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
