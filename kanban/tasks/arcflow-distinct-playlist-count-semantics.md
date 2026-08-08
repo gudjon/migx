@@ -2,7 +2,7 @@
 id: arcflow-distinct-playlist-count-semantics
 type: task
 title: "ArcFlow distinct-playlist aggregation must not count repeated placements"
-status: open
+status: closed
 owner: gudjon
 priority: high
 initiative: initiative-ai-djing-product
@@ -10,7 +10,7 @@ authored_by: codex-cli
 authored_kind: agent
 triggered_by: "The first full Migx mirror graph showed 116 repeated ON placements and incorrect WITH DISTINCT collapse"
 created: "2026-08-07"
-lastUpdated: "2026-08-07"
+lastUpdated: "2026-08-08"
 acceptance: |
   A minimal graph with repeated Track-[:ON]->Playlist placements returns the
   correct distinct-playlist count per track and per artist through native GQL.
@@ -32,17 +32,46 @@ Artist anchors, central tracks, and co-occurrence rankings need **distinct
 playlist membership**. Shipping placement counts as playlist counts would make
 the first ArcFlow-backed product insight confidently wrong.
 
-## Required work
+## Resolution
 
-1. Reduce the failure to the smallest ArcFlow graph with two grouping keys, a
-   duplicate relationship, and more than one expected output row.
-2. Determine whether the defect is parsing, logical planning, row binding,
-   aggregation, or `WITH DISTINCT` execution before changing the evaluator.
-3. Add a Rust regression at the owning layer and an end-to-end GQL query test.
-4. Compare the full Migx results with an independent set-based reference
-   implementation.
-5. Document the supported native query form and only then save rankings for the
-   TUI/agent surface.
+ArcFlow commit `ef944443` on branch
+`codex/arcflow-distinct-playlist-count` closes the semantic defect. The complete
+four-commit fix series is in ArcFlow PR
+[`#27`](https://github.com/ozinc/arcflow-core/pull/27), with protected-branch
+auto-merge enabled.
+
+The reduction found three runtime defects rather than a parser defect:
+
+1. grouped aggregate evaluators omitted `CountDistinct`;
+2. global distinct lookup ignored the aggregate variable's scope; and
+3. plain-variable `WITH DISTINCT` skipped projection, so deduplication could
+   see no visible variable identities and retain only the first row.
+
+The same corpus proof exposed a fourth adjacent defect: temporal probing in
+`ORDER BY` started at byte offset two and could split a Unicode scalar. That
+made valid strings such as `Ysée` panic during ranking. The fix now chooses a
+UTF-8 character boundary and has a direct regression.
+
+Both native forms below are supported and return the same result:
+
+```gql
+MATCH (t:Track)-[:ON]->(p:Playlist)
+WITH t.key AS key, t.title AS track, count(DISTINCT p.id) AS playlists
+RETURN key, track, playlists
+ORDER BY playlists DESC, track, key
+```
+
+```gql
+MATCH (t:Track)-[:ON]->(p:Playlist)
+WITH DISTINCT t, p
+WITH t.key AS key, t.title AS track, count(p) AS playlists
+RETURN key, track, playlists
+ORDER BY playlists DESC, track, key
+```
+
+Rank by stable `Track.key`, with title as display data. Grouping by title alone
+merges distinct recordings that share a title (the corpus contains more than
+one recording named `Home`).
 
 ## Guardrails
 
@@ -56,7 +85,21 @@ the first ArcFlow-backed product insight confidently wrong.
 
 ## Evidence
 
-- Patched ArcFlow branch: `codex/arcflow-utf8-graph-load-fixes` at `deba9443`.
+- Patched ArcFlow branch: `codex/arcflow-distinct-playlist-count` at `ef944443`.
 - Corpus: 3,720 tracks, 2,962 artists, 83 playlists, 5,067 `BY`, 4,416 `ON`.
+- Independent set reference: 4,300 distinct track/playlist memberships, so the
+  116 extra `ON` relationships are repeated placements rather than additional
+  playlist memberships.
+- Both native track-query forms returned identical top-12 rows. Four tracks
+  span six playlists: `Dark Is The Night For All`, `No Goodbye`, `Spektrum
+  (feat. Ali Love)`, and `Your Loving Arms - Original`.
+- Native artist ranking matched the reference: CamelPhat and UNKLE span 12
+  playlists; ANNA, Gui Boratto, and NTO span 11. Unicode names including
+  `RÜFÜS DU SOL` and `Röyksopp` sort without a panic.
+- Rust runtime regression: 3 passed. Python FFI smoke plus the UTF-8 cache
+  smoke: 2 passed. Scoped Clippy, formatting, and diff checks passed.
+- A full runtime run reached 1,937 passed, 3 failed, and 3 ignored. The three
+  failures are pre-existing unrelated GPU shortest-path, WITH pipeline, and
+  optional-scope cases on the branch base. Full TCK was not rerun.
 - Integration boundary:
   `kanban/knowledge/arcflow-tui-agentic-dj-integration.md`.

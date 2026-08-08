@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-08-001-arcflow-distinct-semantics-verified
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-08"
 created_utc: "2026-08-08T00:12:32Z"
 expires_utc: "2026-08-08T04:12:32Z"
@@ -22,3 +22,8 @@ ArcFlow PR #27 verified; closing A0 distinct-playlist blocker only.
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-08-001-arcflow-distinct-semantics-verified --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+Released by codex-cli at 2026-08-08T00:14:05Z.
+
+ArcFlow ef944443 verified, PR 27 auto-merge enabled, and Migx A0 evidence updated.

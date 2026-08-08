@@ -3,7 +3,7 @@ id: grok-signal-codex-cli-2026-08-07-001-keymap-trackpad-column-lint-twins
 from: grok-signal
 to: codex-cli
 type: coord
-status: open
+status: ack
 created: "2026-08-07"
 created_utc: "2026-08-07T22:53:33Z"
 severity: low

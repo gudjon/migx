@@ -6,7 +6,7 @@ status: active
 owner: gudjon
 authored_by: codex-cli
 created: "2026-08-07"
-lastUpdated: "2026-08-07"
+lastUpdated: "2026-08-08"
 defers_to:
   - kanban/Strategy-Current.md
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
@@ -68,14 +68,21 @@ Evidence captured on 2026-08-07 from the installed macOS command:
 | Service boundary | Daemon help exposes Unix-socket JSON-RPC plus optional HTTP/SSE and durability controls | Unix socket is the preferred first integration seam |
 | Health ambiguity | `doctor --json` returned `status: ok` but `workspace_valid: false` after init | Must be resolved before relying on doctor as a release gate |
 
-The real loader exposed two ArcFlow `v0.11.9` defects. Query-cache normalization
+The real loader exposed four ArcFlow `v0.11.9` defects. Query-cache normalization
 advanced byte by byte and could stop inside a Unicode scalar; the shared
-REPL/PG-wire statement splitter also split semicolons inside quoted strings.
-Both are fixed with Rust/Python/CLI regressions on branch
-`codex/arcflow-utf8-graph-load-fixes` at `deba9443`. The patched build preserves
-`Ysée`, `trentemøller`, and `Chicane;Máire Brennan`. The published release still
-lags those source fixes, so Migx must pin an identified patched build until a
-release containing them exists.
+REPL/PG-wire statement splitter also split semicolons inside quoted strings;
+grouped `count(DISTINCT ...)` omitted its aggregate; and plain-variable
+`WITH DISTINCT` could discard every grouping row after the first. Ranking then
+found a second UTF-8 byte-boundary panic in `ORDER BY` temporal probing.
+
+All four are fixed with Rust/Python/CLI regressions through ArcFlow commit
+`ef944443` on `codex/arcflow-distinct-playlist-count`. The complete series is in
+ArcFlow PR [`#27`](https://github.com/ozinc/arcflow-core/pull/27), with
+protected-branch auto-merge enabled. The patched build preserves `Ysée`,
+`trentemøller`, and `Chicane;Máire Brennan`, and ranks `RÜFÜS DU SOL` and
+`Röyksopp` without panic. The published release still lags those source fixes,
+so Migx must pin an identified patched build until a release containing them
+exists.
 
 Verification reported for that branch: 1,942 runtime tests, scoped CLI suites,
 Clippy, formatting, and the complete Migx corpus load passed. Full TCK was not
@@ -106,11 +113,26 @@ The strongest five-playlist co-occurrences include the
 Spektrum/Magic/Chemical cluster and `Your Loving Arms` with
 `Dark Is The Night For All`.
 
-These are exploratory findings, not yet product rankings. There are 116 repeated
-`ON` placements within the same playlist, so raw `count()` measures placements,
-not distinct playlists. ArcFlow's current `WITH DISTINCT` behavior collapses the
-tested aggregation incorrectly to one row. Native saved rankings remain blocked
-on `kanban/tasks/arcflow-distinct-playlist-count-semantics.md`.
+These native findings now match an independent set-based reference. There are
+4,300 distinct track/playlist memberships; the other 116 `ON` relationships are
+repeated placements within a playlist. Raw `count()` still correctly measures
+placements, so product rankings must use `count(DISTINCT p.id)` or first project
+`WITH DISTINCT t, p`. Both forms return identical track rankings on the full
+corpus. Group by stable `Track.key`, not title alone, because distinct recordings
+can share a display title.
+
+The supported canonical form is:
+
+```gql
+MATCH (t:Track)-[:ON]->(p:Playlist)
+WITH t.key AS key, t.title AS track, count(DISTINCT p.id) AS playlists
+RETURN key, track, playlists
+ORDER BY playlists DESC, track, key
+```
+
+The distinct-playlist blocker is closed in
+`kanban/tasks/arcflow-distinct-playlist-count-semantics.md`. Rankings remain
+derived evidence, not playback authority.
 
 ## Value by ArcFlow layer
 
@@ -119,7 +141,7 @@ on `kanban/tasks/arcflow-distinct-playlist-count-semantics.md`.
 | **World Store** | Durable local history of analysis artifacts, playlist snapshots, set/session state, agent receipts, and provenance | Store small structured artifacts and references; keep hot PCM/audio outside initially | Persistence and snapshot IDs verified; Migx schema and retention not designed |
 | **Perception Lake** | Normalize analyzer, controller, community, catalog, and session observations with source time, confidence, and provenance | Design an observation envelope; do not make it a dependency yet | ArcFlow source describes this layer as reserved/transitional |
 | **World Graph** | Typed `Track`, `Artist`, `Release`, `Crate`, `SetSession`, `Deck`, `Transition`, `Cue`, and `Source` relationships | Extend the proven library graph with observations and sessions | Full Track/Artist/Playlist graph verified; session schema not built |
-| **Query Engine** | Answer "what next and why?", as-of session questions, conflict/missing-data queries, and agent inspection | JSON queries through the local daemon, with bounded templates owned by Migx | Direct queries verified; distinct aggregation correctness and production latency remain open |
+| **Query Engine** | Answer "what next and why?", as-of session questions, conflict/missing-data queries, and agent inspection | JSON queries through the local daemon, with bounded templates owned by Migx | Direct and distinct grouped queries verified on the full corpus; production latency remains open |
 | **Live Surface** | Incrementally maintain next-track candidates, queue conflicts, energy arc, and health as observations change | Drive synthetic session events and compare live results with full recomputation | Delta/Z-set capability reported; Migx standing views not proved |
 | **Event Bus** | One replayable observation/event feed for TUI and agent subscribers | Bridge non-RT Migx domain events through a local durable topic | Procedure/daemon surface exists; delivery, replay, and backpressure need a spike |
 | **Behavior Engine** | Durable off-RT prepare/analyze/resolve/plan/post-set workflows | Orchestrate preparation jobs and generate proposals with receipts | Behavior/workflow procedures are discoverable; no Migx workflow proved |
@@ -183,13 +205,13 @@ native Rust/C++ integration later.
 
 ## Build horizons
 
-### A0 - contract proof (loader complete; query semantics open)
+### A0 - contract proof (loader and distinct semantics complete)
 
 The Track/Artist/Playlist loader and full UTF-8 corpus proof are complete against
-the patched branch. Finish A0 by fixing distinct-playlist aggregation, adding
-five bounded queries, and proving snapshot export/rebuild and runtime identity.
-Then extend the graph with the minimal `Observation`/`SetSession` mapping. No
-engine connection.
+the patched branch. Distinct-playlist aggregation is fixed and independently
+checked. Finish A0 by pinning the merged runtime identity, adding the remaining
+bounded queries, and proving snapshot export/rebuild. Then extend the graph with
+the minimal `Observation`/`SetSession` mapping. No engine connection.
 
 **Gate:** the achieved 83-mirror/3,720-track/2,962-artist load stays green; all
 ranking queries count distinct playlists correctly in the engine; one JSON query
@@ -240,7 +262,7 @@ disconnect takeover, and audio-underrun acceptance all pass.
 
 ## Next concrete dossier
 
-The next implementation dossier should remain **A0 only**: fix and test distinct
-playlist aggregation, pin the patched runtime identity, add five bounded queries,
-prove export/rebuild, and decide whether the Unix-socket daemon contract is
-stable enough for A1. It must not touch the audio engine or ControlObjects.
+The next implementation dossier should remain **A0 only**: pin the merged
+runtime identity, add the remaining bounded queries, prove export/rebuild, and
+decide whether the Unix-socket daemon contract is stable enough for A1. It must
+not touch the audio engine or ControlObjects.
