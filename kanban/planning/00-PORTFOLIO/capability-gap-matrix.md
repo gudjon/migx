@@ -100,6 +100,7 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | composer in TUI | partial | `:` opens it, stages against the live manifest; apply (running argv) remains | claude-code | field P1 |
 | TUI status line + `?` help | shipped | drawn by run(); `?` toggles KEYMAP overlay | claude-code | 2026-08-08 |
 | stage-before-apply Prep | partial | Prep pane renders the stage; apply/discard keys remain | claude-code | field P1 |
+| live deck driver (livesession -> TUI tick) | gap | tick() per redraw; module exists, orphaned | claude-code | field P1 |
 | jobs strip (non-blocking) | gap | mode switch during analyze | claude-code | field P1 |
 | three-column PREP workspace | gap | Yazi grammar | claude-code | after composer |
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |

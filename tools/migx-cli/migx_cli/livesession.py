@@ -1,5 +1,15 @@
 """Two decks and a running order that can still change — the live session.
 
+**ORPHAN (2026-08-08): nothing in the repo imports this.** It has only ever run
+from a throwaway driver in a scratchpad, which is how it played a real set —
+and why that capability does not survive the shell that ran it.
+
+The missing piece is a driver: `tick()` must be called repeatedly, and the TUI
+redraw loop is its natural home (one `tick()` per frame, `state()` into the Deck
+pane). Until then this is tested, correct and unreachable — the same
+"inventory" the rest of this codebase spent a day eliminating, and it is called
+out here rather than left for a future reader to discover with grep.
+
 Steps 3-5 of the TUI path: a second deck so blends overlap, transport so a DJ
 can act, and a re-plan after every track so tonight's feedback changes tonight's
 set.
