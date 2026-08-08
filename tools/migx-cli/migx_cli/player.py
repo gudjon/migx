@@ -7,18 +7,28 @@ reports where it is, and lets the NEXT choice be made while the current one is
 still playing — so `track.feedback` changes what comes next tonight, not
 tomorrow.
 
-## What this is not
+## What this is not — and a correction
 
-Not a mixer. macOS gives us `afplay` (no volume control) and `ffplay` (filters
-fixed at launch), and migx-cli carries zero third-party dependencies — so there
-is no live crossfader here. A blend is *scheduled* when the incoming deck
-starts, not ridden by hand.
+Not a mixer. `afplay` has no volume control and `ffplay` fixes its filters at
+launch, so blends here are *scheduled* when the incoming deck starts, never
+ridden by hand. A TUI must not draw a crossfader it cannot move.
 
-Saying that plainly matters: a TUI that drew a crossfader it could not move
-would be the same lie as a Prep header promising an apply key that does not
-exist. When real fader control is wanted, it comes from the engine
-(`replace-set-play-render-with-live-transport`), not from a second audio path
-grown here.
+**But the earlier claim that a live crossfader was unachievable was wrong**, and
+this backend is scaffolding because of it. It is a limit of `ffplay`, not of the
+platform. macOS gives `AVAudioEngine`: two `AVAudioPlayerNode`s into an
+`AVAudioMixerNode`, each with independently settable `volume` — that *is* a
+crossfader — plus real seek, `AVAudioUnitTimePitch` for tempo without pitch
+shift (better than `atempo`), sample-accurate scheduling for on-beat starts, and
+taps for level metering.
+
+Reaching for a cross-platform transcoder to avoid the platform's own audio stack
+is also backwards for a fork whose target is Apple Silicon / macOS 26+
+(`ADR-006`). The replacement is a small native helper speaking the same
+line-delimited JSON contract as `engine.py` — the `chafa` model, an external
+binary rather than a Python dependency. That collapses the TUI transport and the
+engine bridge into one contract instead of two audio paths.
+
+**Treat this ffplay backend as scaffolding to replace, not a foundation.**
 
 ## Why subprocess and not a library
 
