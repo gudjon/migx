@@ -117,6 +117,9 @@ brew install chafa                         # macOS
 
 Cover discovery (no tag decoding): `cover.jpg` / `folder.png` next to the audio,
 images in `<track>.migx/`, or a fuzzy match under `_Inbox/.thumb/`.  
+**Ingest / watch:** when a cover is found next to the source (or in `.thumb`),
+`library.ingest` copies it to `cover.<ext>` beside the Collection file so art
+survives after the inbox is drained.  
 Override binary: `MIGX_CHAFA_BIN=/path/to/chafa`.  
 Curses uses **symbols + monochrome** only (no ANSI); `--color` / kitty / sixels
 are for raw TTY stdout.

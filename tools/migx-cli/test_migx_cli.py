@@ -1134,6 +1134,41 @@ def main() -> int:
             "an existing Collection path is reported, never overwritten",
         )
 
+    # ---- ingest copies cover art for library.art / Track TUI
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        inbox = root / "_Inbox"
+        thumbs = inbox / ".thumb"
+        thumbs.mkdir(parents=True)
+        song = inbox / "Feel It.mp3"
+        song.write_bytes(
+            _id3(
+                {"TIT2": "Feel It", "TPE1": "Amelie Lens"},
+                txxx={"ISRC": "GBAAA2222222"},
+            )
+            + _mp3(14)
+        )
+        # Downloader-style thumb (fuzzy stem match).
+        (thumbs / "Amelie Lens - Feel It (Official).png").write_bytes(
+            _gradient_png(48, 48)
+        )
+        lib = root / "Library"
+        report = ingest.ingest([song], lib, move=True)
+        check(report["filed_count"] == 1, "filed with cover source available")
+        dest = Path(report["filed"][0]["destination"])
+        cover = dest.parent / "cover.png"
+        check(cover.is_file(), f"cover.png placed beside audio, got {cover}")
+        check(
+            report["filed"][0].get("cover") == str(cover),
+            "ingest report records cover path",
+        )
+        # termart must find it without the inbox anymore
+        check(
+            termart.find_cover(dest) == cover,
+            "find_cover resolves filed cover.png",
+        )
+        check(not song.exists(), "move drained the inbox audio")
+
     # ---- Spotify Web API client rails (offline)
     try:
         api.assert_allowed_url("https://evil.example/v1/me")

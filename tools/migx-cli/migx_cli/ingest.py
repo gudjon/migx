@@ -3,7 +3,9 @@
 One job: take audio files already on disk and place them under `Collection/`
 with the right name, tags, and no duplicates. Every file passes the quality
 gate first (`quality.py`); ISRC is preserved when present so later
-`library.resolve` can match exactly.
+`library.resolve` can match exactly. Cover art found beside the source (or
+in a downloader `.thumb/`) is copied as `cover.<ext>` next to the filed
+track so `library.art` / Track TUI still work after the inbox drains.
 """
 
 from __future__ import annotations
@@ -12,13 +14,29 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from . import layout, naming, quality, tags, tagwrite
+from . import layout, naming, quality, tags, tagwrite, termart
 
 TEMPLATES = {
     "dj": naming.TEMPLATE_DJ,
     "library": naming.TEMPLATE_LIBRARY,
     "flat": naming.TEMPLATE_FLAT,
 }
+
+
+def _place_cover(cover_src: Path, audio_dest: Path) -> Path | None:
+    """Copy cover next to the filed audio as cover.<ext> for termart.
+
+    Shared album folders keep one cover.jpg — never overwrite an existing
+    cover file (first track wins). Returns the path that termart will find.
+    """
+    dest = audio_dest.parent / f"cover{cover_src.suffix.lower()}"
+    if dest.exists():
+        return dest if dest.is_file() else None
+    try:
+        shutil.copy2(cover_src, dest)
+    except OSError:
+        return None
+    return dest
 
 
 def _mirror_index(doc: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
@@ -181,6 +199,12 @@ def ingest(
             )
             continue
 
+        # Locate cover *before* move — after a move the inbox path is gone and
+        # Collection shelves do not contain _Inbox/.thumb.
+        cover_src = termart.find_cover(src)
+        if cover_src is not None:
+            row["cover_source"] = str(cover_src)
+
         if not dry_run:
             dest.parent.mkdir(parents=True, exist_ok=True)
             if move:
@@ -189,6 +213,16 @@ def ingest(
                 shutil.copy2(src, dest)
             if tagwrite.write(dest, meta):
                 row["tags_written"] = True
+            if cover_src is not None and cover_src.is_file():
+                placed = _place_cover(cover_src, dest)
+                if placed is not None:
+                    row["cover"] = str(placed)
+
+        elif cover_src is not None:
+            # Dry-run: show where the cover would land.
+            row["cover"] = str(
+                dest.parent / f"cover{cover_src.suffix.lower()}"
+            )
 
         filed.append(row)
 

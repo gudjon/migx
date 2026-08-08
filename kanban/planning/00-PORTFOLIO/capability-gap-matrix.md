@@ -71,7 +71,7 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `library.inspect` | query | shipped | quality tier fixtures | — |
 | `library.resolve` | command | shipped | resolve report schema | — |
 | `library.missing` | query | shipped | `migx.gap-list/1` | — |
-| `library.ingest` | command | shipped | Collection path + quality gate | — |
+| `library.ingest` | command | shipped | Collection path + quality gate; copies cover to cover.* | — |
 | `crate.sync` | command | shipped | crate links only | — |
 | `library.dedupe` | query | shipped | offline tests | — |
 | `config.init` | command | shipped | offline tests | — |
