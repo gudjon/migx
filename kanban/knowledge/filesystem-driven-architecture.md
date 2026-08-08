@@ -257,3 +257,39 @@ ontology work.** Reasons:
 
 Keep it research+spike until FSL-02 proves the format and fidelity; promote to an initiative only if the
 export corpus and the co-pilot read-path pay off.
+
+## Identity vs judgment — which layer owns what (2026-08-08)
+
+"Sidecar-as-SSoT" is right for *musical metadata* and too coarse for **identity**. Three layers, one
+owner each, and the split is decided by **what survives leaving Migx**:
+
+| Fact | Owner | Why that layer |
+| --- | --- | --- |
+| **Identity** — ISRC | the audio file's **tags** (`TSRC` / `TXXX:ISRC`) | It travels with the recording into Rekordbox, Serato, anything — and comes back on a re-download or a restore. It is the only fact a *replacement copy* of the same recording already carries. |
+| **Judgment** — cues, notes, moods, feedback verdicts, energy | the **sidecar package** (`<audio>.migx/`) | No tag format holds it, and writing it into tags would mangle files other software owns. |
+| **Index** — search, browse, playlists | `mixxxdb.sqlite` | Derived from both; rebuildable from disk at any time. |
+
+**The rule:** identity flows *from* the file; judgment flows *from* the package; the DB derives from
+both and is authoritative for neither.
+
+Consequences that are already enforced in code, not merely intended:
+
+- `notes.py` **refuses `isrc`** (and `bpm`, `camelot`, `cues`, `feedback`, `duration_s`, …) as
+  frontmatter keys, raising on write. A note that restated identity would be a second truth with
+  nothing to say which wins.
+- `resolve.py` matches on ISRC read from tags, falling back to artist+title+duration only when a side
+  lacks one — the fallback exists precisely *because* identity is tag-owned and tags are sometimes
+  absent.
+- A sidecar may **cache** the ISRC for speed, but that copy is derived and must be re-derivable from
+  the file. If they ever disagree, the tag wins.
+
+### The open weakness (worth fixing before packages accumulate value)
+A package is located by **adjacency** — `Reckoning.mp3.migx/` is found by sitting beside
+`Reckoning.mp3`. `rename.py` keeps them together through a rename, so local moves are safe. But a
+**re-downloaded or restored copy** of the same recording cannot claim the old package: its cues,
+moods and floor judgments stay attached to the file that was replaced.
+
+For something billed as a *portable* package that is the weak link. The fix is to record the ISRC
+*inside* the package as its re-attachment key — deliberately as identity provenance, not as an
+authority: on conflict the tag still wins. That is a small change and it is the next thing to build in
+this area, ahead of any richer folder structure.
