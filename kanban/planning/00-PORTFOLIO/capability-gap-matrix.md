@@ -92,10 +92,10 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | commitment | status | acceptance | peer | next |
 | --- | --- | --- | --- | --- |
 | `migx` no-arg → TUI workspace | gap | launch opens TUI | claude-code | small task |
-| `migx --json` everywhere | partial | all queries emit JSON | claude-code | audit missing |
+| `migx --json` everywhere | shipped | all queries emit JSON | claude-code | audited 2026-08-08: 25/25 |
 | `migx --agent` JSONL | gap | request/event/receipt stream | claude-code | dossier |
 | events / receipts | gap | schema + one LIVE path | claude-code | after --agent |
-| `migx mcp-server` | gap | tools = capability IDs | claude-code | after --agent |
+| `migx mcp-server` | wont-do | — | — | see MCP note below |
 | engine command bridge | gap | guarded perform intents | claude-code | LIVE preconditions |
 | composer in TUI | gap | dispatches real command IDs | claude-code | field P1 |
 | TUI status line + `?` help | gap | pure snapshot + KEYMAP | claude-code | field P0 |
@@ -103,6 +103,39 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | jobs strip (non-blocking) | gap | mode switch during analyze | claude-code | field P1 |
 | three-column PREP workspace | gap | Yazi grammar | claude-code | after composer |
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
+
+### MCP is a non-goal (decided 2026-08-08)
+
+`migx mcp-server` moves from `gap` to `wont-do`. Not "not yet" — **the adapter is the binary we
+already ship.**
+
+`ADR-008` makes the command surface the spine, so an MCP server could only ever be a wrapper over the
+same command IDs: a second protocol, a second process to fail, and a second place for the surface to
+drift out of sync with `system.capabilities`. That is a parallel implementation of an interface we
+already have (`P-11`), bought for no capability we lack.
+
+A coding agent integrates as a **shell client**, which is how these workflows actually run:
+
+```
+migx <noun.verb> … --json   →   stdout: structured receipt   →   agent reads, plans, calls next
+```
+
+No registry, no handshake, no long-lived local server sitting on the library. The five things an
+agent needs from us are all properties of the CLI, and all now hold:
+
+| Need | State |
+| --- | --- |
+| Stable command IDs | `system.capabilities` is the manifest, lint-enforced against the DDD vocabulary |
+| `--json` on every useful path | **25/25 commands**, audited 2026-08-08 |
+| Discovery without "list tools" | `system.capabilities --json` |
+| Exit codes usable as gates | `0` ok · `1` findings (e.g. `library.dedupe`) · `2` usage |
+| Receipt-shaped, idempotent output | every command emits a versioned `migx.*/1` schema |
+
+Cards in an IDE, if ever wanted, are thin views over that JSON — not embedded DJ chrome.
+
+**Revisit only if** a host appears that we must support and it speaks *only* MCP. Fashion in the
+wider ecosystem is not that trigger; `migx --agent` (a long-lived JSONL stream on stdin/stdout,
+still direct CLI) covers the multi-turn case without adopting a protocol.
 
 ---
 

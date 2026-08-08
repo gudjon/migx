@@ -1796,7 +1796,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="drain the inbox, then exit (launchd)",
     )
-    p.add_argument("--max-wait", type=float, default=600.0)
+    # Must stay under the launchd StartInterval (300s) — see watch.py.
+    p.add_argument(
+        "--max-wait", type=float, default=watch.DEFAULT_MAX_WAIT_S
+    )
     p.add_argument("--copy", action="store_true")
     p.add_argument("--no-analyze", action="store_true")
     p.add_argument(

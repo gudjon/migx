@@ -26,6 +26,13 @@ from typing import Any, Callable
 DEFAULT_INTERVAL_S = 10.0
 DEFAULT_SETTLE_S = 20.0
 
+# Ceiling on a single `--once` drain. MUST stay below the launchd StartInterval
+# in com.gudjon.migx.watch.plist (300 s), or launchd starts a second pass while
+# the first is still draining and two processes ingest one inbox concurrently —
+# a double-file race, not merely slow. It was 600 s, i.e. twice the interval,
+# and a drain that hit the ceiling blocked a caller for a full ten minutes.
+DEFAULT_MAX_WAIT_S = 240.0
+
 # Downloader leftovers that share the inbox. Never audio, never our business.
 IGNORED_SUFFIXES = {".srt", ".part", ".crdownload", ".download", ".tmp"}
 IGNORED_DIRS = {".thumb", ".temp", ".Trash"}
@@ -133,7 +140,7 @@ def run(
     interval_s: float = DEFAULT_INTERVAL_S,
     settle_s: float = DEFAULT_SETTLE_S,
     once: bool = False,
-    max_wait_s: float = 600.0,
+    max_wait_s: float = DEFAULT_MAX_WAIT_S,
     log: Callable[[str], None] = print,
 ) -> int:
     """Poll until interrupted, or until the inbox is drained when `once`.
