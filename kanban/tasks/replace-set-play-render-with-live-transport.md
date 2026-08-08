@@ -54,15 +54,47 @@ numbers in real time, and stays steerable mid-set:
 - One writer per ControlObject (`P-06`) if this reaches the engine.
 - The transition maths has ONE home. A live transport must call the same functions, not re-derive them.
 
-## Open question for the owner
-Two routes, and this is a product call, not a technical one:
+## Route: DECIDED — drive the engine (Gudjon, 2026-08-08)
 
-1. **Drive the Migx engine** (real decks, real crossfader, the actual DJ application) — faithful, and
-   the engine already exists; needs the command bridge on the matrix (`engine command bridge`).
-2. **A CLI-side live player** — faster to reach, but risks becoming a second audio path, which is the
-   parallel-implementation trap.
+Route 1. The CLI does **not** grow a second audio path; it drives the real decks. This kills the
+parallel-implementation risk outright and means "what the CLI plays" and "what the DJ hears" are the
+same thing by construction.
 
-Route 1 is the honest one if the engine bridge is coming anyway.
+### What exists today (verified at HEAD, 2026-08-08)
+**Nothing.** There is no external control surface to build on:
+
+| Searched | Result |
+| --- | --- |
+| `QLocalServer` / `QTcpServer` | absent from `src/` |
+| websocket / JSON-RPC | absent |
+| `osc` | only false positives inside unrelated identifiers |
+
+The closest precedent is `src/controllers/` — the MIDI/HID controller path, which already translates
+external events into `ControlObject` writes. That is the shape to copy, not to bypass.
+
+### Design constraints (house physics — non-negotiable)
+- **Never on the RT thread.** The bridge is main/worker-thread-class. The engine emits but never
+  receives Qt signals; the sanctioned write path is `ControlProxy`, exactly as controllers use.
+- **`P-06` one writer per ControlObject.** The bridge must not fight the GUI or a mapped controller
+  for the same key. Decide the ownership rule *before* writing the first `set()`.
+- **`P-11`** the transition maths already has one home (`mixing` / `setplan`). The bridge issues
+  intents; it does not re-derive tempo or pitch.
+
+### Shape
+A local socket (`QLocalServer`, no network surface) accepting line-delimited JSON intents, mapped onto
+`ControlProxy` writes — `[ChannelN]` load/play/rate/crossfader. Reads come back as receipts so the CLI
+and TUI see real deck state rather than guessing.
+
+    migx → socket → bridge (main thread) → ControlProxy → engine decks
+
+### First wave (smallest thing that proves the route)
+Load a track onto deck 1 and start it, from the CLI, with the engine running — then read back
+`[Channel1],play` as a receipt. Everything else (tempo, blends, the live re-plan) is worthless until
+that round-trip works.
+
+### Still open
+Whether the bridge lives in the app process (simplest) or a headless engine host. Answer it when the
+first wave has a round-trip, not before.
 
 ## Related
 - `kanban/knowledge/session-coaching-multimodal-agent.md` — anti-Automix-as-identity
