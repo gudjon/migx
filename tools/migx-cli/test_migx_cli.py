@@ -2057,6 +2057,46 @@ def main() -> int:
         check("DISCONNECTED" in "\n".join(tui._rows(pane, gone)),
               f"{pane} reports disconnection rather than rendering empty")
 
+    # ---- Library pane: compatible with now -------------------------------
+    # notes/tags/tier are what the ordinary Library row renders; _collection
+    # always supplies them, so a stub without them tests a shape that
+    # cannot occur.
+    _cb = {"duration_s": 300.0, "energy": [0.4] * 64, "cues": [],
+           "notes": "", "tags": [], "tier": "mp3-320-cbr", "artist": ""}
+    rows_c = [
+        {**_cb, "name": "now.mp3", "path": "/x/n", "bpm": 125, "camelot": "8A"},
+        {**_cb, "name": "near.mp3", "path": "/x/a", "bpm": 124, "camelot": "9A"},
+        {**_cb, "name": "far.mp3", "path": "/x/b", "bpm": 70, "camelot": "3B"},
+        {**_cb, "name": "raw.mp3", "path": "/x/c", "bpm": None, "camelot": None},
+    ]
+    snap_c = {"collection": rows_c, "deck_a": 0, "compat": True,
+              "library_exists": True, "selected": 0}
+    view = tui._rows("Library", snap_c)
+    body = "\n".join(view)
+    check("compatible with" in view[0], "header names the reference track")
+    order = [ln for ln in view if ".mp3" in ln and "compatible with" not in ln]
+    check("near.mp3" in order[0], f"the harmonic neighbour ranks first, got {order[0][:40]}")
+    check("raw.mp3" not in body, "an unanalysed track is not offered")
+    check("1 unanalysed or retired" in body,
+          "dropped tracks are COUNTED, not silently absent")
+    check("now.mp3" not in "\n".join(order), "the reference track is not its own candidate")
+
+    # Retired tracks must not be offered mid-set.
+    rows_c[1]["feedback"] = [{"at": "n", "fit": "retire"}]
+    check("near.mp3" not in "\n".join(tui._rows("Library", snap_c)),
+          "a retired track is not offered as compatible")
+
+    # Turning the filter off restores the ordinary Library listing.
+    snap_c["compat"] = False
+    check("compatible with" not in "\n".join(tui._rows("Library", snap_c)),
+          "the filter is a toggle, not a mode you cannot leave")
+
+    # No deck loaded is explained, not rendered blank.
+    check("no track on deck A" in "\n".join(
+        tui._rows("Library", {"collection": [], "deck_a": 0, "compat": True,
+                              "library_exists": True, "selected": 0})),
+        "an empty deck explains itself")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

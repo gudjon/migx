@@ -662,6 +662,67 @@ def deck_view(
     return out
 
 
+def compatible_now(snap: dict[str, Any]) -> list[str]:
+    """Library, filtered to what mixes with the track on deck A.
+
+    The booth question is never "what do I own", it is "what can I play NEXT".
+    Sorting the whole collection by name is a filing cabinet; this is the
+    browser a DJ actually needs at 1am.
+
+    Scoring is `setplan.transition_score` — the SAME function Arrange ranks
+    with and `set.plan` orders with. A second notion of "compatible" living in
+    the browser would let the Library pane and the Deck view disagree about
+    the same pair, which is the drift `P-11` names.
+
+    Unanalysed and retired tracks are dropped, and the count is shown: a list
+    that silently shrinks is indistinguishable from a small library.
+    """
+    rows = snap.get("collection") or []
+    index = snap.get("deck_a", 0)
+    current = rows[index] if 0 <= index < len(rows) else None
+    if current is None:
+        return ["(no track on deck A — press a on a track to load it)"]
+    if not (current.get("bpm") and current.get("camelot")):
+        return [
+            f"@{current.get('name', '')[:60]}",
+            "  (not analysed — run `library.analyze` to match against it)",
+        ]
+
+    pool = [
+        t for t in rows
+        if t.get("path") != current.get("path")
+        and t.get("bpm") and t.get("camelot")
+        and not feedback.is_retired(t)
+    ]
+    dropped = len(rows) - 1 - len(pool)
+    if not pool:
+        return [f"after {current.get('name', '')[:52]}", "  (nothing else analysed)"]
+
+    scored = sorted(
+        ((setplan.transition_score(current, c), c) for c in pool),
+        key=lambda pair: -pair[0][0],
+    )
+    head = (
+        f"compatible with  {current['bpm']:.0f} {current['camelot']}  "
+        f"{current.get('name', '')[:40]}"
+    )
+    out = [head, "-" * min(len(head), 72)]
+    for (score, plan), track in scored:
+        beat = plan["beatmatch"]
+        pitch = (
+            f"{beat['pitch_pct']:+5.1f}%" if beat.get("pitch_pct") is not None else "    ?"
+        )
+        out.append(
+            f"{score:>4}  {track['bpm']:>3.0f} {track['camelot']:>4}  "
+            f"{track['name'][:38]:<38} {plan['harmonic'].get('relation', '-')[:9]:<9}"
+            f" {pitch} {beat.get('fits_range') or 'OUT'}"
+        )
+    if dropped > 0:
+        out.append("")
+        out.append(f"({dropped} unanalysed or retired track(s) not shown)")
+    return out
+
+
 def disconnected_view(snap: dict[str, Any]) -> list[str]:
     """What to show instead of an empty list when the volume is gone.
 
@@ -703,6 +764,8 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             "",
             f"spotify     {'linked' if snap['linked_ok'] else 'not linked'}",
         ]
+    if pane == "Library" and snap.get("compat"):
+        return compatible_now(snap)
     if not snap.get("library_exists", True) and pane in (
         "Library", "Arrange", "Track", "Deck"
     ):
@@ -892,6 +955,11 @@ def run() -> int:  # pragma: no cover - needs a terminal
             key = stdscr.getch()
             if key in (ord("q"), 27):
                 return
+            if key == ord("m") and PANES[pane] == "Library":
+                # Toggle "compatible with now". Kept in snap so no second
+                # place holds TUI state.
+                snap["compat"] = not snap.get("compat")
+                continue
             if key == ord("?"):
                 snap["show_help"] = not snap.get("show_help")
                 continue
