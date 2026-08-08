@@ -87,7 +87,7 @@ the thing passes 3 times in 5 while broken.
 
 Worth checking whether upstream Mixxx carries the same race before designing a fix.
 
-## Triage of 946 / 965 (done 2026-08-08) — two QML modules missing from the buildenv
+## Triage of 946 / 965 (done 2026-08-08) — a static-Qt QML plugin link gap
 
 Both fail for the same reason, and it is not the mapping XML. The controller *screen* QML fails to load:
 
