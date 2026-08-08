@@ -1788,6 +1788,44 @@ def main() -> int:
         st = engine.status(1, sock=sock_path)
         check(st["ok"] is False, "status without an engine never claims ok")
 
+    # ---- TUI status line + ? help (field P0) -----------------------------
+    snap_stub = {
+        "collection": [
+            {"name": "a.mp3", "bpm": 125, "camelot": "8A"},
+            {"name": "b.mp3", "bpm": None, "camelot": None},
+        ],
+        "selected": 0,
+    }
+    line = tui.status_line(snap_stub, "Library", 80)
+    check(len(line) == 80, f"status line fills the width exactly, got {len(line)}")
+    check("Library" in line and "1/2" in line, "status line shows pane and position")
+    check("analysed 1/2" in line, "status line counts analysed tracks")
+    check(
+        "1 need library.analyze" in line,
+        "status line names what is NOT ready, not just what is",
+    )
+    check(line.rstrip().endswith("? help"), "status line advertises help")
+
+    # Narrow terminals must not wrap or crash.
+    narrow = tui.status_line(snap_stub, "Library", 30)
+    check(len(narrow) <= 30, f"status line respects a narrow width, got {len(narrow)}")
+
+    # An empty library is a normal state, not a crash or a divide-by-zero.
+    empty = tui.status_line({"collection": [], "selected": 0}, "Overview", 60)
+    check("0/0" in empty, f"empty library renders, got {empty!r}")
+
+    # Help is PARSED from KEYMAP.md, so it cannot drift from the real bindings.
+    helped = tui.help_view()
+    body = "\n".join(helped)
+    check(len(helped) > 4, "help lists bindings")
+    check("KEYMAP.md" in helped[0], "help names its source")
+    for key, action in (("1 / 2 / 3", "Overview"), ("Tab", "Next mode"), ("/", "Search")):
+        check(key in body and action in body, f"help carries the {key!r} binding")
+    check(
+        "close this help" in body,
+        "help says how to leave it — a screen with no exit is a trap",
+    )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

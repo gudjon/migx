@@ -338,6 +338,67 @@ def visible(snap: dict[str, Any]) -> list[dict[str, Any]]:
 
 ARRANGE_CANDIDATES = 12
 
+KEYMAP_PATH = Path(__file__).resolve().parents[3] / "res" / "design" / "KEYMAP.md"
+
+
+def status_line(snap: dict[str, Any], pane: str, width: int = 80) -> str:
+    """One line of ground truth: where you are, and what the library is.
+
+    Derived purely from the snapshot — no state of its own, so it can never
+    disagree with the pane it sits above. A status line that caches its own
+    idea of the library is a second source of truth (MG-3), and the moment it
+    drifts it is worse than no status line, because it is believed.
+    """
+    rows = snap.get("collection") or []
+    analysed = sum(1 for t in rows if t.get("bpm") and t.get("camelot"))
+    index = snap.get("selected", 0) + 1 if rows else 0
+    left = f" {pane}  {index}/{len(rows)}"
+
+    # Show what is NOT ready rather than only what is: an unanalysed track
+    # cannot be ranked or mixed, and that is the difference between a set
+    # planner that works and one that silently sees a fraction of the library.
+    pending = len(rows) - analysed
+    middle = f"analysed {analysed}/{len(rows)}"
+    if pending:
+        middle += f"  ({pending} need library.analyze)"
+
+    right = "? help "
+    gap = width - len(left) - len(middle) - len(right)
+    if gap < 2:
+        return (left + "  " + middle)[: width - len(right)] + right
+    return left + " " * (gap // 2) + middle + " " * (gap - gap // 2) + right
+
+
+def help_view(width: int = 76) -> list[str]:
+    """The TUI key bindings, read from KEYMAP.md at runtime.
+
+    Parsed rather than retyped. `res/design/KEYMAP.md` is the single home for
+    bindings (it also carries the GUI twins), so a hand-copied list here would
+    be a second truth that drifts the first time a key changes — and the help
+    screen is exactly where a stale answer does the most damage.
+    """
+    if not KEYMAP_PATH.is_file():
+        return [f"(no KEYMAP at {KEYMAP_PATH})"]
+
+    out: list[str] = ["Keys — from res/design/KEYMAP.md", "-" * min(width, 46)]
+    in_tui = False
+    for line in KEYMAP_PATH.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_tui = "TUI" in line
+            continue
+        if not in_tui or not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 2 or cells[0] in ("Action", "---") or set(cells[0]) <= {"-"}:
+            continue
+        key = cells[1].replace("`", "")
+        out.append(f"  {key:<18} {cells[0][: width - 22]}")
+    if len(out) == 2:
+        out.append("  (no TUI bindings found in KEYMAP.md)")
+    out.append("")
+    out.append("  ?                  close this help")
+    return out
+
 
 def arrange_view(snap: dict[str, Any]) -> list[str]:
     """What to play after the selected track — the co-pilot's core question.
