@@ -1943,6 +1943,35 @@ def main() -> int:
         check(again["meta"] == meta and again["body"] == "prose",
               f"render/parse round-trips, got {again}")
 
+    # ---- set.plan frontmatter filter (progressive disclosure) ------------
+    _b = {"bpm": 125, "camelot": "8A", "duration_s": 300.0,
+          "energy": [0.5] * 64, "cues": []}
+    peak = {**_b, "name": "peak.mp3", "path": "/x/peak",
+            "meta": {"floor": "peak", "mood": ["late", "hypnotic"]}}
+    warm = {**_b, "name": "warm.mp3", "path": "/x/warm", "meta": {"floor": "warmup"}}
+    plain = {**_b, "name": "plain.mp3", "path": "/x/plain"}
+
+    got = setplan.plan_set([peak, warm, plain], filters={"floor": "peak"})
+    check([r["name"] for r in got["tracks"]] == ["peak.mp3"], "floor filter selects")
+    check(got["filtered_out"] == 2, f"filtered count reported, got {got['filtered_out']}")
+
+    # An unannotated track must FAIL a filter, not pass by default: otherwise a
+    # filtered set is indistinguishable from an unfiltered one.
+    check(not setplan.matches(plain, {"floor": "peak"}), "no frontmatter fails a filter")
+    # OR within a key, AND across keys.
+    check(setplan.matches(peak, {"mood": ["late", "early"]}), "OR within a key")
+    check(setplan.matches(peak, {"mood": "late", "floor": "peak"}), "AND across keys")
+    check(not setplan.matches(peak, {"mood": "late", "floor": "warmup"}),
+          "one failing key fails the whole filter")
+
+    # pairs_after: the DJ's stated relation outranks the arithmetic.
+    follows = {**_b, "name": "follows.mp3", "path": "/x/f",
+               "meta": {"pairs_after": ["peak"]}}
+    after_peak, _ = setplan.transition_score(peak, follows)
+    after_warm, _ = setplan.transition_score(warm, follows)
+    check(after_peak > after_warm,
+          f"pairs_after boosts the stated pairing ({after_peak} vs {after_warm})")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

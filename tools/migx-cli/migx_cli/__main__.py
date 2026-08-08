@@ -332,6 +332,9 @@ CAPABILITIES: list[dict[str, Any]] = [
             "--opener": "path or filename to lead with (default: coldest opening)",
             "--limit": "plan only the first N tracks of the pool",
             "--out": "also write the order as an .m3u8 playlist",
+            "--mood": "keep only tracks whose notes.md mood matches (repeatable)",
+            "--floor": "keep only tracks whose notes.md floor matches",
+            "--tested": "keep only tracks with this notes.md tested value",
         },
         "emits": "migx.set-plan/1",
         "note": "Plans an ORDER only — no deck, no engine, no playback."
@@ -1192,7 +1195,14 @@ def cmd_set_plan(args: argparse.Namespace) -> int:
     if args.limit:
         pool = pool[: args.limit]
 
-    plan = setplan.plan_set(pool, library_root=lib_root, opener=args.opener)
+    filters = {}
+    for key in ("mood", "floor", "tested"):
+        value = getattr(args, key, None)
+        if value:
+            filters[key] = value
+    plan = setplan.plan_set(
+        pool, library_root=lib_root, opener=args.opener, filters=filters or None
+    )
     rows = plan["tracks"]
 
     written = None
@@ -1241,6 +1251,11 @@ def cmd_set_plan(args: argparse.Namespace) -> int:
             head
             + f"{move['technique']:<14} {pitch}  "
             + (move.get("fits_range") or "OUT OF RANGE")
+        )
+    if plan.get("filtered_out"):
+        lines.append("")
+        lines.append(
+            f"{plan['filtered_out']} track(s) excluded by frontmatter filter"
         )
     if plan["unplannable"]:
         lines.append("")
@@ -2130,6 +2145,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--out", default=None, help="write the order as an .m3u8")
+    # Frontmatter filters — the notes.md index, not the prose body.
+    p.add_argument("--mood", action="append", default=None)
+    p.add_argument("--floor", action="append", default=None)
+    p.add_argument("--tested", action="append", default=None)
     p.set_defaults(fn=cmd_set_plan)
 
     p = sub.add_parser(

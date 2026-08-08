@@ -30,6 +30,7 @@ from . import (
     feedback,
     layout,
     mixing,
+    notes,
     quality,
     resolve,
     session,
@@ -101,6 +102,12 @@ def _collection(root: Path) -> list[dict[str, Any]]:
                 # while `track.feedback` reported success. Stored-but-ignored is
                 # the worst shape a feedback loop can take (P-34).
                 "feedback": side.get("feedback") or [],
+                # Frontmatter ONLY — never the prose body. This is the index
+                # scanned across the whole library; loading every track's
+                # notes would put hundreds of paragraphs in front of a
+                # selection that needs six fields. The body is read for a
+                # candidate, not for a corpus.
+                "meta": notes.read(path)["meta"],
             }
         )
     return rows

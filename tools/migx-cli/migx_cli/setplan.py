@@ -55,6 +55,39 @@ BEATMATCH_BONUS = 20
 IN_RANGE_BONUS = 25
 TIME_TRICK_PENALTY = -15
 
+# A DJ saying "this lands after a melodic breakdown" is a stronger signal than
+# any tempo arithmetic — it is the one thing the numbers cannot know.
+PAIRS_AFTER_BONUS = 70
+
+
+def _as_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip().lower() for v in value if str(v).strip()]
+    return [str(value).strip().lower()]
+
+
+def matches(track: dict[str, Any], filters: dict[str, Any]) -> bool:
+    """Does this track's frontmatter satisfy every filter?
+
+    AND across keys, OR within a key: `--mood late --floor peak` means both,
+    while a track tagged [hypnotic, late] satisfies `--mood late`.
+
+    A track with NO frontmatter fails any filter rather than passing by
+    default. Silently including unannotated tracks would make a filtered set
+    indistinguishable from an unfiltered one — the DJ would think the taste
+    filter worked when it did nothing.
+    """
+    meta = track.get("meta") or {}
+    for key, wanted in filters.items():
+        have = _as_list(meta.get(key))
+        if not have:
+            return False
+        if not set(_as_list(wanted)) & set(have):
+            return False
+    return True
+
 # How many buckets of the energy curve count as the "opening" of a track.
 OPENING_BUCKETS = 8
 
@@ -83,6 +116,17 @@ def transition_score(
 
     if plan["harmonic"].get("compatible"):
         score += HARMONIC_BONUS
+
+    # An explicit "plays well after this" outranks the arithmetic.
+    after = _as_list((incoming.get("meta") or {}).get("pairs_after"))
+    if after:
+        out_meta = outgoing.get("meta") or {}
+        out_names = set(_as_list(out_meta.get("mood"))) | set(
+            _as_list(out_meta.get("floor"))
+        )
+        stem = (outgoing.get("name") or "").lower()
+        if any(a in out_names or a in stem for a in after):
+            score += PAIRS_AFTER_BONUS
 
     beatmatch = plan["beatmatch"]
     if beatmatch.get("possible"):
@@ -134,6 +178,7 @@ def plan_set(
     tracks: list[dict[str, Any]],
     library_root: Path | None = None,
     opener: str | None = None,
+    filters: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Order tracks into a running set, with the move into each one.
 
@@ -141,6 +186,11 @@ def plan_set(
     set that starts at peak energy has nowhere to go.
     """
     pool = list(tracks)
+    filtered_out = 0
+    if filters:
+        before = len(pool)
+        pool = [t for t in pool if matches(t, filters)]
+        filtered_out = before - len(pool)
     if library_root is not None:
         pool = drop_duplicate_recordings(pool, library_root)
 
@@ -225,4 +275,7 @@ def plan_set(
         # Reported, never silent: a track vanishing from a set with no
         # explanation is indistinguishable from a bug (P-34).
         "retired": [t.get("name") for t in retired],
+        # Reported, never silent: a filter that quietly removed most of the
+        # library must not look like a small library.
+        "filtered_out": filtered_out,
     }
