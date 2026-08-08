@@ -468,6 +468,15 @@ def status_line(snap: dict[str, Any], pane: str, width: int = 80) -> str:
     idea of the library is a second source of truth (MG-3), and the moment it
     drifts it is worse than no status line, because it is believed.
     """
+    # A disconnected library outranks everything else on this line. An
+    # unmounted SSD and an empty library both yield zero rows, and a DJ told
+    # "0/0" will go looking for their music instead of their cable. Same
+    # defect as session.now returning a bare null for both (P-34).
+    if not snap.get("library_exists", True):
+        root = snap.get("library_root") or "library"
+        warning = f" LIBRARY DISCONNECTED — {root} is not mounted"
+        return (warning + " " * width)[: width - 7] + "? help "
+
     rows = snap.get("collection") or []
     analysed = sum(1 for t in rows if t.get("bpm") and t.get("camelot"))
     index = snap.get("selected", 0) + 1 if rows else 0
@@ -653,6 +662,28 @@ def deck_view(
     return out
 
 
+def disconnected_view(snap: dict[str, Any]) -> list[str]:
+    """What to show instead of an empty list when the volume is gone.
+
+    Recovery, not just an error: reconnecting is the whole fix, and the panes
+    that still work are worth naming so a set in progress is not abandoned.
+    """
+    root = snap.get("library_root") or "?"
+    return [
+        "LIBRARY DISCONNECTED",
+        "",
+        f"  {root}",
+        "  is not mounted, so no tracks can be listed or played.",
+        "",
+        "  To recover:",
+        "    1. reconnect the drive",
+        "    2. press r to re-read (or restart migx-tui)",
+        "",
+        "  Still available: notes and cues already written are on the drive,",
+        "  but session feedback you give now is queued and not lost.",
+    ]
+
+
 def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
     """Render one pane as plain lines — also what the tests assert on."""
     if pane == "Overview":
@@ -672,6 +703,10 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             "",
             f"spotify     {'linked' if snap['linked_ok'] else 'not linked'}",
         ]
+    if not snap.get("library_exists", True) and pane in (
+        "Library", "Arrange", "Track", "Deck"
+    ):
+        return disconnected_view(snap)
     if pane == "Prep":
         lines = stage_view(snap.get("stage") or [])
         msg = snap.get("composer_msg")

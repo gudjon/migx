@@ -2033,6 +2033,30 @@ def main() -> int:
     check(abs(naive["out_bar_s"] - naive["in_bar_s"]) > 1e-3,
           "ignoring tempo_ratio WOULD mismatch the grids (guards the guard)")
 
+    # ---- TUI: library disconnected != library empty ----------------------
+    gone = {"library_exists": False, "library_root": "/Volumes/Code/Music",
+            "collection": [], "selected": 0}
+    line = tui.status_line(gone, "Library", 78)
+    check("DISCONNECTED" in line, "status line names the disconnection")
+    check("/Volumes/Code/Music" in line, "status line names WHICH volume")
+    check(len(line) == 78, f"disconnected status still fills the width, got {len(line)}")
+    check("analysed" not in line,
+          "a disconnected library does not report a track count it cannot know")
+
+    # An EMPTY but mounted library must NOT claim disconnection.
+    empty_ok = {"library_exists": True, "library_root": "/x",
+                "collection": [], "selected": 0}
+    check("DISCONNECTED" not in tui.status_line(empty_ok, "Library", 78),
+          "an empty mounted library is not reported as disconnected")
+
+    body = "\n".join(tui._rows("Library", gone))
+    check("DISCONNECTED" in body, "the pane says why it is empty")
+    check("reconnect the drive" in body, "the pane says how to recover")
+    check("not lost" in body, "the pane says what survives, so a set is not abandoned")
+    for pane in ("Arrange", "Track", "Deck"):
+        check("DISCONNECTED" in "\n".join(tui._rows(pane, gone)),
+              f"{pane} reports disconnection rather than rendering empty")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
