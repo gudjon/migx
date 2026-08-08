@@ -37,6 +37,7 @@ from . import (
     rename,
     resolve,
     setplan,
+    setplay,
     sidecar,
     termart,
     tracklist,
@@ -335,6 +336,27 @@ CAPABILITIES: list[dict[str, Any]] = [
         " the set never disagrees with what a DJ reads about one transition."
         " Greedy: it can strand awkward tracks late, which is why every row"
         " prints its own pitch and reach instead of hiding them.",
+    },
+    {
+        "id": "set.play",
+        "kind": "command",
+        "summary": "Render a planned set into one continuous beatmatched mix.",
+        "args": {
+            "--out": "output audio file (default: <library>/Sets/<date>.mp3)",
+            "--limit": "mix only the first N tracks",
+            "--seconds": "seconds played per track (default 90)",
+            "--crossfade": "blend length in seconds (default 12)",
+            "--opener": "path or filename to lead with",
+            "--no-play": "render only, do not start playback",
+        },
+        "emits": "migx.set-mix/1",
+        "writes": "an audio file",
+        "note": "Offline render, NOT the engine — no deck, no RT thread, so"
+        " nothing here may be reused on the audio callback path. Pitch numbers"
+        " come from mixing.beatmatch(), the same source the Deck view shows."
+        " A track that cannot reach the running tempo within ±8% plays native"
+        " and gets a short cut instead of a forced blend. Requires ffmpeg"
+        " (override with MIGX_FFMPEG_BIN).",
     },
     {
         "id": "system.capabilities",
@@ -1146,6 +1168,74 @@ def cmd_set_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_set_play(args: argparse.Namespace) -> int:
+    """Perform a planned set: render it as one beatmatched mix, then play it."""
+    cfg = config.load()
+    lib_root = Path(config.get(cfg, "library.root"))
+
+    pool = tui._collection(lib_root)
+    plan = setplan.plan_set(pool, library_root=lib_root, opener=args.opener)
+    rows = plan["tracks"]
+    if not rows:
+        _out(plan, args.json, plan.get("note", "nothing to play"))
+        return 1
+    if args.limit:
+        rows = rows[: args.limit]
+
+    segments = setplay.build_segments(
+        rows, seconds=args.seconds, crossfade=args.crossfade
+    )
+    out = (
+        Path(args.out).expanduser()
+        if args.out
+        else lib_root / "Sets" / "migx-set.mp3"
+    )
+
+    result = setplay.render(segments, out)
+    payload = {
+        "schema": "migx.set-mix/1",
+        "tracks": len(segments),
+        "expected_duration_s": setplay.expected_duration(segments),
+        "beatmatched": sum(1 for s in segments if s["beatmatched"]),
+        "segments": segments,
+        **({"path": result["path"]} if result.get("ok") else {}),
+        **({"error": result["error"]} if not result.get("ok") else {}),
+    }
+    if not result.get("ok"):
+        _out(payload, args.json, f"render failed: {result['error']}")
+        return 1
+
+    lines = [
+        f"mixed {len(segments)} tracks -> {out}",
+        f"  {setplay.expected_duration(segments) / 60:.1f} min, "
+        f"{payload['beatmatched']}/{max(0, len(segments) - 1)} beatmatched",
+        "",
+    ]
+    for seg in segments:
+        move = (
+            f"pitched {(seg['tempo_ratio'] - 1) * 100:+.1f}% -> "
+            f"{seg['played_bpm']:.0f} BPM"
+            if seg["beatmatched"]
+            else ("opens" if seg["position"] == 1 else "cut (out of range)")
+        )
+        lines.append(
+            f"  {seg['position']:>2}  {seg['bpm']:>3.0f} {seg['camelot'] or '?':>4}"
+            f"  {(seg['name'] or '')[:44]:<44} {move}"
+        )
+    _out(payload, args.json, "\n".join(lines))
+
+    if not args.no_play:
+        # afplay is macOS-native and needs no extra dependency. Backgrounded so
+        # the CLI does not block for the length of the mix.
+        subprocess.Popen(
+            ["afplay", str(out)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(f"\nplaying — `killall afplay` to stop", file=sys.stderr)
+    return 0
+
+
 def cmd_library_covers(args: argparse.Namespace) -> int:
     """Backfill cover art for tracks already in Collection."""
     cfg = config.load()
@@ -1778,6 +1868,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--out", default=None, help="write the order as an .m3u8")
     p.set_defaults(fn=cmd_set_plan)
+
+    p = sub.add_parser(
+        "set.play",
+        help="render a planned set into one beatmatched mix, and play it",
+    )
+    p.add_argument("--out", default=None, help="output audio file")
+    p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--seconds", type=float, default=setplay.DEFAULT_SECONDS)
+    p.add_argument(
+        "--crossfade", type=float, default=setplay.DEFAULT_CROSSFADE
+    )
+    p.add_argument("--opener", default=None)
+    p.add_argument("--no-play", action="store_true")
+    p.set_defaults(fn=cmd_set_play)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

@@ -1421,6 +1421,86 @@ def main() -> int:
             f"duplicate recording dropped from the set, got {names}",
         )
 
+    # ---- set.play --------------------------------------------------------
+    from migx_cli import setplay
+
+    run = [
+        {"name": "a.mp3", "path": "/x/a.mp3", "bpm": 125, "camelot": "7A",
+         "duration_s": 300.0, "cues": []},
+        {"name": "b.mp3", "path": "/x/b.mp3", "bpm": 123, "camelot": "8A",
+         "duration_s": 300.0, "cues": []},
+        # 115 needs +8.7% onto 125 — past the fader, so it must be cut.
+        {"name": "c.mp3", "path": "/x/c.mp3", "bpm": 115, "camelot": "7A",
+         "duration_s": 300.0, "cues": []},
+    ]
+    segs = setplay.build_segments(run, seconds=60, crossfade=12)
+    check(segs[0]["tempo_ratio"] == 1.0, "opener plays native")
+    check(segs[1]["beatmatched"], "reachable track is beatmatched")
+    check(
+        abs(segs[1]["played_bpm"] - 125) < 0.5,
+        f"beatmatched onto the running tempo, got {segs[1]['played_bpm']}",
+    )
+    check(
+        not segs[2]["beatmatched"] and segs[2]["tempo_ratio"] == 1.0,
+        "a track past ±8% is cut, never force-pitched",
+    )
+    check(
+        segs[2]["crossfade_s"] < segs[1]["crossfade_s"],
+        "a cut gets a shorter fade than a blend",
+    )
+
+    # Duration must account for atempo: 60s of source at 1.05x is 57.1s out.
+    # Pinned to a measured render (6 tracks/60s read 302.79s, not 309s).
+    d = setplay.expected_duration(segs)
+    by_hand = sum(s["play_s"] / s["tempo_ratio"] for s in segs) - (
+        segs[1]["crossfade_s"] + segs[2]["crossfade_s"]
+    )
+    check(abs(d - by_hand) < 0.05, f"duration accounts for tempo, got {d}")
+    # Fades alone would give sum(play_s) - fades; the speed-up must take more.
+    fades_only = sum(s["play_s"] for s in segs) - (
+        segs[1]["crossfade_s"] + segs[2]["crossfade_s"]
+    )
+    check(d < fades_only, "speeding a track up shortens the mix beyond fades")
+
+    # A DJ's own mix-in cue wins over the default entry point.
+    cued = setplay.entry_point(
+        {"duration_s": 400.0,
+         "cues": [{"label": "intro is over — start here", "position_s": 62.0}]}
+    )
+    check(cued == 62.0, f"entry uses the mix-in cue, got {cued}")
+    check(
+        setplay.entry_point({"duration_s": 400.0, "cues": []}) == 100.0,
+        "entry falls back to a quarter in",
+    )
+
+    # The filter graph must chain N-1 crossfades and end on [out].
+    argv = setplay.build_command(segs, Path("/tmp/x.mp3"))
+    graph = argv[argv.index("-filter_complex") + 1]
+    check(graph.count("acrossfade") == 2, "N-1 crossfades for N tracks")
+    check(graph.rstrip().endswith("[out]"), "graph terminates at [out]")
+    check("atempo" in graph, "a pitched track carries atempo")
+    check(argv.count("-ss") == 3 and argv.count("-t") == 3,
+          "each input is trimmed to its segment")
+
+    # Missing ffmpeg is a reported condition, not a crash or a silent no-op.
+    _saved = os.environ.get("MIGX_FFMPEG_BIN")
+    os.environ["MIGX_FFMPEG_BIN"] = ""
+    try:
+        import shutil as _sh
+        _real = _sh.which
+        _sh.which = lambda *_a, **_k: None
+        res = setplay.render(segs, Path("/tmp/never-written.mp3"))
+        check(
+            not res["ok"] and "ffmpeg" in res["error"],
+            "missing ffmpeg is reported, not silently skipped",
+        )
+    finally:
+        _sh.which = _real
+        if _saved is None:
+            os.environ.pop("MIGX_FFMPEG_BIN", None)
+        else:
+            os.environ["MIGX_FFMPEG_BIN"] = _saved
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
