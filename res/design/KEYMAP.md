@@ -98,6 +98,9 @@ gesture still works.
 | Cycle sort | `s` | — | Migx ARRANGE |
 | Load focused → Deck A / B | `a` / `b` | — | TTY twin of `⇧← / ⇧→` |
 | Open focused in Track mode | `t` | — | Migx |
+| Compatible with deck A (Library) | `m` | — | Migx ARRANGE scoring, reused as a browser filter |
+| Composer — run a command | `:` | — | vi/less convention; dispatches real command IDs (ADR-008) |
+| This help | `?` | — | universal; parsed FROM this table at runtime |
 | Cover art in Track mode | *(automatic when chafa + cover file)* | — | optional `chafa`; CLI `library.art` |
 | Add focused → crate | `c` | — | Migx ARRANGE (stage action) |
 | Refresh snapshot | `r` | — | common |
