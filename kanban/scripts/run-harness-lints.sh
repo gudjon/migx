@@ -28,6 +28,7 @@ LINTS=(
   "kanban/scripts/verify-sealed-dossier-has-closure.py"
   "kanban/architecture/lint/verify-owns-paths-exist.py"
   "kanban/architecture/lint/verify-agents-md-present.py"
+  "kanban/architecture/lint/verify-tui-keys-documented.py"
   "kanban/architecture/lint/verify-command-vocabulary.py"
   ".claude/architecture/lint/verify-skill-grounding.py"
   "kanban/scripts/gen-pattern-index.py --check"
