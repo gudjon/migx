@@ -87,6 +87,25 @@ and TUI see real deck state rather than guessing.
 
     migx → socket → bridge (main thread) → ControlProxy → engine decks
 
+### Verified API contract (checked at HEAD, 2026-08-08 — do not re-derive)
+
+Everything the first wave needs already exists. Confirmed in the tree:
+
+| Need | API / key | Where |
+| --- | --- | --- |
+| Load a file **by path** onto a deck, optionally starting it | `PlayerManager::slotLoadLocationToPlayer(const QString& location, const QString& group, bool play)` | `src/mixer/playermanager.h:208` |
+| Read deck state back | `[Channel1],play` · `rate` · `bpm` · `duration` · `playposition` | `src/test/co_dumps/co_dump_inital.csv` |
+| Write a control | `ControlProxy::set(double)` | `src/control/controlproxy.h:138` |
+| Read a control | `ControlProxy::get()` | `src/control/controlproxy.h:112` |
+
+Two traps this closes:
+
+- **`[ChannelN],LoadSelectedTrack` is the wrong key.** It loads whatever the library view has *selected*,
+  which a CLI has no way to set. The path-based `slotLoadLocationToPlayer` is the one — and it takes a
+  `play` flag, so load-and-start is a single call rather than a load followed by a racy `play` write.
+- `src/test/co_dumps/co_dump_inital.csv` is a **full dump of every ControlObject at startup** — the
+  fastest way to confirm a key exists before writing code against it.
+
 ### First wave (smallest thing that proves the route)
 Load a track onto deck 1 and start it, from the CLI, with the engine running — then read back
 `[Channel1],play` as a receipt. Everything else (tempo, blends, the live re-plan) is worthless until
