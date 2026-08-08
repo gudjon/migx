@@ -1885,6 +1885,7 @@ def cmd_library_watch(args: argparse.Namespace) -> int:
         settle_s=args.settle,
         once=args.once,
         max_wait_s=args.max_wait,
+        batch=args.batch,
     )
     return 0
 
@@ -2182,6 +2183,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--max-wait", type=float, default=watch.DEFAULT_MAX_WAIT_S
     )
+    # 0 = no limit (the old behaviour, which stalled on a large backlog).
+    p.add_argument("--batch", type=int, default=watch.DEFAULT_BATCH)
     p.add_argument("--copy", action="store_true")
     p.add_argument("--no-analyze", action="store_true")
     p.add_argument(

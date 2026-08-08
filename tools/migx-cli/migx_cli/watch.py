@@ -33,6 +33,21 @@ DEFAULT_SETTLE_S = 20.0
 # and a drain that hit the ceiling blocked a caller for a full ten minutes.
 DEFAULT_MAX_WAIT_S = 240.0
 
+# Files filed per drain pass. A backlog is normal -- 279 sat in _Inbox after a
+# bulk download -- and handing all of them to one on_ready call makes a pass run
+# for tens of minutes: quality gate, tag read, copy, analyze, each. The deadline
+# is only checked BETWEEN polls, so it cannot interrupt that work.
+#
+# That matters because launchd fires every 300s (StartInterval). A pass that
+# runs longer overlaps the next one, and two processes ingesting one inbox is
+# the double-file race DEFAULT_MAX_WAIT_S exists to prevent. It also makes the
+# watchdog look dead: output buffers until exit, so the log shows only
+# "watching ..." for as long as the pass runs.
+#
+# Small batches mean every run COMPLETES inside the interval and the next one
+# continues; a backlog clears across several passes instead of one long stall.
+DEFAULT_BATCH = 20
+
 # Downloader leftovers that share the inbox. Never audio, never our business.
 IGNORED_SUFFIXES = {".srt", ".part", ".crdownload", ".download", ".tmp"}
 IGNORED_DIRS = {".thumb", ".temp", ".Trash"}
@@ -141,6 +156,7 @@ def run(
     settle_s: float = DEFAULT_SETTLE_S,
     once: bool = False,
     max_wait_s: float = DEFAULT_MAX_WAIT_S,
+    batch: int = DEFAULT_BATCH,
     log: Callable[[str], None] = print,
 ) -> int:
     """Poll until interrupted, or until the inbox is drained when `once`.
@@ -163,9 +179,22 @@ def run(
         while True:
             ready = stable_files(inbox, audio_exts, seen, settle_s)
             if ready:
-                log(f"{time.strftime('%H:%M:%S')}  {len(ready)} settled")
+                waiting = len(ready)
+                if batch and waiting > batch:
+                    ready = ready[:batch]
+                log(
+                    f"{time.strftime('%H:%M:%S')}  {waiting} settled"
+                    + (f", filing {len(ready)} this pass" if waiting > len(ready) else "")
+                )
                 result = on_ready(ready)
                 filed += result.get("filed_count", 0)
+                log(f"{time.strftime('%H:%M:%S')}  filed {filed} so far")
+                if waiting > len(ready) and once:
+                    # Backlog remains. Return so this run ENDS cleanly and the
+                    # next scheduled pass takes the next batch, rather than
+                    # running past the launchd interval and overlapping itself.
+                    log(f"{waiting - len(ready)} still queued — next pass takes them")
+                    return filed
             if once:
                 pending = [
                     p
