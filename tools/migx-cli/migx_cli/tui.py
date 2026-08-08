@@ -662,6 +662,10 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             "",
             f"spotify     {'linked' if snap['linked_ok'] else 'not linked'}",
         ]
+    if pane == "Prep":
+        lines = stage_view(snap.get("stage") or [])
+        msg = snap.get("composer_msg")
+        return [*lines, "", f"  {msg}"] if msg else lines
     if pane == "Arrange":
         return arrange_view(snap)
     if pane == "Gaps":
@@ -845,6 +849,33 @@ def run() -> int:  # pragma: no cover - needs a terminal
                 return
             if key == ord("?"):
                 snap["show_help"] = not snap.get("show_help")
+                continue
+            if key == ord(":"):
+                # Imported lazily: __main__ imports tui, so a module-level
+                # import here would be circular.
+                from .__main__ import CAPABILITIES
+
+                curses.echo()
+                stdscr.addnstr(height - 1, 0, " " * (width - 1), width - 1)
+                stdscr.addnstr(height - 1, 0, ":", width - 1)
+                try:
+                    typed = stdscr.getstr(
+                        height - 1, 1, min(120, width - 3)
+                    ).decode("utf-8", "replace")
+                except Exception:
+                    typed = ""
+                finally:
+                    curses.noecho()
+                spec = compose_parse(typed, CAPABILITIES)
+                if spec.get("ok"):
+                    snap["stage"] = stage_add(snap.get("stage") or [], spec)
+                    snap["composer_msg"] = (
+                        f"staged {spec['id']} — press 4 for Prep"
+                    )
+                else:
+                    # A refusal must be shown, not swallowed: a composer that
+                    # silently drops a typo looks identical to one that worked.
+                    snap["composer_msg"] = spec.get("error") or "refused"
                 continue
             if key in (ord("j"), curses.KEY_DOWN):
                 if PANES[pane] == "Library":
