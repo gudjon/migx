@@ -207,3 +207,78 @@ def fmt_position(seconds: Any) -> str:
     except (TypeError, ValueError):
         return "--:--"
     return f"{total // 60}:{total % 60:02d}"
+
+
+# ---------------------------------------------------------------------------
+# Package identity — a re-attachment key, deliberately NOT an authority.
+# ---------------------------------------------------------------------------
+
+IDENTITY_FILE = "identity.json"
+
+
+def identity_path(audio: Path | str) -> Path:
+    return sidecar_dir(audio) / IDENTITY_FILE
+
+
+def record_identity(audio: Path | str, isrc: str | None) -> Path | None:
+    """Stamp the recording's ISRC inside the package.
+
+    A package is otherwise located only by ADJACENCY — `X.mp3.migx/` is found
+    by sitting beside `X.mp3`. Renames survive that (rename.py moves both), but
+    a re-downloaded or restored copy of the same recording cannot claim the old
+    package, so hand-made cues and floor judgments stay attached to the file
+    that was replaced. For a package billed as portable that is the weak link.
+
+    Written as **provenance, not authority**: `authority` names the tags as the
+    owner, so if this copy and the file's tag ever disagree, the TAG wins. The
+    stamp exists to answer "which package belongs to this recording", never
+    "what is this recording".
+    """
+    if not isrc:
+        return None
+    normalised = isrc.replace("-", "").strip().upper()
+    if not normalised:
+        return None
+    path = identity_path(audio)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_json_atomic(
+        path,
+        {
+            "schema": "migx.package-identity/1",
+            "isrc": normalised,
+            "authority": "file-tags",
+            "note": (
+                "Re-attachment key only. The audio file's tag is the source of "
+                "truth for identity; on conflict the tag wins."
+            ),
+        },
+    )
+    return path
+
+
+def read_identity(audio: Path | str) -> dict[str, Any]:
+    path = identity_path(audio)
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_json_atomic(path: Path, data: dict[str, Any]) -> Path:
+    """temp + fsync + rename, so no reader ever sees half a file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(body)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+    return path

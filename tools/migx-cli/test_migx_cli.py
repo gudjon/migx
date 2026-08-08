@@ -1972,6 +1972,38 @@ def main() -> int:
     check(after_peak > after_warm,
           f"pairs_after boosts the stated pairing ({after_peak} vs {after_warm})")
 
+    # ---- personal pair mining + package identity -------------------------
+    from migx_cli import pairs as _pairs
+
+    night = [{"key": "A", "at": 0}, {"key": "B", "at": 300}, {"key": "C", "at": 600},
+             {"key": "D", "at": 7800}, {"key": "A", "at": 8100}, {"key": "B", "at": 8400}]
+    edges = _pairs.consecutive(night)
+    check(("C", "D") not in [(e["from"], e["to"]) for e in edges],
+          "a long gap breaks the chain — no invented edge across a break")
+    check(not _pairs.consecutive([{"key": "A", "at": 0}, {"key": "A", "at": 10}]),
+          "a repeat is not a transition")
+    check([(e["from"], e["to"]) for e in
+           _pairs.consecutive([{"key": "B", "at": 300}, {"key": "A", "at": 0}])] == [("A", "B")],
+          "an out-of-order log is sorted, not read backwards")
+
+    tallied = _pairs.tally(night)
+    check(tallied == {"A": [{"to": "B", "count": 2}]},
+          f"only repeated edges survive min_count, got {tallied}")
+    row = _pairs.as_edges(tallied, "lastfm:gudjon")[0]
+    check(row["layer"] == "personal" and row["source"] == "lastfm:gudjon",
+          "edges carry provenance so precedence can be applied later")
+
+    with tempfile.TemporaryDirectory() as td:
+        a = Path(td) / "t.mp3"
+        a.write_bytes(_mp3(14, frames=40))
+        check(sidecar.record_identity(a, None) is None, "no isrc writes no stamp")
+        sidecar.record_identity(a, "gb-abc-12-34567")
+        ident = sidecar.read_identity(a)
+        check(ident["isrc"] == "GBABC1234567", "isrc is normalised on write")
+        check(ident["authority"] == "file-tags",
+              "the stamp names the TAG as authority, not itself")
+        check("tag wins" in ident["note"], "conflict resolution is stated in the file")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
