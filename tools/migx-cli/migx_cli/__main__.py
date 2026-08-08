@@ -305,6 +305,20 @@ CAPABILITIES: list[dict[str, Any]] = [
         " for the rest of the CLI. symbols+-c none is safe for curses TUI.",
     },
     {
+        "id": "library.covers",
+        "kind": "command",
+        "summary": "Backfill cover.<ext> for Collection tracks missing folder art.",
+        "args": {
+            "paths": "files or dirs (default: Collection/)",
+            "--thumb": "extra .thumb dir (default: <library>/_Inbox/.thumb)",
+            "--no-embedded": "skip ID3 APIC extraction",
+            "--dry-run": "report without writing",
+        },
+        "emits": "migx.cover-report/1",
+        "note": "Sources: _Inbox/.thumb fuzzy match, then embedded APIC."
+        " Never overwrites an existing cover.* file.",
+    },
+    {
         "id": "system.capabilities",
         "kind": "capability",
         "summary": "This manifest.",
@@ -1039,6 +1053,59 @@ def cmd_track_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library_covers(args: argparse.Namespace) -> int:
+    """Backfill cover art for tracks already in Collection."""
+    cfg = config.load()
+    lib_root = Path(config.get(cfg, "library.root"))
+    roots = args.paths or [str(layout.collection_dir(lib_root))]
+    tracks: list[Path] = []
+    for raw in roots:
+        p = Path(raw).expanduser()
+        if p.is_dir():
+            tracks += sorted(
+                f
+                for f in p.rglob("*")
+                if f.is_file()
+                and f.suffix.lower() in AUDIO_EXTS
+                and not f.is_symlink()
+            )
+        elif p.is_file():
+            tracks.append(p)
+
+    thumb_dirs: list[Path] = []
+    if args.thumb:
+        thumb_dirs.append(Path(args.thumb).expanduser())
+    else:
+        default_thumb = lib_root / layout.INBOX / ".thumb"
+        if default_thumb.is_dir():
+            thumb_dirs.append(default_thumb)
+
+    report = termart.attach_covers(
+        tracks,
+        thumb_dirs=thumb_dirs,
+        extract_embedded=not args.no_embedded,
+        dry_run=args.dry_run,
+    )
+    if args.json:
+        _out(report, True)
+    else:
+        print(
+            f"attached {report['attached_count']} · "
+            f"skipped {report['skipped_count']} · "
+            f"missing {report['missing_count']}"
+            f"{'  (dry-run)' if report['dry_run'] else ''}"
+        )
+        for row in report["attached"][:20]:
+            method = row.get("method") or "?"
+            print(
+                f"  + [{method}] {Path(row['track']).name} -> "
+                f"{Path(row.get('cover') or '').name}"
+            )
+        if report["attached_count"] > 20:
+            print(f"  … {report['attached_count'] - 20} more")
+    return 0
+
+
 def cmd_library_art(args: argparse.Namespace) -> int:
     """Render cover art for a track or a bare image path."""
     target = Path(args.track).expanduser()
@@ -1587,6 +1654,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="symbols = portable; kitty/iterm/sixels need a supporting TTY",
     )
     p.set_defaults(fn=cmd_library_art)
+
+    p = sub.add_parser(
+        "library.covers",
+        help="backfill cover.* for tracks missing folder art",
+    )
+    p.add_argument("paths", nargs="*", default=[])
+    p.add_argument(
+        "--thumb",
+        default=None,
+        help="extra thumb dir (default: <library>/_Inbox/.thumb)",
+    )
+    p.add_argument(
+        "--no-embedded",
+        action="store_true",
+        help="do not extract ID3 APIC frames",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_library_covers)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

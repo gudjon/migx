@@ -40,7 +40,7 @@ from migx_cli import (  # noqa: E402
     termart,
     tui,
     watch,
-)
+)  # noqa: E402 — path insert above
 
 
 def _gradient_png(width: int = 64, height: int = 64) -> bytes:
@@ -1273,6 +1273,67 @@ def main() -> int:
             check(len(painted["lines"]) >= 2, "chafa produced multiple rows")
         else:
             check(True, "chafa not installed — skip live render (ok)")
+
+    # ---- embedded APIC extract + library.covers backfill
+    png = _gradient_png(32, 32)
+    apic_body = (
+        b"\x00"  # latin-1
+        + b"image/png\x00"
+        + b"\x03"  # front cover
+        + b"\x00"  # empty description
+        + png
+    )
+    frame = (
+        b"APIC"
+        + len(apic_body).to_bytes(4, "big")
+        + b"\x00\x00"
+        + apic_body
+    )
+    # pad tag size to fit
+    tag_body = frame + b"\x00" * 16
+    size = len(tag_body)
+    # v2.3 uses syncsafe size in header
+    ss = bytes(
+        [
+            (size >> 21) & 0x7F,
+            (size >> 14) & 0x7F,
+            (size >> 7) & 0x7F,
+            size & 0x7F,
+        ]
+    )
+    id3 = b"ID3\x03\x00\x00" + ss + tag_body
+    with tempfile.TemporaryDirectory() as tmp:
+        td = Path(tmp)
+        track = td / "Embedded.mp3"
+        track.write_bytes(id3 + _mp3(14))
+        extracted = tags.extract_cover(track)
+        check(extracted is not None, "extract_cover finds APIC")
+        if extracted:
+            data, ext = extracted
+            check(ext == ".png" and data[:8] == b"\x89PNG\r\n\x1a\n", "APIC is PNG")
+        # backfill
+        rep = termart.attach_covers([track], extract_embedded=True)
+        check(rep["attached_count"] == 1, "attach_covers from embedded")
+        check((td / "cover.png").is_file(), "cover.png written beside track")
+        # second run skips
+        rep2 = termart.attach_covers([track])
+        check(rep2["skipped_count"] == 1, "existing cover is skipped")
+        # thumb backfill
+        track2 = td / "sub" / "Rare Title.mp3"
+        track2.parent.mkdir()
+        track2.write_bytes(_id3({"TIT2": "Rare"}) + _mp3(14))
+        thumbs = td / "thumbs"
+        thumbs.mkdir()
+        (thumbs / "Artist - Rare Title (video).png").write_bytes(png)
+        rep3 = termart.attach_covers(
+            [track2],
+            thumb_dirs=[thumbs],
+            extract_embedded=False,
+        )
+        check(
+            rep3["attached_count"] == 1 and (track2.parent / "cover.png").is_file(),
+            "thumb_dirs backfill for Collection tracks",
+        )
 
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)

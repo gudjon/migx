@@ -119,7 +119,16 @@ Cover discovery (no tag decoding): `cover.jpg` / `folder.png` next to the audio,
 images in `<track>.migx/`, or a fuzzy match under `_Inbox/.thumb/`.  
 **Ingest / watch:** when a cover is found next to the source (or in `.thumb`),
 `library.ingest` copies it to `cover.<ext>` beside the Collection file so art
-survives after the inbox is drained.  
+survives after the inbox is drained.
+
+**Backfill existing Collection** (thumbs left behind, or embedded APIC):
+
+```bash
+./tools/migx-cli/migx library.covers --dry-run
+./tools/migx-cli/migx library.covers              # default: _Inbox/.thumb + APIC
+./tools/migx-cli/migx library.covers --no-embedded
+```
+
 Override binary: `MIGX_CHAFA_BIN=/path/to/chafa`.  
 Curses uses **symbols + monochrome** only (no ANSI); `--color` / kitty / sixels
 are for raw TTY stdout.

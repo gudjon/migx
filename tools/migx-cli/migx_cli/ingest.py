@@ -23,22 +23,6 @@ TEMPLATES = {
 }
 
 
-def _place_cover(cover_src: Path, audio_dest: Path) -> Path | None:
-    """Copy cover next to the filed audio as cover.<ext> for termart.
-
-    Shared album folders keep one cover.jpg — never overwrite an existing
-    cover file (first track wins). Returns the path that termart will find.
-    """
-    dest = audio_dest.parent / f"cover{cover_src.suffix.lower()}"
-    if dest.exists():
-        return dest if dest.is_file() else None
-    try:
-        shutil.copy2(cover_src, dest)
-    except OSError:
-        return None
-    return dest
-
-
 def _mirror_index(doc: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     """Index mirror entries by ISRC and by normalised artist|title."""
     from . import resolve
@@ -214,7 +198,7 @@ def ingest(
             if tagwrite.write(dest, meta):
                 row["tags_written"] = True
             if cover_src is not None and cover_src.is_file():
-                placed = _place_cover(cover_src, dest)
+                placed = termart.place_cover(cover_src, dest)
                 if placed is not None:
                     row["cover"] = str(placed)
 

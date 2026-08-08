@@ -62,11 +62,68 @@ def strip_ansi(text: str) -> str:
     return _ANSI_RE.sub("", text)
 
 
-def find_cover(track_path: Path | str) -> Path | None:
+def place_cover(cover_src: Path, audio_dest: Path) -> Path | None:
+    """Copy cover next to the filed audio as cover.<ext>.
+
+    Shared album folders keep one cover — never overwrite. Returns the path
+    that find_cover will resolve.
+    """
+    dest = audio_dest.parent / f"cover{cover_src.suffix.lower()}"
+    if dest.exists():
+        return dest if dest.is_file() else None
+    try:
+        import shutil
+
+        shutil.copy2(cover_src, dest)
+    except OSError:
+        return None
+    return dest
+
+
+def place_cover_bytes(
+    data: bytes, audio_dest: Path, ext: str = ".jpg"
+) -> Path | None:
+    """Write extracted embedded art as cover.<ext> beside the track."""
+    if not ext.startswith("."):
+        ext = f".{ext}"
+    dest = audio_dest.parent / f"cover{ext.lower()}"
+    if dest.exists():
+        return dest if dest.is_file() else None
+    try:
+        dest.write_bytes(data)
+    except OSError:
+        return None
+    return dest
+
+
+def _match_in_thumb_dir(thumb: Path, stem: str) -> Path | None:
+    if not thumb.is_dir():
+        return None
+    stem = stem.lower()
+    for p in sorted(thumb.iterdir()):
+        if p.suffix.lower() not in _IMAGE_EXTS:
+            continue
+        if p.stem.lower() == stem:
+            return p
+    for p in sorted(thumb.iterdir()):
+        if p.suffix.lower() not in _IMAGE_EXTS:
+            continue
+        name = p.stem.lower()
+        if stem in name or name in stem:
+            return p
+    return None
+
+
+def find_cover(
+    track_path: Path | str,
+    *,
+    thumb_dirs: list[Path] | None = None,
+) -> Path | None:
     """Locate cover art beside a track, without decoding audio tags.
 
     Order: explicit sibling names → any image in the track's directory →
-    sidecar dir images → library `_Inbox/.thumb` fuzzy stem match.
+    sidecar dir images → nearby `.thumb` dirs → optional extra thumb roots
+    (e.g. library `_Inbox/.thumb` for backfill after ingest).
     """
     track = Path(track_path).expanduser()
     if not track.is_file():
@@ -101,25 +158,124 @@ def find_cover(track_path: Path | str) -> Path | None:
         if side_imgs:
             return side_imgs[0]
 
-    # Downloader thumbs: Music/_Inbox/.thumb/<title>.png
+    # Downloader thumbs next to the track / one level up.
     for root in (parent, parent.parent):
-        thumb = root / ".thumb"
-        if not thumb.is_dir():
-            continue
-        stem = track.stem.lower()
-        # Exact stem first, then containment (thumbs are often longer YT titles).
-        for p in sorted(thumb.iterdir()):
-            if p.suffix.lower() not in _IMAGE_EXTS:
-                continue
-            if p.stem.lower() == stem:
-                return p
-        for p in sorted(thumb.iterdir()):
-            if p.suffix.lower() not in _IMAGE_EXTS:
-                continue
-            name = p.stem.lower()
-            if stem in name or name in stem:
-                return p
+        hit = _match_in_thumb_dir(root / ".thumb", track.stem)
+        if hit is not None:
+            return hit
+
+    for extra in thumb_dirs or []:
+        hit = _match_in_thumb_dir(Path(extra).expanduser(), track.stem)
+        if hit is not None:
+            return hit
     return None
+
+
+def folder_cover(track_path: Path | str) -> Path | None:
+    """Cover already living next to the track (not remote .thumb)."""
+    track = Path(track_path)
+    parent = track.parent
+    if not parent.is_dir():
+        return None
+    for name in _COVER_NAMES:
+        candidate = parent / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def attach_covers(
+    tracks: list[Path],
+    *,
+    thumb_dirs: list[Path] | None = None,
+    extract_embedded: bool = True,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Backfill cover.<ext> for tracks that lack folder art.
+
+    Sources, in order: existing cover.* (skip) → find_cover(+thumb_dirs) →
+    embedded ID3 APIC. Never overwrites an existing cover file.
+    """
+    from . import tags as tags_mod
+
+    attached, skipped, missing = [], [], []
+    for track in tracks:
+        track = Path(track)
+        if not track.is_file():
+            continue
+        existing = folder_cover(track)
+        if existing is not None:
+            skipped.append(
+                {
+                    "track": str(track),
+                    "cover": str(existing),
+                    "reason": "has cover",
+                }
+            )
+            continue
+
+        row: dict[str, Any] = {"track": str(track)}
+        source = find_cover(track, thumb_dirs=thumb_dirs)
+        # find_cover may still return a non-cover sibling sole image — treat as source to copy.
+        if source is not None and source.parent == track.parent:
+            # Sole folder image already next to track — rename/copy to cover.* only if not named cover.
+            if source.name.lower().startswith("cover"):
+                skipped.append(
+                    {
+                        "track": str(track),
+                        "cover": str(source),
+                        "reason": "has cover",
+                    }
+                )
+                continue
+
+        if source is not None:
+            row["source"] = str(source)
+            row["method"] = "file"
+            if dry_run:
+                row["cover"] = str(
+                    track.parent / f"cover{source.suffix.lower()}"
+                )
+                attached.append(row)
+            else:
+                placed = place_cover(source, track)
+                if placed:
+                    row["cover"] = str(placed)
+                    attached.append(row)
+                else:
+                    missing.append({**row, "reason": "copy failed"})
+            continue
+
+        if extract_embedded:
+            embedded = tags_mod.extract_cover(track)
+            if embedded:
+                data, ext = embedded
+                row["method"] = "embedded"
+                row["bytes"] = len(data)
+                if dry_run:
+                    row["cover"] = str(track.parent / f"cover{ext}")
+                    attached.append(row)
+                else:
+                    placed = place_cover_bytes(data, track, ext)
+                    if placed:
+                        row["cover"] = str(placed)
+                        attached.append(row)
+                    else:
+                        missing.append({**row, "reason": "write failed"})
+                continue
+
+        missing.append({"track": str(track), "reason": "no cover source"})
+
+    return {
+        "schema": "migx.cover-report/1",
+        "attached_count": len(attached),
+        "skipped_count": len(skipped),
+        "missing_count": len(missing),
+        "dry_run": dry_run,
+        "attached": attached,
+        "skipped": skipped,
+        "missing": missing,
+    }
 
 
 def render(

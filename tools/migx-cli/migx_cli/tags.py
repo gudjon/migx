@@ -133,6 +133,107 @@ def _read_id3(handle: Any) -> dict[str, Any]:
     return out
 
 
+def _mime_to_ext(mime: str) -> str:
+    mime = (mime or "").lower().split(";")[0].strip()
+    return {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }.get(mime, ".jpg")
+
+
+def _parse_apic(payload: bytes) -> tuple[bytes, str] | None:
+    """Decode an ID3 APIC frame body → (image_bytes, .ext)."""
+    if len(payload) < 4:
+        return None
+    encoding = payload[0]
+    rest = payload[1:]
+    # MIME is always ISO-8859-1, terminated by 0x00.
+    nul = rest.find(b"\x00")
+    if nul < 0:
+        return None
+    mime = rest[:nul].decode("latin-1", "replace")
+    rest = rest[nul + 1 :]
+    if not rest:
+        return None
+    # picture type (1 byte) + description + image
+    rest = rest[1:]
+    if encoding in (1, 2):  # UTF-16 with BOM / UTF-16BE — description ends \0\0
+        end = 0
+        while end + 1 < len(rest):
+            if rest[end : end + 2] == b"\x00\x00":
+                rest = rest[end + 2 :]
+                break
+            end += 2
+        else:
+            return None
+    else:  # latin-1 or utf-8 — single NUL
+        nul = rest.find(b"\x00")
+        if nul < 0:
+            return None
+        rest = rest[nul + 1 :]
+    if not rest:
+        return None
+    return rest, _mime_to_ext(mime)
+
+
+def extract_cover(path: Path | str) -> tuple[bytes, str] | None:
+    """Pull the first front-cover (or any) APIC image from an MP3.
+
+    Stdlib only. Returns (bytes, extension) or None. FLAC picture blocks are
+    not handled here yet — folder art + chafa cover the common path.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return None
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(10)
+            if len(header) < 10 or header[:3] != b"ID3":
+                return None
+            major = header[3]
+            tag_size = _syncsafe(header[6:10])
+            body = handle.read(tag_size)
+    except OSError:
+        return None
+
+    pos = 0
+    fallback: tuple[bytes, str] | None = None
+    while pos + 10 <= len(body):
+        frame_id = body[pos : pos + 4]
+        if not frame_id.strip(b"\x00"):
+            break
+        raw_size = body[pos + 4 : pos + 8]
+        size = (
+            _syncsafe(raw_size)
+            if major >= 4
+            else int.from_bytes(raw_size, "big")
+        )
+        pos += 10
+        if size <= 0 or pos + size > len(body):
+            break
+        if frame_id == b"APIC":
+            parsed = _parse_apic(body[pos : pos + size])
+            if parsed:
+                # Prefer picture type 3 (front cover) when we can read it.
+                # Type is the byte after MIME; re-check from frame body.
+                payload = body[pos : pos + size]
+                # encoding + mime + nul + type
+                mime_end = payload.find(b"\x00", 1)
+                ptype = (
+                    payload[mime_end + 1]
+                    if mime_end >= 0 and mime_end + 1 < len(payload)
+                    else 0
+                )
+                if ptype == 3:
+                    return parsed
+                fallback = fallback or parsed
+        pos += size
+    return fallback
+
+
 def _read_flac(handle: Any) -> dict[str, Any]:
     handle.seek(4)  # past "fLaC"
     out: dict[str, Any] = {}

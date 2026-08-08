@@ -84,7 +84,8 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `library.watch` | command | shipped | _Inbox auto-file | — |
 | `library.rename` | command | shipped | re-file after analysis | — |
 | `library.art` | query | shipped | chafa optional; placeholder degrade | brew install chafa for live art |
-| `system.capabilities` | capability | shipped | 22 rows | grow only with command land |
+| `library.covers` | command | shipped | backfill cover.* from thumbs + APIC | run once after mass ingest |
+| `system.capabilities` | capability | shipped | 23 rows | grow only with command land |
 
 ### A2 — Surface commitments (TUI-first, not yet commands)
 
