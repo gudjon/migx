@@ -30,7 +30,7 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
-from . import feedback, mixing, player, setplan, setplay
+from . import feedback, mixing, onbeat, player, setplan, setplay
 
 # Start the incoming deck this long before the outgoing one ends. A blend
 # shorter than this is a cut; longer and a 3-minute track has no solo section.
@@ -142,10 +142,31 @@ class LiveSession:
             else:
                 fade = setplay.CUT_CROSSFADE
 
+        # Phase alignment. Tempo matching alone leaves two records running at
+        # the same speed with their bars offset — a flam, not a mix. Hold until
+        # the OUTGOING track crosses a bar line, then enter the incoming track
+        # on one of ITS bar lines, measured at the PLAYED tempo.
+        entry = setplay.entry_point(incoming)
+        aligned = None
+        position = self.decks[self.active].position_s()
+        if position is not None and outgoing and outgoing.get("bpm") and incoming.get("bpm"):
+            aligned = onbeat.align(
+                outgoing_position_s=position,
+                outgoing_bpm=float(outgoing["bpm"]),
+                incoming_entry_s=entry,
+                incoming_bpm=float(incoming["bpm"]),
+                tempo_ratio=ratio,
+            )
+            entry = aligned["start_s"]
+            # Never hold longer than a bar: waiting is dead air in the plan and
+            # the next line is at most one bar away by construction.
+            if 0 < aligned["wait_s"] <= aligned["out_bar_s"] + 1e-6:
+                time.sleep(aligned["wait_s"])
+
         free = 1 - self.active
         result = self.decks[free].play(
             incoming,
-            start_s=setplay.entry_point(incoming),
+            start_s=entry,
             tempo_ratio=ratio,
             fade_in_s=fade,
         )
@@ -155,7 +176,7 @@ class LiveSession:
         self.played.append(incoming)
         self._emit("TransitionStarted")
         self._emit("TrackPlaying")
-        return {**result, "tempo_ratio": ratio, "fade_s": fade}
+        return {**result, "tempo_ratio": ratio, "fade_s": fade, "aligned": aligned}
 
     def skip(self) -> dict[str, Any]:
         """Cut to the next track now — no blend, because the DJ said now."""

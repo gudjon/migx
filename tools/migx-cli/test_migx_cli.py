@@ -2004,6 +2004,35 @@ def main() -> int:
               "the stamp names the TAG as authority, not itself")
         check("tag wins" in ident["note"], "conflict resolution is stated in the file")
 
+    # ---- on-beat phase alignment ----------------------------------------
+    from migx_cli import onbeat as _ob
+
+    check(_ob.bar_seconds(120) == 2.0, "a bar at 120bpm is 2s")
+    check(_ob.next_bar_line(5.0, 120) == 6.0, "next bar line rounds up")
+    check(_ob.next_bar_line(6.0, 120) == 6.0,
+          "exactly on the line fires now, not a bar later")
+    check(_ob.snap_to_bar(7.9, 120) == 6.0,
+          "entry snaps DOWN — entering late clips the phrase")
+    try:
+        _ob.bar_seconds(0)
+        check(False, "zero bpm accepted")
+    except ValueError:
+        check(True, "zero bpm refused rather than dividing by zero")
+
+    al = _ob.align(outgoing_position_s=5.0, outgoing_bpm=120,
+                   incoming_entry_s=61.3, incoming_bpm=124,
+                   tempo_ratio=120 / 124)
+    check(al["wait_s"] == 1.0, f"holds to the next bar line, got {al['wait_s']}")
+    check(abs(al["fire_at_s"] % al["out_bar_s"]) < 1e-6, "fires on an outgoing bar")
+    check(abs(al["start_s"] % al["in_bar_s"]) < 1e-6, "enters on an incoming bar")
+    # The tempo_ratio must be applied to the incoming grid, or the two drift
+    # apart within a phrase — the very bug alignment exists to prevent.
+    check(abs(al["out_bar_s"] - al["in_bar_s"]) < 1e-6,
+          f"bars match once tempo-matched ({al['out_bar_s']} vs {al['in_bar_s']})")
+    naive = _ob.align(5.0, 120, 61.3, 124, tempo_ratio=1.0)
+    check(abs(naive["out_bar_s"] - naive["in_bar_s"]) > 1e-3,
+          "ignoring tempo_ratio WOULD mismatch the grids (guards the guard)")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(
