@@ -1898,6 +1898,51 @@ def main() -> int:
         "an empty stage explains itself",
     )
 
+    # ---- notes.md sidecar ------------------------------------------------
+    from migx_cli import notes as _notes
+
+    with tempfile.TemporaryDirectory() as td:
+        a = Path(td) / "t.mp3"
+        a.write_bytes(_mp3(14, frames=40))
+        _notes.write(a, {"mood": ["hypnotic", "late"], "floor": "peak"},
+                     "Builds slowly.\n\nExit at 4:35.")
+        got = _notes.read(a)
+        check(got["meta"]["mood"] == ["hypnotic", "late"], "inline list parses")
+        check(got["meta"]["floor"] == "peak", "scalar parses")
+        check("Exit at 4:35." in got["body"], "body keeps its line breaks")
+
+        # Editing one half must not destroy the other.
+        _notes.write(a, body="Changed my mind.")
+        check(_notes.read(a)["meta"]["floor"] == "peak",
+              "a body-only write preserves frontmatter")
+        _notes.write(a, {"floor": "opener"})
+        check("Changed my mind." in _notes.read(a)["body"],
+              "a meta-only write preserves the body")
+
+        # Bare prose is the common case and must never be an error.
+        _notes.notes_path(a).write_text("just a sentence")
+        check(_notes.read(a) == {"meta": {}, "body": "just a sentence"},
+              "a note with no frontmatter is all body")
+
+        # Unterminated frontmatter must not swallow the prose as metadata.
+        _notes.notes_path(a).write_text("---\nmood: odd\nstill typing")
+        check(_notes.read(a)["meta"] == {},
+              "unterminated frontmatter is treated as prose, not metadata")
+
+        # MG-3: track.json owns these, and the refusal must be loud.
+        for bad in ("bpm", "camelot", "cues", "feedback"):
+            try:
+                _notes.write(a, {bad: "x"})
+                check(False, f"reserved key {bad} was accepted")
+            except ValueError:
+                check(True, f"reserved key {bad} refused")
+
+        # Round-trip: what we render must parse back identically.
+        meta = {"mood": ["a", "b"], "floor": "peak"}
+        again = _notes.parse(_notes.render(meta, "prose"))
+        check(again["meta"] == meta and again["body"] == "prose",
+              f"render/parse round-trips, got {again}")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

@@ -32,6 +32,7 @@ from . import (
     ingest,
     layout,
     mirror,
+    notes,
     naming,
     quality,
     ratelimit,
@@ -1156,6 +1157,18 @@ def cmd_track_show(args: argparse.Namespace) -> int:
         return 0
     print(track.name)
     print(f"  notes: {data.get('notes') or '—'}")
+    # notes.md — the prose half of the sidecar. Shown after the typed fields
+    # because it is what a DJ actually reads before deciding to play a track.
+    note = notes.read(track)
+    if note["meta"]:
+        for key, value in note["meta"].items():
+            shown = ", ".join(value) if isinstance(value, list) else value
+            print(f"  {key}: {shown}")
+    if note["body"]:
+        print()
+        for line in note["body"].splitlines():
+            print(f"  {line}")
+        print()
     print(f"  tags : {', '.join(data.get('tags') or []) or '—'}")
     cues = data.get("cues") or []
     if not cues:
