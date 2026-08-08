@@ -1517,7 +1517,6 @@ add_library(
   src/library/treeitem.cpp
   src/library/treeitemmodel.cpp
   src/mixer/auxiliary.cpp
-  src/bridge/enginebridge.cpp
   src/mixer/baseplayer.cpp
   src/mixer/basetrackplayer.cpp
   src/mixer/deck.cpp

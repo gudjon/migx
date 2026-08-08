@@ -4,11 +4,19 @@
 // into deck actions. The C++ half of the contract defined and tested in
 // tools/migx-cli/migx_cli/engine.py.
 //
-// Built as part of mixxx-lib. NOT yet constructed by anything — no call site
-// creates an EngineBridge, so it compiles and links but never listens. The
-// remaining step is deciding where it is owned (MixxxMainWindow, alongside the
-// controller manager) and calling listen(). Until then this is inert code, not
-// a working feature.
+// PARKED — not in CMakeLists.txt (2026-08-08). Qt work is paused while the
+// product focus is the TUI, so this would compile into every build and never be
+// exercised: dead weight that rots quietly against a moving codebase.
+//
+// It DID compile and link cleanly against the verified API contract (two
+// errors, one real: ControlObject::exists needs control/controlobject.h). That
+// is worth keeping — the expensive part was establishing the contract, not
+// typing the file.
+//
+// To revive: re-add src/bridge/enginebridge.cpp to the mixxx-lib sources, then
+// construct one where the controller manager is owned and call listen().
+// Contract and ownership rules:
+// kanban/tasks/replace-set-play-render-with-live-transport.md
 //
 // Thread domain: MAIN/GUI thread only. QLocalServer is a Qt event-loop object
 // and every write goes through ControlProxy, exactly as a MIDI controller
