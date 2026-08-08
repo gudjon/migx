@@ -34,6 +34,8 @@ INBOX = "_Inbox"
 GAP_LIST = "_gaps.json"
 # Live "now playing" for session coaching agents (written off-RT by CLI/TUI).
 LIVE_STATUS = "_live.json"
+# Append-only night log (bind / room / feedback / clear) for session.show.
+SESSION_LOG = "_session.jsonl"
 
 
 def gap_list_path(root: Path) -> Path:
@@ -42,6 +44,10 @@ def gap_list_path(root: Path) -> Path:
 
 def live_status_path(root: Path) -> Path:
     return Path(root).expanduser() / LIVE_STATUS
+
+
+def session_log_path(root: Path) -> Path:
+    return Path(root).expanduser() / SESSION_LOG
 
 
 def alpha_bucket(name: str) -> str:

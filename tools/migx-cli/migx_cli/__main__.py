@@ -353,7 +353,8 @@ CAPABILITIES: list[dict[str, Any]] = [
         },
         "emits": "migx.set-mix/1",
         "writes": "an audio file",
-        "note": "Offline render, NOT the engine — no deck, no RT thread, so"
+        "note": "PREVIEW ONLY — a pre-rendered mix is Automix, an explicit"
+        " anti-identity; sets are meant to be performed live. Offline render, NOT the engine — no deck, no RT thread, so"
         " nothing here may be reused on the audio callback path. Pitch numbers"
         " come from mixing.beatmatch(), the same source the Deck view shows."
         " A track that cannot reach the running tempo within ±8% plays native"
@@ -415,7 +416,19 @@ CAPABILITIES: list[dict[str, Any]] = [
         "id": "session.clear",
         "kind": "command",
         "summary": "Clear live binding (end of set / prep).",
-        "writes": "removes <library>/_live.json",
+        "writes": "removes <library>/_live.json; appends clear to _session.jsonl",
+        "note": "Night log is kept so session.show can still reconstruct the set.",
+    },
+    {
+        "id": "session.show",
+        "kind": "query",
+        "summary": "Reconstruct tonight's plays + feedback from the session log.",
+        "args": {
+            "--limit": "only the last N events (optional)",
+        },
+        "emits": "migx.session-log/1",
+        "note": "Reads <library>/_session.jsonl (append-only). Bind/room/feedback/"
+        "clear all append; agents use this for night harvest / Dream loop.",
     },
     {
         "id": "system.capabilities",
@@ -1328,6 +1341,23 @@ def cmd_track_feedback(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    # Mirror into the night log so session.show reconstructs floor judgment
+    # in order. Lifetime sidecar is still the SSoT for set.plan priors.
+    try:
+        cfg = config.load()
+        root = Path(config.get(cfg, "library.root"))
+        session.log_feedback(
+            root,
+            track,
+            fit=args.fit,
+            placement=args.placement,
+            segment=args.segment,
+            transition=args.transition,
+            note=args.note,
+        )
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+
     current = feedback.latest(doc)
     payload = {
         "schema": "migx.feedback/1",
@@ -1423,6 +1453,17 @@ def cmd_session_clear(args: argparse.Namespace) -> int:
         "live binding cleared",
     )
     return 0
+
+
+def cmd_session_show(args: argparse.Namespace) -> int:
+    """Reconstruct tonight's plays + feedback from the append-only log."""
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    limit = args.limit if getattr(args, "limit", None) else None
+    doc = session.reconstruct(root, limit=limit)
+    human = session.format_show(doc)
+    _out(doc, args.json, human)
+    return 0 if doc.get("event_count") else 1
 
 
 def cmd_library_covers(args: argparse.Namespace) -> int:
@@ -2097,6 +2138,18 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "session.clear", help="clear live binding"
     ).set_defaults(fn=cmd_session_clear)
+
+    p = sub.add_parser(
+        "session.show",
+        help="reconstruct tonight's plays + feedback from the session log",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="only the last N events",
+    )
+    p.set_defaults(fn=cmd_session_show)
 
     p = sub.add_parser(
         "set.play",

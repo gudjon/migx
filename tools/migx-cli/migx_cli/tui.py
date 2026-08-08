@@ -27,11 +27,13 @@ from typing import Any
 
 from . import (
     config,
+    feedback,
     layout,
     mixing,
     quality,
     resolve,
     session,
+    setplan,
     sidecar,
     spark,
     tags,
@@ -334,6 +336,68 @@ def visible(snap: dict[str, Any]) -> list[dict[str, Any]]:
     return sort_collection(rows, snap.get("sort", "name"))
 
 
+ARRANGE_CANDIDATES = 12
+
+
+def arrange_view(snap: dict[str, Any]) -> list[str]:
+    """What to play after the selected track — the co-pilot's core question.
+
+    This pane used to list playlist mirrors, which answered "what did Spotify
+    send me" rather than "what do I play next". Ranking reuses
+    `setplan.transition_score`, so Arrange, the Deck view and `set.plan` can
+    never disagree about the same pair (`P-11`).
+
+    Retired tracks are dropped and the count is shown rather than silently
+    shrinking the list — a candidate vanishing with no explanation is
+    indistinguishable from a bug (`P-34`).
+    """
+    current = _selected(snap)
+    if current is None:
+        return ["(no track selected — pick one in Library)"]
+    if not (current.get("bpm") and current.get("camelot")):
+        return [
+            f"@{current['name'][:60]}",
+            "  (not analysed — run `library.analyze` to rank what comes next)",
+        ]
+
+    pool = [
+        t
+        for t in (snap.get("collection") or [])
+        if t.get("path") != current.get("path")
+        and t.get("bpm")
+        and t.get("camelot")
+    ]
+    retired = [t for t in pool if feedback.is_retired(t)]
+    pool = [t for t in pool if not feedback.is_retired(t)]
+    if not pool:
+        return [f"@{current['name'][:60]}", "  (nothing else analysed yet)"]
+
+    scored = sorted(
+        ((setplan.transition_score(current, c), c) for c in pool),
+        key=lambda pair: -pair[0][0],
+    )[:ARRANGE_CANDIDATES]
+
+    head = f"after {current['bpm']:.0f} {current['camelot']}  {current['name'][:44]}"
+    out = [head, "-" * min(len(head), 72)]
+    for (score, plan), cand in scored:
+        beat = plan["beatmatch"]
+        pitch = (
+            f"{beat['pitch_pct']:+5.1f}%"
+            if beat.get("pitch_pct") is not None
+            else "    ?"
+        )
+        reach = beat.get("fits_range") or "OUT"
+        out.append(
+            f"{score:>4}  {cand['bpm']:>3.0f} {cand['camelot']:>4}  "
+            f"{cand['name'][:38]:<38} {plan['techniques'][0]['name'][:13]:<13}"
+            f" {pitch} {reach}"
+        )
+    if retired:
+        out.append("")
+        out.append(f"({len(retired)} retired track(s) excluded)")
+    return out
+
+
 def _selected(snap: dict[str, Any]) -> dict[str, Any] | None:
     index = snap.get("selected", 0)
     rows = visible(snap)
@@ -429,10 +493,7 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
             f"spotify     {'linked' if snap['linked_ok'] else 'not linked'}",
         ]
     if pane == "Arrange":
-        return [
-            f"{m['tracks']:>5}  {m['week']:9}  {m['name'][:52]}"
-            for m in snap["mirrors"]
-        ] or ["(no mirrors — run playlist.pull)"]
+        return arrange_view(snap)
     if pane == "Gaps":
         out = []
         for g in snap["gaps"]:

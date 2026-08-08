@@ -1,5 +1,19 @@
 """Render a planned set into one continuous, beatmatched mix.
 
+**Direction note (2026-08-08): this is a PREVIEW, not the product.**
+A pre-rendered mix is an Automix artifact — the machine performs and the DJ
+watches — and that is an explicit anti-identity
+(`kanban/knowledge/session-coaching-multimodal-agent.md`: hands on the mix,
+mouth on the coach). Migx is meant to be an interactive instrument: live decks,
+the DJ moving faders, the co-pilot advising.
+
+What is worth keeping here is the *maths*, not the file: the tempo chain, the
+±8% reachability rule, and the cut-instead-of-force decision are exactly what a
+live transport needs, and they are already shared with `set.plan` and the Deck
+view. Treat this module as the offline proof of that maths — useful for
+auditioning a running order end to end — and do NOT grow it into the way sets
+are performed.
+
 `setplan` decides the ORDER. This performs it: each track is pitched onto the
 running deck tempo and crossfaded into the next, producing a single audio file
 you can actually listen to.
