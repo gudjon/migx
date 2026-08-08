@@ -46,7 +46,7 @@ failures nobody files is only marginally better than no gate (`P-01`).
   (FFmpeg 7.1 / CoreAudio 26.2 here); it is likely an environment expectation rather than a defect, but
   *likely* is not *verified* — confirm which before writing it off, and do not adjust the constant to
   make it green (`AP-01`).
-- **946 / 965** — triaged below: both are missing QML modules in the buildenv, not code defects.
+- **946 / 965** — triaged below: a static-Qt QML *plugin link* gap in our build, not missing modules and not mapping defects.
 
 ## Triage of 618 (done 2026-08-08) — a real thread race, not a flaky expectation
 
@@ -97,19 +97,34 @@ res/qml/TraktorKontrolS4MK3Screens.qml:-1:  module "QtQuick.Controls.macOS"    i
 ```
 → `src/test/controller_mapping_validation_test.cpp:278: Failure — testLoadMapping(mappingPath)`
 
-Confirmed absent from the dependency bundle (`mixxx-deps-2.6-arm64-osx-aa78b5a`): neither
-`installed/*/qml/Qt5Compat` nor `installed/*/qml/QtQuick/Controls/macOS` exists. Of the 164
-`MappingTestFixture.LoadMapping` cases, exactly these 2 — the ones with device screens — fail.
+### Correction — the modules are NOT missing; it is a static-plugin link gap
 
-**This is a build-environment gap, not dead upstream weight, and it is worth fixing rather than
-excluding.** Two reasons: a user with a Traktor Kontrol S4 MK3 would hit the same missing module at
-runtime, not just in a test; and Migx is committing to a QML shell (`ADR-007`), so a buildenv that
-cannot resolve stock Qt QML modules will bite the product UI well beyond controller screens.
+An initial pass recorded these as "absent from the buildenv." **That was wrong**, from looking at
+`installed/*/qml/` when the real path is `installed/*/Qt6/qml/`. Both modules are present and complete:
+`Qt6/qml/Qt5Compat/GraphicalEffects/` and `Qt6/qml/QtQuick/Controls/macOS/` ship all their `.qml` files.
 
-Fix direction: add the two modules to the vcpkg buildenv (or confirm they ship in a newer bundle and
-bump it) — `tools/macos_buildenv.sh` is the single home for which bundle this arch pulls. Do **not**
-silence these by excluding the mappings from the fixture; that converts a real dependency gap into a
-green test (`AP-01`).
+Setting the import path proves it — the "is not installed" errors disappear and the *next* error is the
+real one:
+
+```bash
+Q="$PWD/buildenv/mixxx-deps-2.6-arm64-osx-aa78b5a/installed/arm64-osx-min1100/Qt6/qml"
+QML2_IMPORT_PATH="$Q" ./build/mixxx-test --gtest_filter='*Traktor_Kontrol_S4_MK3_bulk_xml*'
+# module "QtQuick.Controls" version 2.15 cannot be imported because:
+# module "QtQuick.Controls.macOS" plugin "qtquickcontrols2macosstyleplugin" not found
+```
+
+**This buildenv is a static Qt** (`lib/libQt6Core.a`, `libqtquickcontrols2plugin.a`). With static Qt a
+QML module is only usable if its C++ plugin is *linked into the executable* — the `.qml` files alone are
+not enough. `qtquickcontrols2macosstyleplugin` exists as a CMake target
+(`share/Qt6Qml/QmlPlugins/Qt6qtquickcontrols2macosstylepluginTargets.cmake`) but is not linked into
+`mixxx-test`. So this is a **link/CMake gap in our build, not a dependency gap in the bundle** — bumping
+the buildenv would not have fixed it, and neither would the two-line import-path tweak.
+
+Still worth fixing rather than excluding, for the reason that outlives these tests: `ADR-007` commits
+Migx to a QML shell, and a static build that silently cannot instantiate stock Qt QML plugins will bite
+the product UI far beyond controller screens. Fix direction is `qt_import_qml_plugins()` / explicit
+linkage of the required QML plugins for the static configuration. Do **not** silence these by excluding
+the mappings from the fixture (`AP-01`).
 
 ## Next step
 Run each alone for a clean signal (the suite takes ~25 min; a single test is seconds):
