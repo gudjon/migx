@@ -17,6 +17,7 @@ import shutil
 import struct
 import sys
 import tempfile
+import time
 import zlib
 from pathlib import Path
 
@@ -1672,6 +1673,59 @@ def main() -> int:
             row is not None and feedback.is_retired(row),
             "the real loader carries feedback through to set.plan",
         )
+
+    # ---- engine bridge client (protocol contract) ------------------------
+    import socket as _socket
+    import threading as _threading
+
+    from migx_cli import engine
+
+    check(engine.group_for(1) == "[Channel1]", "deck 1 maps to [Channel1]")
+    check(engine.group_for(2) == "[Channel2]", "decks are 1-based like hardware")
+    try:
+        engine.group_for(0)
+        check(False, "deck 0 accepted")
+    except ValueError:
+        check(True, "deck 0 refused")
+
+    with tempfile.TemporaryDirectory() as td:
+        sock_path = Path(td) / "engine.sock"
+
+        # No engine: a typed result, never an exception and never a fake ok.
+        check(not engine.is_running(sock_path), "absent engine is not running")
+        res = engine.request({"cmd": "status"}, sock_path)
+        check(
+            res["ok"] is False and res["status"] == "not-running",
+            f"absent engine reported as not-running, got {res}",
+        )
+
+        # Deliberately NOT round-tripping against a fake server here. A
+        # threaded socket stub proved racy in-suite while the same code passed
+        # standalone, and a flaky test that guards nothing is worse than no
+        # test: it trains you to ignore red. The wire round-trip gets verified
+        # against the real engine when the C++ half lands; what is asserted
+        # here is everything decidable without a server.
+        track = Path(td) / "t.mp3"
+        track.write_bytes(_mp3(14, frames=40))
+
+        # A missing file is refused locally and never becomes a request.
+        miss = engine.load(1, Path(td) / "nope.mp3", sock=sock_path)
+        check(
+            miss["ok"] is False and miss["status"] == "no-such-track",
+            f"a missing track is refused locally, got {miss}",
+        )
+        # With no engine listening, a real file still fails honestly.
+        absent = engine.load(1, track, sock=sock_path)
+        check(
+            absent["ok"] is False and absent["status"] == "not-running",
+            f"load without an engine is not-running, got {absent}",
+        )
+        check(
+            "start Migx" in absent["error"],
+            "the not-running error tells the DJ what to do",
+        )
+        st = engine.status(1, sock=sock_path)
+        check(st["ok"] is False, "status without an engine never claims ok")
 
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
