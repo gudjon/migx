@@ -1,0 +1,198 @@
+"""Order a pile of tracks into a set that can actually be mixed.
+
+`mixing.py` answers "do these two work, and which move?" for ONE pair. A set
+is the next question up: given N tracks, what order keeps every transition
+mixable? That is a sequencing problem, not a scoring one, and nothing in the
+CLI answered it — so the ordering lived in throwaway scripts and died with the
+shell that ran it.
+
+Deliberately reuses `mixing.plan()` for every pair rather than re-scoring here.
+A second opinion about whether two tracks work would drift from what
+`track.show` and the Deck view tell the DJ about the same pair, which is the
+failure `P-11` names.
+
+**What it is not:** this plans an order. It does not play, queue, beatmatch or
+touch an engine — there is no audio here. The output is a running order a human
+(or the TUI) can act on.
+
+## Why greedy, and what that costs
+
+It walks the set greedily: from the current track, take the best-scoring next
+track from what is left. Greedy is honest about its weakness — it spends the
+easy transitions early and can strand awkward tracks at the end. That is
+visible in the output rather than hidden, because every transition prints its
+own pitch and reach.
+
+The alternative (optimal ordering) is a Hamiltonian-path problem — exponential,
+and wrong-headed for a DJ set anyway, since a set has an *arc*: you do not want
+the globally smoothest order, you want one that opens quiet and builds.
+
+## Scoring, and why the pitch fader is weighted so heavily
+
+On top of the technique score, a candidate earns:
+
+- `+30` harmonically compatible — the loudest single signal in a blend
+- `+20` beatmatchable at all
+- `+25` inside `±8%` — the default pitch range on most gear. A transition that
+  needs `±16%` is one many DJs physically cannot perform, so "possible in
+  theory" and "possible on the deck in front of you" are scored apart.
+- `-15` when the match relies on double/half-time. It is a real technique, not
+  a default, and choosing it silently produces sets that feel wrong for reasons
+  the running order does not explain.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Iterable
+
+from . import layout, mixing
+
+# Bonuses on top of the technique score. Tuned so "reachable on real gear"
+# outranks "theoretically beatmatchable" — see the module docstring.
+HARMONIC_BONUS = 30
+BEATMATCH_BONUS = 20
+IN_RANGE_BONUS = 25
+TIME_TRICK_PENALTY = -15
+
+# How many buckets of the energy curve count as the "opening" of a track.
+OPENING_BUCKETS = 8
+
+
+def opening_energy(track: dict[str, Any]) -> float:
+    """Mean loudness of a track's first buckets — how hot it starts."""
+    energy = track.get("energy") or []
+    if not energy:
+        return 0.0
+    head = energy[:OPENING_BUCKETS]
+    return sum(head) / len(head)
+
+
+def transition_score(
+    outgoing: dict[str, Any], incoming: dict[str, Any]
+) -> tuple[int, dict[str, Any]]:
+    """Score this pair, and return the plan that justifies the score."""
+    plan = mixing.plan(outgoing, incoming)
+    best = plan["techniques"][0]
+    score = best["score"]
+
+    if plan["harmonic"].get("compatible"):
+        score += HARMONIC_BONUS
+
+    beatmatch = plan["beatmatch"]
+    if beatmatch.get("possible"):
+        score += BEATMATCH_BONUS
+    if beatmatch.get("fits_range") == "±8%":
+        score += IN_RANGE_BONUS
+    if beatmatch.get("relation"):  # "double-time" / "half-time"
+        score += TIME_TRICK_PENALTY
+
+    return score, plan
+
+
+def drop_duplicate_recordings(
+    tracks: Iterable[dict[str, Any]], library_root: Path
+) -> list[dict[str, Any]]:
+    """Keep one copy of each recording, using the library's own identity rule.
+
+    Without this a set plays the same song twice under two credits — the
+    Diplo/Soulwax case `layout.find_duplicates` exists to catch. Reuses that
+    rule rather than comparing titles here, so the CLI has one answer to "are
+    these the same recording".
+    """
+    duplicates = layout.find_duplicates(Path(library_root))
+    superseded: set[str] = set()
+    for paths in duplicates.values():
+        # Deterministic winner so the same library plans the same set twice.
+        superseded.update(sorted(paths)[1:])
+    return [t for t in tracks if t.get("path") not in superseded]
+
+
+def plan_set(
+    tracks: list[dict[str, Any]],
+    library_root: Path | None = None,
+    opener: str | None = None,
+) -> dict[str, Any]:
+    """Order tracks into a running set, with the move into each one.
+
+    `opener` is a path; without it the coldest-opening track leads, because a
+    set that starts at peak energy has nowhere to go.
+    """
+    pool = list(tracks)
+    if library_root is not None:
+        pool = drop_duplicate_recordings(pool, library_root)
+
+    mixable = [t for t in pool if t.get("bpm") and t.get("camelot")]
+    unplannable = [t for t in pool if not (t.get("bpm") and t.get("camelot"))]
+
+    if not mixable:
+        return {
+            "schema": "migx.set-plan/1",
+            "tracks": [],
+            "unplannable": [t.get("name") for t in unplannable],
+            "note": "no track has both bpm and camelot — run `library.analyze`",
+        }
+
+    if opener is not None:
+        lead = next(
+            (t for t in mixable if t.get("path") == opener or t.get("name") == opener),
+            None,
+        )
+        if lead is None:
+            lead = min(mixable, key=opening_energy)
+    else:
+        lead = min(mixable, key=opening_energy)
+
+    order = [lead]
+    remaining = [t for t in mixable if t is not lead]
+    rows: list[dict[str, Any]] = [
+        {
+            "position": 1,
+            "name": lead.get("name"),
+            "path": lead.get("path"),
+            "bpm": lead.get("bpm"),
+            "camelot": lead.get("camelot"),
+            "duration_s": lead.get("duration_s"),
+            "transition": None,
+        }
+    ]
+
+    while remaining:
+        scored = [(transition_score(order[-1], c), c) for c in remaining]
+        (score, plan), chosen = max(scored, key=lambda pair: pair[0][0])
+        beatmatch = plan["beatmatch"]
+        rows.append(
+            {
+                "position": len(order) + 1,
+                "name": chosen.get("name"),
+                "path": chosen.get("path"),
+                "bpm": chosen.get("bpm"),
+                "camelot": chosen.get("camelot"),
+                "duration_s": chosen.get("duration_s"),
+                "transition": {
+                    "score": score,
+                    "technique": plan["techniques"][0]["name"],
+                    "why": plan["techniques"][0]["why"],
+                    "pitch_pct": beatmatch.get("pitch_pct"),
+                    "fits_range": beatmatch.get("fits_range"),
+                    "relation": beatmatch.get("relation"),
+                    "harmonic": plan["harmonic"].get("note"),
+                    "relation_key": plan["harmonic"].get("relation"),
+                },
+            }
+        )
+        order.append(chosen)
+        remaining.remove(chosen)
+
+    total_s = sum((t.get("duration_s") or 0) for t in order)
+    reaches = [
+        r["transition"]["fits_range"] for r in rows[1:] if r["transition"]
+    ]
+    return {
+        "schema": "migx.set-plan/1",
+        "tracks": rows,
+        "duration_s": round(total_s, 1),
+        "in_easy_range": sum(1 for r in reaches if r == "±8%"),
+        "transitions": len(reaches),
+        "unplannable": [t.get("name") for t in unplannable],
+    }

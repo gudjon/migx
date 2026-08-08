@@ -1335,6 +1335,92 @@ def main() -> int:
             "thumb_dirs backfill for Collection tracks",
         )
 
+    # ---- set.plan --------------------------------------------------------
+    from migx_cli import setplan
+
+    def _t(name, bpm, camelot, energy_head, dur=300.0, path=None):
+        return {
+            "name": name,
+            "path": path or f"/x/{name}",
+            "bpm": bpm,
+            "camelot": camelot,
+            # 64 buckets; only the head is read for opener selection.
+            "energy": [energy_head] * 8 + [0.9] * 56,
+            "duration_s": dur,
+            "cues": [],
+        }
+
+    # The coldest opening leads, even when it is listed last.
+    pool = [
+        _t("hot.mp3", 128, "8A", 0.9),
+        _t("mid.mp3", 126, "8A", 0.5),
+        _t("cold.mp3", 127, "8A", 0.1),
+    ]
+    plan = setplan.plan_set(pool)
+    check(plan["schema"] == "migx.set-plan/1", "set-plan schema")
+    check(plan["tracks"][0]["name"] == "cold.mp3", "coldest opening leads")
+    check(len(plan["tracks"]) == 3, "every mixable track is placed")
+    check(plan["tracks"][0]["transition"] is None, "opener has no transition")
+    check(
+        all(r["transition"] for r in plan["tracks"][1:]),
+        "every later track carries its transition",
+    )
+
+    # An explicit opener overrides the energy rule.
+    forced = setplan.plan_set(pool, opener="hot.mp3")
+    check(forced["tracks"][0]["name"] == "hot.mp3", "--opener wins")
+
+    # A track with no bpm/key cannot be sequenced; it must be reported,
+    # not silently dropped — a set missing a track with no explanation is
+    # the vacuous-success shape (P-34).
+    with_unknown = pool + [
+        {"name": "raw.mp3", "path": "/x/raw.mp3", "bpm": None, "camelot": None}
+    ]
+    rep = setplan.plan_set(with_unknown)
+    check(len(rep["tracks"]) == 3, "unanalysed track is not sequenced")
+    check(rep["unplannable"] == ["raw.mp3"], "unanalysed track is reported")
+
+    # Nothing analysable at all is a reported condition, not a crash.
+    empty = setplan.plan_set(
+        [{"name": "a.mp3", "path": "/x/a.mp3", "bpm": None, "camelot": None}]
+    )
+    check(empty["tracks"] == [] and "library.analyze" in empty["note"],
+          "no analysable track explains itself")
+
+    # Reachability is scored above raw beatmatchability: a same-key pair
+    # inside ±8% must beat one that needs a half-time trick.
+    near = _t("near.mp3", 126, "8A", 0.5)
+    far = _t("far.mp3", 64, "8A", 0.5)
+    from_t = _t("from.mp3", 128, "8A", 0.5)
+    check(
+        setplan.transition_score(from_t, near)[0]
+        > setplan.transition_score(from_t, far)[0],
+        "an in-range transition outscores a half-time trick",
+    )
+
+    # Duplicate recordings must not both land in a set.
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        coll = root / "Collection" / "D"
+        coll.mkdir(parents=True)
+        same = _mp3(14, frames=60)
+        for nm in ("125 4B - Diplo - Don't Be Afraid.mp3",
+                   "125 4B - Soulwax - Don't Be Afraid.mp3"):
+            (coll / nm).write_bytes(_id3({"TIT2": "Don't Be Afraid"}) + same)
+        rows = [
+            _t("125 4B - Diplo - Don't Be Afraid.mp3", 125, "4B", 0.4,
+               path=str(coll / "125 4B - Diplo - Don't Be Afraid.mp3")),
+            _t("125 4B - Soulwax - Don't Be Afraid.mp3", 125, "4B", 0.4,
+               path=str(coll / "125 4B - Soulwax - Don't Be Afraid.mp3")),
+            _t("other.mp3", 126, "4B", 0.2),
+        ]
+        deduped = setplan.plan_set(rows, library_root=root)
+        names = [r["name"] for r in deduped["tracks"]]
+        check(
+            len(names) == 2 and "other.mp3" in names,
+            f"duplicate recording dropped from the set, got {names}",
+        )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

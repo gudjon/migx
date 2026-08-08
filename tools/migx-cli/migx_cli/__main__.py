@@ -36,9 +36,11 @@ from . import (
     ratelimit,
     rename,
     resolve,
+    setplan,
     sidecar,
     termart,
     tracklist,
+    tui,
     watch,
 )
 
@@ -317,6 +319,22 @@ CAPABILITIES: list[dict[str, Any]] = [
         "emits": "migx.cover-report/1",
         "note": "Sources: _Inbox/.thumb fuzzy match, then embedded APIC."
         " Never overwrites an existing cover.* file.",
+    },
+    {
+        "id": "set.plan",
+        "kind": "query",
+        "summary": "Order Collection tracks into a mixable running set.",
+        "args": {
+            "--opener": "path or filename to lead with (default: coldest opening)",
+            "--limit": "plan only the first N tracks of the pool",
+            "--out": "also write the order as an .m3u8 playlist",
+        },
+        "emits": "migx.set-plan/1",
+        "note": "Plans an ORDER only — no deck, no engine, no playback."
+        " Scores each pair with the same mixing.plan() the Deck view shows, so"
+        " the set never disagrees with what a DJ reads about one transition."
+        " Greedy: it can strand awkward tracks late, which is why every row"
+        " prints its own pitch and reach instead of hiding them.",
     },
     {
         "id": "system.capabilities",
@@ -1053,6 +1071,81 @@ def cmd_track_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_set_plan(args: argparse.Namespace) -> int:
+    """Order the Collection into a set every transition can survive."""
+    cfg = config.load()
+    lib_root = Path(config.get(cfg, "library.root"))
+
+    # Reuses the TUI's loader so a set is planned from exactly the rows the
+    # Library pane shows — two readers of Collection would drift.
+    pool = tui._collection(lib_root)
+    if args.limit:
+        pool = pool[: args.limit]
+
+    plan = setplan.plan_set(pool, library_root=lib_root, opener=args.opener)
+    rows = plan["tracks"]
+
+    written = None
+    if args.out and rows:
+        entries = [
+            {
+                "path": r["path"],
+                "title": Path(r["path"]).stem,
+                "artists": [""],
+                "duration_ms": int((r.get("duration_s") or 0) * 1000),
+            }
+            for r in rows
+        ]
+        written = layout.write_m3u8(
+            Path(args.out).expanduser(), entries, root=lib_root
+        )
+        plan["playlist"] = str(written)
+
+    if not rows:
+        _out(plan, args.json, plan.get("note", "nothing to plan"))
+        return 1
+
+    lines = [
+        f"{len(rows)} tracks  {int(plan['duration_s'] // 60)}m"
+        f"{int(plan['duration_s'] % 60):02d}s   "
+        f"{plan['in_easy_range']}/{plan['transitions']} transitions within ±8%",
+        "",
+        f"{'#':>2}  {'BPM':>4} {'KEY':>4}  {'TRACK':<40} {'MOVE':<14} "
+        f"{'PITCH':>7}  REACH",
+        "-" * 92,
+    ]
+    for row in rows:
+        name = (row["name"] or "")[:39]
+        bpm = f"{row['bpm']:.0f}" if row.get("bpm") else "?"
+        head = f"{row['position']:>2}  {bpm:>4} {row['camelot'] or '?':>4}  {name:<40} "
+        move = row["transition"]
+        if move is None:
+            lines.append(head + "(open cold)")
+            continue
+        pitch = (
+            f"{move['pitch_pct']:>+6.1f}%"
+            if move.get("pitch_pct") is not None
+            else "     ?"
+        )
+        lines.append(
+            head
+            + f"{move['technique']:<14} {pitch}  "
+            + (move.get("fits_range") or "OUT OF RANGE")
+        )
+    if plan["unplannable"]:
+        lines.append("")
+        lines.append(
+            f"{len(plan['unplannable'])} track(s) skipped — no bpm/key yet; "
+            "run `library.analyze`"
+        )
+    if written:
+        lines.append("")
+        lines.append(f"playlist: {written}")
+
+    _out(plan, args.json, "\n".join(lines))
+    return 0
+
+
 def cmd_library_covers(args: argparse.Namespace) -> int:
     """Backfill cover art for tracks already in Collection."""
     cfg = config.load()
@@ -1672,6 +1765,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(fn=cmd_library_covers)
+
+    p = sub.add_parser(
+        "set.plan",
+        help="order Collection tracks into a mixable running set",
+    )
+    p.add_argument(
+        "--opener",
+        default=None,
+        help="path or filename to lead with (default: coldest opening)",
+    )
+    p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--out", default=None, help="write the order as an .m3u8")
+    p.set_defaults(fn=cmd_set_plan)
 
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"

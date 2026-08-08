@@ -90,6 +90,7 @@ names: `kanban/architecture/ddd/capability-catalogue.md`.
 | `spotify` | the remote catalogue this context reads identities from | a playback source (Migx has none) |
 | `system` | the reserved namespace for surface introspection | the OS |
 | `config` | the CLI's own settings file (`migx.config/1`) | Mixxx user preferences / `mixxx.cfg` (arch-preferences) |
+| `set` | an ordered run of tracks planned to be mixable end to end (`migx.set-plan/1`) | a `crate` (unordered selection), a `playlist` (a remote mirror), or Python's `set` |
 
 ## Boundaries (edges by id — detail in ../boundaries/)
 
