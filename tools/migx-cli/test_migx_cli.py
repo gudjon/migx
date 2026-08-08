@@ -1826,6 +1826,41 @@ def main() -> int:
         "help says how to leave it — a screen with no exit is a trap",
     )
 
+    # ---- TUI composer (field P1) -----------------------------------------
+    caps = [
+        {"id": "library.dedupe", "kind": "query", "summary": "find dupes"},
+        {"id": "library.ingest", "kind": "command", "summary": "file audio"},
+        {"id": "set.plan", "kind": "query", "summary": "order a set"},
+    ]
+    ok = tui.compose_parse("set.plan --limit 5", caps)
+    check(ok["ok"] and ok["id"] == "set.plan", f"composer parses a real id, got {ok}")
+    check(ok["args"] == ["--limit", "5"], "composer keeps args verbatim")
+    check(ok["argv"] == ["migx", "set.plan", "--limit", "5"], "composer builds argv")
+    check(ok["mutates"] is False, "a query is not flagged as mutating")
+    check(
+        tui.compose_parse("library.ingest x", caps)["mutates"] is True,
+        "a command IS flagged as mutating, so the TUI can warn first",
+    )
+
+    # The manifest is the authority — an invented id must be refused.
+    bad = tui.compose_parse("library.destroy", caps)
+    check(not bad["ok"], "an unknown command is refused")
+    check("library.dedupe" in bad["error"] or "library.ingest" in bad["error"],
+          f"a near-miss suggests real commands, got {bad['error']}")
+
+    half = tui.compose_parse("set.", caps)
+    check(not half["ok"] and "set.plan" in half["error"],
+          f"a half-typed noun suggests by prefix, got {half['error']}")
+
+    blank = tui.compose_parse("   ", caps)
+    check(not blank["ok"] and "type a command" in blank["error"],
+          "an empty line explains itself rather than erroring")
+
+    # Purity: parsing must not run anything or touch the manifest.
+    frozen = [dict(c) for c in caps]
+    tui.compose_parse("library.ingest --move /x", caps)
+    check(caps == frozen, "compose_parse leaves the manifest untouched")
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

@@ -341,6 +341,57 @@ ARRANGE_CANDIDATES = 12
 KEYMAP_PATH = Path(__file__).resolve().parents[3] / "res" / "design" / "KEYMAP.md"
 
 
+def compose_parse(text: str, commands: list[dict[str, Any]]) -> dict[str, Any]:
+    """Turn a typed line into a validated command spec, or an explained refusal.
+
+    The composer's job is to dispatch **real command IDs** (`ADR-008`), not a
+    parallel mini-language. So the manifest is the authority: an id is valid
+    because `system.capabilities` says so, which means the composer cannot
+    drift from the CLI as commands are added or renamed.
+
+    Pure and side-effect free — it decides *what would run*, it does not run it.
+    That keeps the whole thing testable without a terminal, and keeps a typo
+    from doing anything.
+
+    Refusals are typed and carry a suggestion, because a composer that answers
+    "invalid" to a near-miss is worse than useless mid-set.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return {"ok": False, "error": "type a command, e.g. library.dedupe"}
+
+    parts = raw.split()
+    name, args = parts[0], parts[1:]
+    known = {c.get("id"): c for c in commands if c.get("id")}
+
+    if name not in known:
+        # Suggest by prefix first (a half-typed noun), then by substring.
+        near = [k for k in sorted(known) if k.startswith(name)]
+        if not near:
+            near = [k for k in sorted(known) if name in k]
+        if not near and "." in name:
+            # Right noun, wrong verb — the common case. `library.destroy` shares
+            # no prefix with anything, but the DJ clearly wants a library
+            # command, so offer that family rather than nothing.
+            noun = name.split(".", 1)[0]
+            near = [k for k in sorted(known) if k.split(".", 1)[0] == noun]
+        hint = f" — did you mean {', '.join(near[:3])}?" if near else ""
+        return {"ok": False, "error": f"no such command: {name}{hint}"}
+
+    cap = known[name]
+    return {
+        "ok": True,
+        "id": name,
+        "args": args,
+        "kind": cap.get("kind"),
+        "summary": cap.get("summary"),
+        # Surfaced so the composer can warn before something that mutates the
+        # library runs mid-set, rather than after.
+        "mutates": cap.get("kind") == "command",
+        "argv": ["migx", name, *args],
+    }
+
+
 def status_line(snap: dict[str, Any], pane: str, width: int = 80) -> str:
     """One line of ground truth: where you are, and what the library is.
 
