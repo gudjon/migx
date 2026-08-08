@@ -1636,22 +1636,36 @@ def cmd_library_analyze(args: argparse.Namespace) -> int:
         f"{f' ({skipped} already done)' if skipped else ''}...",
         flush=True,
     )
-    results = analyze.run(targets, bin_path)
+    # Persist each track the moment the analyzer emits it. Buffering the whole
+    # batch meant a long run showed no progress and, if it died on the last
+    # track, threw away every result before it.
     stored = []
-    for result in results:
+    failed = 0
+
+    def _persist(result: dict[str, Any]) -> None:
+        nonlocal failed
         if result.get("error"):
+            failed += 1
             print(
                 f"  ! {Path(result['path']).name}: {result['error']}",
                 file=sys.stderr,
             )
-            continue
+            return
         stored.append({**result, **analyze.store(result)})
+        if not args.json:
+            done = len(stored) + failed
+            print(
+                f"  [{done}/{len(targets)}] {Path(result['path']).name[:52]}",
+                flush=True,
+            )
+
+    analyze.run(targets, bin_path, on_result=_persist)
 
     doc = {
         "schema": "migx.analysis-report/1",
         "analyzed": len(stored),
         "skipped": skipped,
-        "failed": len(results) - len(stored),
+        "failed": failed,
         "tracks": stored,
     }
     if args.json:
