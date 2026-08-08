@@ -61,6 +61,7 @@ verify: kanban-lint
     #!/usr/bin/env bash
     set -eo pipefail
     python3 tools/migx-cli/test_migx_cli.py
+    ./tools/migx-swift/parity-check.sh
     python3 tools/exo/test_copilot_tempo.py
     python3 tools/exo/test_ontology_from_sidecar.py
     python3 tools/exo/test_set_planner.py
@@ -82,6 +83,10 @@ verify-fast: kanban-lint
     python3 tools/exo/test_copilot_tempo.py
     python3 tools/exo/test_ontology_from_sidecar.py
     python3 tools/exo/test_set_planner.py
+    # Cross-runtime parity (ADR-009). SKIPS loudly when the Swift binary is
+    # absent rather than passing silently — a check nobody runs is inventory,
+    # which is the exact defect this repo keeps finding.
+    ./tools/migx-swift/parity-check.sh
 
 # Google-benchmark suite (BUILD_BENCH → the mixxx-benchmark target = mixxx-test --benchmark).
 # Pin baselines per P-03 / P-25; gate on p99/max not mean (P-18).

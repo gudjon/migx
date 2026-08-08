@@ -46,6 +46,12 @@ jobs:
           python3 tools/exo/test_ontology_from_sidecar.py
           python3 tools/exo/test_set_planner.py
 
+      # No Swift toolchain on the runner, so this reports SKIPPED and exits 0.
+      # It is here so the step exists the day CI does build the binary — and so
+      # "not checked" is visible in the log rather than absent.
+      - name: Cross-runtime parity (ADR-009)
+        run: ./tools/migx-swift/parity-check.sh
+
       # The lint LIST lives in the script, so `just kanban-lint` and this gate
       # can never disagree about what "the harness lints" means (MG-3).
       # Includes the ADR-008 command-vocabulary check.
