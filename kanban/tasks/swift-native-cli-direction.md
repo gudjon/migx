@@ -57,6 +57,7 @@ bridge into one contract, and it is the smallest useful Swift beachhead.
   already labelled scaffolding to replace, and replacing means deleting it.
 - Do not let Swift leak into the engine; `ADR-002` keeps that C++/Qt.
 
-## Open for the owner
-Whether this warrants an ADR superseding the stdlib-Python choice for `tools/`. It probably does —
-"no third-party Python dependencies" was a real constraint that a Swift binary makes irrelevant.
+## Settled
+`ADR-009` accepted 2026-08-08, **Lane A**: Swift arm64 CLI/TUI with an AVAudioEngine deck, C++
+engine unchanged. The stdlib-only constraint for `tools/` is retired with the Python it constrained.
+This card is now the working notes; the decision lives in the ADR.

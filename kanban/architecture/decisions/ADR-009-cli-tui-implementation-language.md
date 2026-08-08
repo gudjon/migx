@@ -2,7 +2,7 @@
 id: ADR-009
 type: decision
 title: "CLI/TUI implementation language - Swift arm64, Python sunset on the booth path"
-status: proposed
+status: accepted
 owner: gudjon
 created: "2026-08-08"
 lastUpdated: "2026-08-08"
@@ -13,8 +13,7 @@ related: [ADR-002, ADR-006, ADR-008, arch-cli-commands, P-02, P-11, P-34, swift-
 
 # ADR-009 - CLI/TUI implementation language
 
-**Status: proposed.** One question is left open for the owner (Lane A vs Lane B, below). Nothing is
-rewritten until that is answered.
+**Status: accepted. Lane A, decided by Gudjon 2026-08-08.**
 
 ## Context
 `migx-cli` is ~10k lines of stdlib-only Python: 33 commands, `--json` on all of them, a curses TUI,
@@ -42,15 +41,22 @@ Python in Migx is an accident of fast CLI glue, not a house-physics requirement.
 - **Filesystem SSoT is unchanged and language-agnostic**: `Collection/`, sidecars, `.migx` packages,
   the state dir, the session lock.
 
-### Open question - Lane A or Lane B
-| Lane | Shape | Cost |
-| --- | --- | --- |
-| **A - Swift CLI/TUI, C++ engine** | `migx` as a Swift arm64 binary; AVAudioEngine deck; `engine.sock` to the C++ bridge | A third toolchain alongside CMake |
-| **B - All C++** | `migx` as a small C++ CLI beside the app | One toolchain; heavier OAuth/JSONL ergonomics |
+### Lane A - chosen
+`migx` becomes a **Swift arm64 binary**; the live deck is **AVAudioEngine**; it reaches the C++ engine
+over `engine.sock` when the full graph is up. The engine itself stays C++/Qt.
 
-**Recommendation: Lane A.** It reaches AVAudioEngine most directly, keeps CLI ergonomics cheap, and
-leaves `ADR-002` untouched. Lane B is defensible if a single toolchain matters more than ergonomics.
-This is a value judgement for the owner; the ADR stays `proposed` until it is answered.
+    migx (Swift binary on PATH)
+      ├── commands   set.plan · session.* · track.feedback · research.*
+      ├── TUI        Swift terminal host
+      ├── live deck  AVAudioEngine player nodes: seek, time-pitch, real per-deck gain
+      └── engine.sock → the existing C++ bridge
+
+Accepted cost: **a third toolchain** alongside CMake and the Python being retired. Lane B (all C++)
+was the alternative and would have kept one toolchain at the price of OAuth/JSONL ergonomics.
+
+The decisive argument is the deck. Lane A reaches `AVAudioEngine` directly, which removes the false
+ceiling this whole ADR exists to correct - subprocess players cannot give per-deck gain, so a real
+crossfader was impossible in the current runtime and is straightforward in the chosen one.
 
 ## Migration order (no big-bang)
 1. Freeze the contract - `system.capabilities` is the SSoT to port against
