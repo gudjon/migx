@@ -6,7 +6,7 @@ status: research
 owner: gudjon
 authored_by: grok-signal
 created: "2026-07-21"
-lastUpdated: "2026-07-21"
+lastUpdated: "2026-08-08"
 defers_to:
   - kanban/knowledge/nextgen-modes-library-multideck.md
   - kanban/knowledge/world-model-experience-ontology.md
@@ -45,6 +45,52 @@ UI implication (already in modes doc): chips are **sourced + dated**, secondary 
 | **1001Tracklists** | **Yes — total tracklist appearances / recent plays** (site charts; track pages) | **No public first-party open API** | Explicit **anti-scrape** (datacenter/VPN blocks); community scrapes exist; third-party scrapers/APIs (e.g. Parse.bot marketplace) = vendor risk + ToS | **Best coverage for “DJs actually played it”** in EDM | Title/artist/mix string; sometimes ISRC-adjacent via labels | **Right product metric**, **wrong legal posture** for naive scrape. Prefer partnership or licensed third party |
 | **MusicBrainz / AcousticBrainz / Discogs** | Identity layer (ISRC, MBID, release) — **not community heat** | Yes (MB rate-friendly with UA) | Fine for matching | Variable | **ISRC / MBID** | Use as **join key**, not chip source |
 | **Spotify / Apple** | Popularity / playlist counts (platform-specific) | Partner APIs | Strict ToS; not booth-core | Mainstream | ISRC | Optional later; not in owner ask |
+
+---
+
+## 1b. Beyond Last.fm — DJ-native & more current signal (2025–2026)
+
+Last.fm remains useful for **your** consecutive plays, but it is not the DJ booth’s
+heat source: scrobble culture is listener- and rock/stream-skewed; electronic DJs
+document sets elsewhere. Prefer these for “what DJs actually play / what is heating.”
+
+| Source | What signal (honest name) | DJ-native? | API / access | Best package field | Priority for Migx |
+| --- | --- | --- | --- | --- | --- |
+| **1001Tracklists** | *set appearances*, unique DJs, “most played last 4 weeks”, who played it, often before/after on a set page | **Yes — gold standard** | No open first-party API; anti-scrape; partner / licensed / manual export | `community/set_appearances`, `graph/field_*` | **#1 product metric** when licensed; never silent scrape |
+| **Mixcloud** | Long-form **cloudcast sections** → consecutive pairs when tagged; radio/club show culture | **Yes** | Official REST; rate-limited; no reverse “all shows with track X” | `graph/field_*` (source=mixcloud), notes | **#1 legal pair miner** via user URL lists / follows |
+| **Beatport charts / Hype** | Retail + genre chart heat; strong **ISRC** identity | Yes (electronic retail) | API v4 (partner portal) | `community/bp_chart`, identity | **#1 heat chip** for club library |
+| **Shazam charts** | “People identified this in the wild” — room/club discovery heat | Adjacent (crowd, not DJ) | Limited public chart surfaces; Apple ecosystem | `community/shazam_heat` | Strong **trend** secondary; not set order |
+| **Songstats** | Multi-platform analytics (streams, playlists, social, charts) for artists/labels | Industry (label/DJ-as-artist) | Commercial API/docs (songstats.com) | `community/analytics` | Good if budget; not pair graph |
+| **Soundcharts / Chartmetric-class** | Industry airplay + playlist + social | Industry | Paid APIs | heat chips | Optional; same class as Songstats |
+| **SoundCloud** | Promo/stream **playback_count**, likes; underground-first releases | Partial | OAuth; stream quotas | `community/sc_plays` | Promo heat, **not** “N sets” |
+| **YouTube** (official video / live set IDs) | View counts; festival rips for ID | Partial | Data API v3 | `community/yt_views` | Offline batch only |
+| **MixesDB / TrackSniff-class** | Wiki / automated set ID from audio | Yes (community) | Mixed ToS; TrackSniff is product for *finding* tracklists | import pipeline | Human-curated ingest > scrape |
+| **Resident Advisor / club calendars** | Event context (who played where) | Yes | Scrapy/HTML; no clean track graph | `notes/field.md` venue context | Narrative, not edges |
+| **Audius / HearThis / niche mix hosts** | Alternate mix hosts some DJs use | Niche | Varies | same as Mixcloud pattern | Follow your scene’s hosts |
+| **TrackRadar / auto set monitors** | Alert when a track is played/ID’d on social | Emerging | Vendor product | alert → package flag | Watch; not SSoT |
+| **Your own set exports** (Rekordbox/Serato/Engine history, 1001 export tools) | **Ground truth for you** | **Yes** | File import | `graph/personal_*`, history | Always first-class |
+| **Spotify DJ / editorial / 1001 charts mirrors** | Mainstream / chart playlists | Weak for underground | Partner | weak heat | Don’t confuse with set order |
+| **Last.fm** | Personal A→B, love counts | Weak DJ culture | Official read API | `graph/personal_*` | Keep for **you**, not “field” |
+
+### Recommended signal stack (proper names in UI)
+
+```text
+1. Personal set/history import     →  "you played after"
+2. Last.fm consecutive (optional)  →  "you scrobbled after"  
+3. Mixcloud sections (URL corpus)  →  "in N of your followed shows"
+4. Beatport chart rank             →  "BP Melodic #4"
+5. Shazam / Songstats heat         →  "Shazam rising" / analytics chip
+6. 1001TL appearances (if licensed)→  "48 DJ sets · 12 unique"   ← only then
+```
+
+Never merge these into one fake “popularity” number. Chips stay **sourced + dated**.
+
+### Why not only Last.fm for field
+
+- Last.fm optimizes for **listener scrobbles**, not club set construction.  
+- White-label tools, edits, and dubs often never scrobble cleanly.  
+- DJ culture’s public SSoT for “who played what” is **1001Tracklists + mix hosts
+  (Mixcloud etc.) + retail charts (Beatport)**, not Audioscrobbler.
 
 ---
 
