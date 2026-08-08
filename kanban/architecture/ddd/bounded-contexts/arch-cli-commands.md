@@ -91,6 +91,7 @@ names: `kanban/architecture/ddd/capability-catalogue.md`.
 | `system` | the reserved namespace for surface introspection | the OS |
 | `config` | the CLI's own settings file (`migx.config/1`) | Mixxx user preferences / `mixxx.cfg` (arch-preferences) |
 | `set` | an ordered run of tracks planned to be mixable end to end (`migx.set-plan/1`) | a `crate` (unordered selection), a `playlist` (a remote mirror), or Python's `set` |
+| `session` | one performance in progress — what is playing now, and the room's state while it plays | a `set` (the planned order, which outlives the night) or a shell/login session |
 
 ## Boundaries (edges by id — detail in ../boundaries/)
 

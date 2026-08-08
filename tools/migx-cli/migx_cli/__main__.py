@@ -28,6 +28,7 @@ from . import (
     api,
     auth,
     config,
+    feedback,
     ingest,
     layout,
     mirror,
@@ -37,6 +38,7 @@ from . import (
     rename,
     resolve,
     setplan,
+    session,
     setplay,
     sidecar,
     termart,
@@ -357,6 +359,63 @@ CAPABILITIES: list[dict[str, Any]] = [
         " A track that cannot reach the running tempo within ±8% plays native"
         " and gets a short cut instead of a forced blend. Requires ffmpeg"
         " (override with MIGX_FFMPEG_BIN).",
+    },
+    {
+        "id": "track.feedback",
+        "kind": "command",
+        "summary": "Record what the DJ said about a track, so the next set differs.",
+        "args": {
+            "track": "path, Collection fragment, or 'now' (session.bind)",
+            "--fit": "worked | weak | retire — did it land?",
+            "--placement": "opener | peak — where does it belong?",
+            "--segment": "shorter | longer",
+            "--transition": "1-5, how well the blend INTO this track worked",
+            "--note": "free text, kept verbatim for a human",
+        },
+        "writes": "the track's sidecar (append-only, timestamped)",
+        "emits": "migx.feedback/1",
+        "note": "Takes STRUCTURED verdicts, never free speech — the agent"
+        " interpreting the DJ turns talk into flags, so no language guessing"
+        " happens near the library. set.plan honours these: retire excludes,"
+        " opener/peak move the opening slot, segment changes set.play length.",
+    },
+    {
+        "id": "session.now",
+        "kind": "query",
+        "summary": "What track is 'now' for coaching (library _live.json).",
+        "emits": "migx.live-status/1",
+        "note": "Written off-RT by session.bind or TUI. Agents read this before"
+        " track.feedback so speech attaches to the right file id.",
+    },
+    {
+        "id": "session.bind",
+        "kind": "command",
+        "summary": "Point session.now at a track (path, fragment, or Collection).",
+        "args": {
+            "track": "path or Collection fragment",
+            "--deck": "A | B | label",
+            "--position": "seconds into the track (optional)",
+        },
+        "writes": "<library>/_live.json",
+        "emits": "migx.live-status/1",
+    },
+    {
+        "id": "session.room",
+        "kind": "command",
+        "summary": "Session-local crowd/theme/energy (this night only).",
+        "args": {
+            "--theme": "e.g. melodic, peak, cool-down",
+            "--energy": "low | mid | high",
+            "--note": "free text room read",
+        },
+        "writes": "<library>/_live.json room{}",
+        "emits": "migx.live-status/1",
+    },
+    {
+        "id": "session.clear",
+        "kind": "command",
+        "summary": "Clear live binding (end of set / prep).",
+        "writes": "removes <library>/_live.json",
     },
     {
         "id": "system.capabilities",
@@ -1236,6 +1295,136 @@ def cmd_set_play(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resolve_feedback_track(raw: str) -> Path | None:
+    """Path, Collection fragment, or the live-bound 'now' track."""
+    if raw.strip().lower() in ("now", ".", "live"):
+        cfg = config.load()
+        root = Path(config.get(cfg, "library.root"))
+        track = session.resolve_now_track(root)
+        if track is None:
+            print(
+                "error: nothing bound — run session.bind <track> first",
+                file=sys.stderr,
+            )
+        return track
+    return _find_track(raw)
+
+
+def cmd_track_feedback(args: argparse.Namespace) -> int:
+    """Persist one structured verdict against a track."""
+    track = _resolve_feedback_track(args.track)
+    if track is None:
+        return 2
+    try:
+        doc = feedback.record(
+            track,
+            fit=args.fit,
+            placement=args.placement,
+            note=args.note,
+            segment=args.segment,
+            transition=args.transition,
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    current = feedback.latest(doc)
+    payload = {
+        "schema": "migx.feedback/1",
+        "track": str(track),
+        "entries": len(doc.get("feedback") or []),
+        "in_force": current,
+    }
+    said = ", ".join(f"{k}={v}" for k, v in current.items())
+    effect = (
+        "excluded from future sets"
+        if current.get("fit") == "retire"
+        else "will bias the next set.plan"
+    )
+    _out(payload, args.json, f"recorded on {track.name}: {said}\n  -> {effect}")
+    return 0
+
+
+def cmd_session_now(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    doc = session.read(root)
+    bound = session.resolve_now_track(root)
+    if doc.get("path") and bound is None:
+        doc["stale"] = True
+        doc["stale_reason"] = "bound path no longer exists"
+    human = (
+        f"now: {doc.get('title') or '—'}  "
+        f"[{doc.get('deck') or '-'}]  "
+        f"{doc.get('path') or '(unbound)'}"
+    )
+    if doc.get("room"):
+        room = doc["room"]
+        bits = [f"{k}={v}" for k, v in room.items() if v]
+        if bits:
+            human += f"\nroom: {', '.join(bits)}"
+    _out(doc, args.json, human)
+    return 0 if doc.get("path") else 1
+
+
+def cmd_session_bind(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    track = _find_track(args.track)
+    if track is None:
+        return 2
+    try:
+        doc = session.bind(
+            root,
+            track,
+            deck=args.deck,
+            position_s=args.position,
+            source="cli",
+        )
+    except FileNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    _out(
+        doc,
+        args.json,
+        f"bound now -> {track.name}"
+        + (f"  deck {args.deck}" if args.deck else ""),
+    )
+    return 0
+
+
+def cmd_session_room(args: argparse.Namespace) -> int:
+    if not any((args.theme, args.energy, args.note)):
+        print(
+            "error: pass --theme, --energy, and/or --note",
+            file=sys.stderr,
+        )
+        return 2
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    doc = session.set_room(
+        root, theme=args.theme, energy=args.energy, note=args.note
+    )
+    room = doc.get("room") or {}
+    human = "room: " + (
+        ", ".join(f"{k}={v}" for k, v in room.items() if v) or "—"
+    )
+    _out(doc, args.json, human)
+    return 0
+
+
+def cmd_session_clear(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    root = Path(config.get(cfg, "library.root"))
+    session.clear(root)
+    _out(
+        {"schema": "migx.live-status/1", "path": None, "cleared": True},
+        args.json,
+        "live binding cleared",
+    )
+    return 0
+
+
 def cmd_library_covers(args: argparse.Namespace) -> int:
     """Backfill cover art for tracks already in Collection."""
     cfg = config.load()
@@ -1871,6 +2060,43 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--out", default=None, help="write the order as an .m3u8")
     p.set_defaults(fn=cmd_set_plan)
+
+    p = sub.add_parser(
+        "track.feedback",
+        help="record what the DJ said about a track",
+    )
+    p.add_argument(
+        "track",
+        help="path, Collection fragment, or 'now' (after session.bind)",
+    )
+    p.add_argument("--fit", choices=feedback.FITS, default=None)
+    p.add_argument("--placement", choices=feedback.PLACEMENTS, default=None)
+    p.add_argument("--segment", choices=feedback.SEGMENTS, default=None)
+    p.add_argument("--transition", type=int, default=None)
+    p.add_argument("--note", default=None)
+    p.set_defaults(fn=cmd_track_feedback)
+
+    sub.add_parser(
+        "session.now", help="what track is 'now' for coaching"
+    ).set_defaults(fn=cmd_session_now)
+
+    p = sub.add_parser("session.bind", help="point session.now at a track")
+    p.add_argument("track")
+    p.add_argument("--deck", default=None)
+    p.add_argument("--position", type=float, default=None)
+    p.set_defaults(fn=cmd_session_bind)
+
+    p = sub.add_parser(
+        "session.room", help="session-local crowd/theme/energy"
+    )
+    p.add_argument("--theme", default=None)
+    p.add_argument("--energy", default=None)
+    p.add_argument("--note", default=None)
+    p.set_defaults(fn=cmd_session_room)
+
+    sub.add_parser(
+        "session.clear", help="clear live binding"
+    ).set_defaults(fn=cmd_session_clear)
 
     p = sub.add_parser(
         "set.play",

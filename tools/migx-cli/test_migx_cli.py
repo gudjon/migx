@@ -1501,6 +1501,100 @@ def main() -> int:
         else:
             os.environ["MIGX_FFMPEG_BIN"] = _saved
 
+    # ---- track.feedback → set.plan (the learning loop) -------------------
+    from migx_cli import feedback
+
+    with tempfile.TemporaryDirectory() as td:
+        shelf = Path(td) / "Collection" / "A"
+        shelf.mkdir(parents=True)
+        audio = shelf / "a.mp3"
+        audio.write_bytes(_mp3(14, frames=40))
+
+        feedback.record(audio, fit="worked", note="worked at 1am")
+        feedback.record(audio, segment="shorter")
+        doc = sidecar.read(audio)
+        check(len(doc["feedback"]) == 2, "feedback appends, never overwrites")
+        check(all("at" in e for e in doc["feedback"]), "every entry timestamped")
+
+        cur = feedback.latest(doc)
+        check(
+            cur["fit"] == "worked" and cur["segment"] == "shorter",
+            f"latest folds fields across entries, got {cur}",
+        )
+        # Revising one field must not clear the others.
+        feedback.record(audio, fit="retire")
+        cur2 = feedback.latest(sidecar.read(audio))
+        check(
+            cur2["fit"] == "retire" and cur2["segment"] == "shorter",
+            "revising a fit keeps the segment note",
+        )
+        check(feedback.is_retired(sidecar.read(audio)), "retire is in force")
+
+        # A bad verdict is refused, not silently stored.
+        for bad in (("nonsense", None, None), (None, "sideways", None),
+                    (None, None, 9)):
+            try:
+                feedback.record(audio, fit=bad[0], segment=bad[1],
+                                transition=bad[2])
+                check(False, f"invalid feedback accepted: {bad}")
+            except ValueError:
+                check(True, f"invalid feedback refused: {bad}")
+        try:
+            feedback.record(audio)
+            check(False, "empty feedback accepted")
+        except ValueError:
+            check(True, "empty feedback refused")
+
+    # retire actually removes the track from the next set, and says so.
+    base = {"bpm": 125, "camelot": "8A", "duration_s": 300.0,
+            "energy": [0.5] * 64, "cues": []}
+    keep_t = {**base, "name": "keep.mp3", "path": "/x/keep.mp3"}
+    gone_t = {**base, "name": "gone.mp3", "path": "/x/gone.mp3",
+              "feedback": [{"at": "now", "fit": "retire"}]}
+    planned = setplan.plan_set([keep_t, gone_t])
+    names = [r["name"] for r in planned["tracks"]]
+    check(names == ["keep.mp3"], f"retired track excluded, got {names}")
+    check(planned["retired"] == ["gone.mp3"], "retired tracks are reported")
+
+    # A DJ's `opener` outranks the opening-energy guess, and `peak` is pushed
+    # off the opening slot even when it starts quietly.
+    quiet_peak = {**base, "name": "peak.mp3", "path": "/x/peak.mp3",
+                  "energy": [0.05] * 64,
+                  "feedback": [{"at": "now", "placement": "peak"}]}
+    loud_opener = {**base, "name": "open.mp3", "path": "/x/open.mp3",
+                   "energy": [0.95] * 64,
+                   "feedback": [{"at": "now", "placement": "opener"}]}
+    led = setplan.plan_set([quiet_peak, loud_opener])
+    check(
+        led["tracks"][0]["name"] == "open.mp3",
+        f"DJ placement outranks energy for the opener, got {led['tracks'][0]['name']}",
+    )
+
+    # segment notes change how much of a track set.play uses.
+    check(feedback.seconds_for({"feedback": [{"at": "n", "segment": "shorter"}]}, 100) == 60.0,
+          "shorter segment shortens play time")
+    check(feedback.seconds_for({"feedback": [{"at": "n", "segment": "longer"}]}, 100) == 150.0,
+          "longer segment extends play time")
+    check(feedback.seconds_for({}, 100) == 100, "no note leaves play time alone")
+
+    # Regression: the loop must survive the REAL loader, not just injected
+    # dicts. tui._collection() originally dropped the `feedback` key, so
+    # verdicts were written to the sidecar and silently never read — every
+    # check above passed while retire did nothing on the live library.
+    with tempfile.TemporaryDirectory() as td:
+        shelf = Path(td) / "Collection" / "R"
+        shelf.mkdir(parents=True)
+        real = shelf / "r.mp3"
+        real.write_bytes(_mp3(14, frames=40))
+        feedback.record(real, fit="retire")
+        loaded = tui._collection(Path(td))
+        row = next((r for r in loaded if r["name"] == "r.mp3"), None)
+        check(row is not None, "loader sees the track")
+        check(
+            row is not None and feedback.is_retired(row),
+            "the real loader carries feedback through to set.plan",
+        )
+
     for f in failures:
         print(f"FAIL: {f}", file=sys.stderr)
     print(

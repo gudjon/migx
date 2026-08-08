@@ -31,6 +31,7 @@ from . import (
     mixing,
     quality,
     resolve,
+    session,
     sidecar,
     spark,
     tags,
@@ -93,6 +94,11 @@ def _collection(root: Path) -> list[dict[str, Any]]:
                 "notes": side.get("notes") or "",
                 "tags": side.get("tags") or [],
                 "cues": side.get("cues") or [],
+                # Without this the DJ's verdicts are written to the sidecar and
+                # then never read: set.plan would keep planning retired tracks
+                # while `track.feedback` reported success. Stored-but-ignored is
+                # the worst shape a feedback loop can take (P-34).
+                "feedback": side.get("feedback") or [],
             }
         )
     return rows
@@ -616,6 +622,19 @@ def run() -> int:  # pragma: no cover - needs a terminal
                 top = max(0, top - 1)
             elif key in (ord("t"), ord("\n"), curses.KEY_ENTER):
                 pane, top = PANES.index("Track"), 0
+                # Session coaching: bind live "now" so agents can attach feedback.
+                try:
+                    coll = snap.get("collection") or []
+                    idx = snap.get("selected", 0)
+                    if 0 <= idx < len(coll) and coll[idx].get("path"):
+                        root = Path(snap["library_root"])
+                        session.bind(
+                            root,
+                            coll[idx]["path"],
+                            source="tui",
+                        )
+                except (OSError, KeyError, TypeError, ValueError):
+                    pass
             elif key in (curses.KEY_NPAGE, ord(" ")):
                 top += view
             elif key == curses.KEY_PPAGE:

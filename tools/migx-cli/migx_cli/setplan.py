@@ -46,7 +46,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from . import layout, mixing
+from . import feedback, layout, mixing
 
 # Bonuses on top of the technique score. Tuned so "reachable on real gear"
 # outranks "theoretically beatmatchable" — see the module docstring.
@@ -108,6 +108,22 @@ def drop_duplicate_recordings(
     return [t for t in tracks if t.get("path") not in superseded]
 
 
+def _pick_opener(mixable: list[dict[str, Any]]) -> dict[str, Any]:
+    """Lead the set, letting the DJ's verdict outrank the energy heuristic.
+
+    Opening energy is a guess about a record; `--verdict opener` is a DJ
+    telling us. Ranked so a track flagged `peak` is pushed off the opening
+    slot even when it happens to start quietly — which is exactly the case the
+    energy rule gets wrong.
+    """
+    return max(
+        mixable,
+        key=lambda t: (
+            feedback.placement_bias(t, 1) - opening_energy(t) * 10,
+        ),
+    )
+
+
 def plan_set(
     tracks: list[dict[str, Any]],
     library_root: Path | None = None,
@@ -121,6 +137,11 @@ def plan_set(
     pool = list(tracks)
     if library_root is not None:
         pool = drop_duplicate_recordings(pool, library_root)
+
+    # A retired track is out before anything is scored — the DJ said so, and
+    # no amount of harmonic fit overrides "do not play this again".
+    retired = [t for t in pool if feedback.is_retired(t)]
+    pool = [t for t in pool if not feedback.is_retired(t)]
 
     mixable = [t for t in pool if t.get("bpm") and t.get("camelot")]
     unplannable = [t for t in pool if not (t.get("bpm") and t.get("camelot"))]
@@ -139,9 +160,9 @@ def plan_set(
             None,
         )
         if lead is None:
-            lead = min(mixable, key=opening_energy)
+            lead = _pick_opener(mixable)
     else:
-        lead = min(mixable, key=opening_energy)
+        lead = _pick_opener(mixable)
 
     order = [lead]
     remaining = [t for t in mixable if t is not lead]
@@ -195,4 +216,7 @@ def plan_set(
         "in_easy_range": sum(1 for r in reaches if r == "±8%"),
         "transitions": len(reaches),
         "unplannable": [t.get("name") for t in unplannable],
+        # Reported, never silent: a track vanishing from a set with no
+        # explanation is indistinguishable from a bug (P-34).
+        "retired": [t.get("name") for t in retired],
     }

@@ -32,10 +32,16 @@ INBOX = "_Inbox"
 # The gap list has one home. The command defaults its --out here and the TUI
 # reads here; a second convention is how the dashboard silently showed zero.
 GAP_LIST = "_gaps.json"
+# Live "now playing" for session coaching agents (written off-RT by CLI/TUI).
+LIVE_STATUS = "_live.json"
 
 
 def gap_list_path(root: Path) -> Path:
     return Path(root).expanduser() / GAP_LIST
+
+
+def live_status_path(root: Path) -> Path:
+    return Path(root).expanduser() / LIVE_STATUS
 
 
 def alpha_bucket(name: str) -> str:
