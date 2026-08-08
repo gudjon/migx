@@ -25,6 +25,7 @@ from migx_cli import (  # noqa: E402
     analyze,
     api,
     auth,
+    feedback,
     ingest,
     keys,
     layout,
@@ -34,6 +35,7 @@ from migx_cli import (  # noqa: E402
     quality,
     ratelimit,
     resolve,
+    session,
     sidecar,
     spark,
     tags,
@@ -1274,6 +1276,46 @@ def main() -> int:
         else:
             check(True, "chafa not installed — skip live render (ok)")
 
+    # ---- session.now / bind / room (coaching live status)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        audio = root / "Live.mp3"
+        audio.write_bytes(
+            _id3({"TIT2": "Live Track", "TPE1": "Tester"}) + _mp3(14)
+        )
+        empty = session.read(root)
+        check(empty.get("path") is None, "unbound session has no path")
+        bound = session.bind(root, audio, deck="A", source="test")
+        check(
+            bound.get("title") == "Live Track" and bound.get("deck") == "A",
+            "session.bind captures identity",
+        )
+        check(
+            session.resolve_now_track(root) == audio.resolve(),
+            "resolve_now_track finds bound file",
+        )
+        roomed = session.set_room(
+            root, theme="melodic", energy="mid", note="floor is warm"
+        )
+        check(
+            roomed["room"].get("theme") == "melodic"
+            and roomed["room"].get("energy") == "mid",
+            "session.room is session-local",
+        )
+        # feedback against bound path
+        doc = feedback.record(
+            audio, fit="retire", note="felt outdated on floor"
+        )
+        check(
+            feedback.latest(doc).get("fit") == "retire",
+            "track.feedback fit=retire sticks",
+        )
+        session.clear(root)
+        check(
+            session.resolve_now_track(root) is None,
+            "session.clear removes binding",
+        )
+
     # ---- embedded APIC extract + library.covers backfill
     png = _gradient_png(32, 32)
     apic_body = (
@@ -1502,8 +1544,6 @@ def main() -> int:
             os.environ["MIGX_FFMPEG_BIN"] = _saved
 
     # ---- track.feedback → set.plan (the learning loop) -------------------
-    from migx_cli import feedback
-
     with tempfile.TemporaryDirectory() as td:
         shelf = Path(td) / "Collection" / "A"
         shelf.mkdir(parents=True)

@@ -101,6 +101,24 @@ Wave 1 talks to the official Web API with OAuth PKCE. Practical client hygiene:
 | `snapshot_id` short-circuit on `playlist.pull` | Cheap re-polls |
 | Access token cache + refresh lock | Avoid refresh thrash / silent logout |
 
+## Session coaching (live "now" + structured feedback)
+
+While a track is in focus, bind it so a coding agent (voice/chat) can attach
+floor judgment without guessing which file you mean — **CLI only, no MCP**.
+
+```bash
+./tools/migx-cli/migx session.bind "Reckoning" --deck A
+./tools/migx-cli/migx session.now --json
+./tools/migx-cli/migx session.room --theme melodic --energy mid
+./tools/migx-cli/migx track.feedback now --fit retire --note "felt tired"
+./tools/migx-cli/migx track.feedback now --segment shorter --transition 2
+./tools/migx-cli/migx session.clear
+```
+
+TUI: open Track mode (`t`) also runs `session.bind` (source=`tui`).  
+Agent skill: `.claude/skills/migx-session-coach/` — maps speech → these commands.  
+Research: `kanban/knowledge/session-coaching-multimodal-agent.md`.
+
 ## Cover art in the terminal (optional chafa)
 
 Track covers can render as Unicode art when [chafa](https://hpjansson.org/chafa/)

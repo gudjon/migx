@@ -201,12 +201,12 @@ energy placement — into living scoring (`arrange-nexttrack-copilot-scoring`) n
 
 | Wave | Deliverable | Acceptance |
 | --- | --- | --- |
-| **0 dogfood** | Coding agent skill: “bind feedback to selected track via `track.note`/`track.cue`” | Manual: play → speak → agent writes sidecar |
-| **1 live status** | Migx writes `_live.json` / `session.now` off-RT | CLI shows path+ISRC+position |
+| **0 dogfood** | Skill + bind + feedback | **Shipped:** `session.*`, `track.feedback now`, `migx-session-coach` skill |
+| **1 live status** | `_live.json` / `session.now` | **Shipped** (CLI + TUI bind); engine position still gap |
 | **2 session log** | Append-only play + feedback events | `session.show` reconstructs night |
-| **3 typed feedback CLI** | `track.feedback` / `session.room` | JSON schema + tests |
+| **3 typed feedback CLI** | `track.feedback` / `session.room` | **Shipped** (fit/placement/segment/transition + room) |
 | **4 voice I/O** | STT into agent (host OS / Whisper / agent voice mode) | Latency OK between phrases |
-| **5 arrange priors** | Feedback adjusts next-track rank | Fixture + offline judge |
+| **5 arrange priors** | Feedback adjusts next-track rank | Fixture + offline judge (`set.plan` already reads retire/opener/peak) |
 | **6 optional perform proposals** | Armed only | Free-deck precondition |
 
 **Wont-do:** MCP-required path; agent Automix; RT thread listening to STT; voice-only EQ.

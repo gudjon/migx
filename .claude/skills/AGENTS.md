@@ -67,3 +67,4 @@ Keep a row per skill. `pat-*` skills are the auto-load layer over `kanban/patter
 | pat-27-db-schema-migration | pattern | P-27, P-28 — fires on `res/schema.xml` / `src/library/dao/` edits |
 | pat-30-controller-via-controlobject | pattern | P-30, AP-15 — fires on `src/controllers/`/`res/controllers/` edits |
 | mixxx-upstream-watch | procedure | Incremental upstream mixxxdj/mixxx signal via `gh` → dated log + port-candidate tasks (no git ancestry, ADR-002) |
+| migx-session-coach | procedure | Live/prep coaching: map voice/chat → `session.*` + `track.feedback` CLI (no MCP, no Automix) |
