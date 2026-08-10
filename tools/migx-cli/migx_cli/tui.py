@@ -34,6 +34,7 @@ from . import (
     quality,
     resolve,
     session,
+    livesession,
     setplan,
     sidecar,
     spark,
@@ -693,6 +694,47 @@ def reload_snapshot(previous: dict[str, Any]) -> dict[str, Any]:
     return fresh
 
 
+# How often the redraw loop wakes while a session is playing. Half a second is
+# far finer than a 12-second blend needs and still imperceptible as latency on
+# a keypress; tighter would burn CPU for no musical gain.
+LIVE_TICK_MS = 500
+
+
+def live_deck_view(snap: dict[str, Any]) -> list[str]:
+    """The live session: what is playing, what is next, and the move into it."""
+    live = snap.get("live")
+    if live is None:
+        return ["(no live session — press p to start)"]
+    state = live.state()
+    deck, other = state["deck"], state["other_deck"]
+    out = [
+        f"LIVE  ·  {state['played']} played  ·  {state['remaining']} left"
+        + ("  ·  BLENDING" if state["blending"] else ""),
+        "",
+        f"  A  {deck.get('name') or '(idle)'}",
+    ]
+    if deck.get("position_s") is not None:
+        out.append(
+            f"     {sidecar.fmt_position(deck['position_s'])}"
+            f" / {sidecar.fmt_position(deck.get('duration_s'))}"
+            f"   x{deck.get('tempo_ratio', 1.0):.3f}"
+        )
+    if other.get("playing"):
+        out.append(f"  B  {other.get('name')}  (fading in)")
+    out += ["", f"  next  {state['next'] or '(nothing left)'}"]
+    if state.get("next_move"):
+        pitch = state.get("next_pitch_pct")
+        out.append(
+            f"  move  {state['next_move']}"
+            + (f"   pitch {pitch:+.1f}%" if pitch is not None else "")
+        )
+    last = snap.get("live_last") or {}
+    if last.get("ok") is False:
+        out += ["", f"  ! {last.get('error', 'session error')}"]
+    out += ["", "  p stop session"]
+    return out
+
+
 def compatible_now(snap: dict[str, Any]) -> list[str]:
     """Library, filtered to what mixes with the track on deck A.
 
@@ -817,6 +859,8 @@ def _rows(pane: str, snap: dict[str, Any]) -> list[str]:
                 f" {(g.get('title') or '')[:34]}"
             )
         return out or ["(no gaps — run library.missing)"]
+    if pane == "Deck" and snap.get("live") is not None:
+        return live_deck_view(snap)
     if pane == "Deck":
         collection = snap.get("collection") or []
         a = collection[snap.get("deck_a", 0)] if collection else None
@@ -983,9 +1027,41 @@ def run() -> int:  # pragma: no cover - needs a terminal
             stdscr.addnstr(height - 1, 0, footer, width - 1, curses.A_REVERSE)
             stdscr.refresh()
 
+            # Block when idle, poll while playing. getch() blocking is right
+            # for a browser — a TUI that wakes 2x a second to redraw a static
+            # list burns battery in a booth for nothing. But a live session
+            # must advance without a keypress, so the timeout is switched on
+            # ONLY while one is running.
+            live = snap.get("live")
+            stdscr.timeout(LIVE_TICK_MS if live is not None else -1)
+
             key = stdscr.getch()
+            if key == -1:
+                # Timed out rather than a keypress: advance the session. This
+                # is the ONLY driver — livesession.tick() decides when to blend,
+                # and it re-chooses the next track each time, so feedback given
+                # seconds ago already counts.
+                if live is not None:
+                    snap["live_last"] = live.tick()
+                continue
             if key in (ord("q"), 27):
+                if live is not None:
+                    live.stop()
                 return
+            if key == ord("p"):
+                if live is not None:
+                    live.stop()
+                    snap["live"] = None
+                    snap["live_last"] = {"ok": True, "stopped": True}
+                else:
+                    pool = [
+                        t for t in (snap.get("collection") or [])
+                        if t.get("bpm") and t.get("camelot")
+                    ]
+                    session_obj = livesession.LiveSession(pool)
+                    snap["live"] = session_obj
+                    snap["live_last"] = session_obj.start()
+                continue
             if key == ord("m") and PANES[pane] == "Library":
                 # Toggle "compatible with now". Kept in snap so no second
                 # place holds TUI state.

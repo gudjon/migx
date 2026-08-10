@@ -99,6 +99,7 @@ gesture still works.
 | Load focused → Deck A / B | `a` / `b` | — | TTY twin of `⇧← / ⇧→` |
 | Open focused in Track mode | `t` | — | Migx |
 | Open Deck mode | `d` | — | Migx mode model (twin of `6`) |
+| Start / stop live session | `p` | — | Migx live deck (drives livesession.tick) |
 | Compatible with deck A (Library) | `m` | — | Migx ARRANGE scoring, reused as a browser filter |
 | Composer — run a command | `:` | — | vi/less convention; dispatches real command IDs (ADR-008) |
 | This help | `?` | — | universal; parsed FROM this table at runtime |

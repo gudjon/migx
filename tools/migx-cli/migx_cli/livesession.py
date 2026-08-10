@@ -1,14 +1,14 @@
 """Two decks and a running order that can still change — the live session.
 
-**ORPHAN (2026-08-08): nothing in the repo imports this.** It has only ever run
-from a throwaway driver in a scratchpad, which is how it played a real set —
-and why that capability does not survive the shell that ran it.
+Driven by the TUI redraw loop: `p` starts a session, and `tick()` is called on
+each timeout while one is live (`tui.LIVE_TICK_MS`). That loop is the ONLY
+driver — nothing else calls `tick()`, so the session advances exactly as fast
+as the TUI wakes.
 
-The missing piece is a driver: `tick()` must be called repeatedly, and the TUI
-redraw loop is its natural home (one `tick()` per frame, `state()` into the Deck
-pane). Until then this is tested, correct and unreachable — the same
-"inventory" the rest of this codebase spent a day eliminating, and it is called
-out here rather than left for a future reader to discover with grep.
+The redraw loop blocks on `getch()` when idle and only polls while a session
+runs. A browser that woke twice a second to redraw a static list would burn
+battery in a booth for nothing; a live session that only advanced on a keypress
+would never blend.
 
 Steps 3-5 of the TUI path: a second deck so blends overlap, transport so a DJ
 can act, and a re-plan after every track so tonight's feedback changes tonight's
