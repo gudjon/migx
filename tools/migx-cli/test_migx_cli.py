@@ -2104,6 +2104,12 @@ def main() -> int:
                        "mutates": False, "args": [], "summary": ""}]}
     fresh = tui.reload_snapshot(prev)
     check(len(fresh["stage"]) == 1, "reload keeps staged actions")
+    # The live session handle must survive: audio runs in detached
+    # subprocesses, so dropping it strands playing sound with no controller.
+    marker = object()
+    kept = tui.reload_snapshot({"live": marker, "live_last": {"ok": True}})
+    check(kept.get("live") is marker, "reload keeps the live session handle")
+    check("live" in tui.CARRIED_ACROSS_RELOAD, "live is declared as carried")
     check(fresh["compat"] is True, "reload keeps the compatible-with-now filter")
     check(fresh["query"] == "house", "reload keeps the active search")
     check(fresh["show_help"] is True, "reload keeps the help toggle")

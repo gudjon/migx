@@ -668,6 +668,12 @@ def deck_view(
 CARRIED_ACROSS_RELOAD = (
     "selected", "deck_a", "deck_b", "query", "sort",
     "compat", "show_help", "stage", "composer_msg",
+    # `live` MUST survive a reload. The audio runs in detached subprocesses, so
+    # dropping the LiveSession does not stop the music — it strands it: sound
+    # continues with nothing able to advance or stop it, and `p` would start a
+    # SECOND session on top. Losing a stage is annoying; losing the handle to
+    # playing audio is unrecoverable without killing processes by hand.
+    "live", "live_last",
 )
 
 
