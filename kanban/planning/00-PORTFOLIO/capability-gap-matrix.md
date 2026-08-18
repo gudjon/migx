@@ -127,6 +127,30 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `session/now.json` + `history.jsonl` | gap | level-triggered truth; atomic off-RT | claude-code | agent filesystem hooks |
 | Hooks (TrackPlaying / Transition*/ Session*) | gap | command + JSON stdin + timeout | claude-code | **after** now.json; never RT |
 
+### Program — Swift TUI workstation (ADR-011 proposed, 2026-08-18)
+
+`initiative-swift-tui-workstation`. Max two active. Order is **Wave 0 → HRN → AUD**; `STO` starts when
+the music volume is mounted; `SWF` is deliberately late; `IDX` last and may shrink.
+
+| # | Unit | Peer | Acceptance (machine-checkable) |
+| --- | --- | --- | --- |
+| — | Wave 0 MAP | grok or claude | 17/17 cards carry `side:`; partition lint reports the **count** of pre-existing `src/engine/**` → `library/` includes and fails only on increase |
+| — | HRN harness | claude-code | every command carries a permission class; a write outside the workspace is refused, not warned; `--resume` reconstructs a night from `_session.jsonl`; live `deck.*` cannot be auto-approved |
+| — | AUD audio core | claude-code | per-deck gain moves audibly while both decks play; **100 consecutive** on-beat starts within one buffer; `ffplay` + `player.py` deleted (`P-11`); p99/max vs pinned baseline, zero underruns |
+| — | STO collection | claude-code | `library.dedupe` exit 0 after apply; crate entries `samefile()` Collection; `--apply` requires the dry-run receipt hash; crates need APFS, a **pack to exFAT copies deliberately** and reports bytes |
+| — | SWF Swift port | claude-code | `parity-check.sh` green for every ported ID; no second session store; the Python path is **deleted** for anything Swift now serves |
+| — | IDX indexes | claude-code | rebuild fixtures **plus the negative case**: delete a cue from a sidecar, rebuild, confirm it is gone from SQLite |
+
+**Killed by ADR-011:** `EPL` (peel Qt off `process()`) and `BRG` (unpark EngineBridge). Both presuppose
+a Qt engine on the booth path.
+
+**Why HRN first:** it is the only piece that does not exist at all — no permission class, no workspace
+boundary, no sandbox — and it needs neither the music volume nor audio, so it can start today.
+
+**Acceptance discipline:** every row above is written so a weaker version could not pass by accident.
+"Lint exits 0" is a tautology (you write the lint, then it passes); "ctest green" cannot detect a
+timing fix, because the known engine race passes 3 runs in 5 and passes every time under a debugger.
+
 ### MCP is a non-goal (decided 2026-08-08)
 
 `migx mcp-server` moves from `gap` to `wont-do`. Not "not yet" — **the adapter is the binary we

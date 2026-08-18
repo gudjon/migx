@@ -31,6 +31,31 @@ families:
 
 # --- Registered dossier prefixes (3-letter) ---
 dossiers:
+  - prefix: HRN
+    slug: harness-permissions-sandbox
+    title: "The harness: permission classes, sandbox, transcript/resume"
+    facilitator: gudjon
+    registered: "2026-08-18"
+  - prefix: AUD
+    slug: avaudioengine-core
+    title: "Swift AVAudioEngine audio core; ffplay retired"
+    facilitator: gudjon
+    registered: "2026-08-18"
+  - prefix: STO
+    slug: collection-adopt-pack
+    title: "Collection is the only inode; package + USB pack"
+    facilitator: gudjon
+    registered: "2026-08-18"
+  - prefix: SWF
+    slug: swift-tui-port
+    title: "TUI and command core ported to Swift (ADR-009/011)"
+    facilitator: gudjon
+    registered: "2026-08-18"
+  - prefix: IDX
+    slug: derived-indexes
+    title: "Indexes rebuildable from disk; neither is a home of record"
+    facilitator: gudjon
+    registered: "2026-08-18"
   - prefix: HNS
     slug: migx-harness-buildout
     title: "Stand up the Migx agent harness"
