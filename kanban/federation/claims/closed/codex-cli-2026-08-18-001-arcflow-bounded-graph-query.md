@@ -1,7 +1,7 @@
 ---
 id: codex-cli-2026-08-18-001-arcflow-bounded-graph-query
 owner: codex-cli
-status: active
+status: closed
 created: "2026-08-18"
 created_utc: "2026-08-18T18:20:18Z"
 expires_utc: "2026-08-19T00:20:18Z"
@@ -28,3 +28,8 @@ A0 only: bounded off-RT ArcFlow rankings through CLI/JSON; no TUI, engine, Contr
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id codex-cli-2026-08-18-001-arcflow-bounded-graph-query --by codex-cli --resolution "..."` when the lane is done.
+
+## Resolution
+Released by codex-cli at 2026-08-18T18:45:57Z.
+
+Landed graph.rank track/artist distinct-playlist CLI+JSON with offline and full-corpus verification; snapshot/daemon limitations recorded as A0 follow-on.
