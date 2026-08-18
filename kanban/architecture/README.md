@@ -5,10 +5,11 @@ title: "Migx architecture map — bounded contexts & domain charters"
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-18"
 defers_to:
   - kanban/architecture/DDD-BUILDOUT-PLAN.md
   - AGENTS.md
+  - kanban/architecture/decisions/ADR-010-domain-modules-vs-engine.md
 ---
 
 # Migx Architecture Map
@@ -17,10 +18,15 @@ The living map of Migx's bounded contexts (DDD cards) and per-domain charters (`
 Tool-agnostic — Claude Code, Codex, and Grok all read the same map. **Pointers, never copies** (MG-3):
 a card names relationships and invariants; what the code *is* stays in the code.
 
-The load-bearing axis is the **real-time boundary**, not deployment — every card declares its
-`thread_domain` (rt-audio | gui | gpu-render | worker | any) and `rt_safety` (hard | soft | none),
-because the two ways a change silently breaks Migx are (1) violating the audio deadline and (2)
-botching Qt ownership.
+Two load-bearing axes, not one. The **real-time boundary** (`thread_domain` /
+`rt_safety`) is how a context runs. The **domain vs engine partition**
+([ADR-010](decisions/ADR-010-domain-modules-vs-engine.md),
+[boundaries/domain-to-engine.md](ddd/boundaries/domain-to-engine.md)) is
+whether it may know about songs. Domain modules own identity, Collection,
+sidecars, and derived indexes. The engine owns `process()`. They meet only
+through the closed seam list. The two ways a change silently breaks Migx are
+still (1) violating the audio deadline and (2) botching Qt ownership — plus
+(3) leaking a domain type onto the callback.
 
 **Platform floor:** macOS **26.\*+** · Apple Silicon only ([ADR-006](decisions/ADR-006-platform-scope-apple-silicon.md)).
 **Refactor map (feature-preserving Apple-native waves):**
@@ -29,7 +35,7 @@ botching Qt ownership.
 - Cards: `ddd/bounded-contexts/<id>.md` (template: `_TEMPLATE.md`)
 - **Product-capability view** (what Migx does for the DJ, mapped to these contexts + NextGen UI modules +
   UI/UX guidelines): [`ddd/capability-catalogue.md`](ddd/capability-catalogue.md)
-- Seam docs: `ddd/boundaries/<slug>.md`
+- Seam docs: `ddd/boundaries/<slug>.md` — start at `domain-to-engine.md`
 - Context-relationship narrative: `ddd/context-map.md`
 - Buildout plan (format, full roster, lint): `DDD-BUILDOUT-PLAN.md`
 - The roster table below should be **generated** from card frontmatter in Phase 3 (`ddd/gen-index.py`).

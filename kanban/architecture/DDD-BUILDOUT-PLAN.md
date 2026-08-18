@@ -22,6 +22,10 @@ code *is* stays in the code (MG-3). Every doc ≤~120 lines.
 dominant invariant is the **real-time boundary** — RT-audio thread vs GUI vs GPU-render vs worker. So
 the card schema is keyed on `thread_domain` + `rt_safety`, not deployment locus.
 
+A second axis, added later, is the **domain vs engine partition** (`ADR-010`,
+`ddd/boundaries/domain-to-engine.md`): which contexts may know about songs.
+It does not replace `thread_domain`; it groups the roster.
+
 ## DDD-card format (lean)
 
 Cards: `kanban/architecture/ddd/bounded-contexts/<id>.md`; seams:

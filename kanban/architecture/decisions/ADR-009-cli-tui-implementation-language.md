@@ -5,10 +5,10 @@ title: "CLI/TUI implementation language - Swift arm64, Python sunset on the boot
 status: accepted
 owner: gudjon
 created: "2026-08-08"
-lastUpdated: "2026-08-08"
+lastUpdated: "2026-08-18"
 supersedes: []
 amends: [ADR-008]
-related: [ADR-002, ADR-006, ADR-008, arch-cli-commands, P-02, P-11, P-34, swift-native-cli-direction]
+related: [ADR-002, ADR-006, ADR-008, ADR-010, arch-cli-commands, P-02, P-11, P-34, swift-native-cli-direction]
 ---
 
 # ADR-009 - CLI/TUI implementation language
@@ -35,15 +35,16 @@ Python in Migx is an accident of fast CLI glue, not a house-physics requirement.
 - **The command contract is permanent; the runtime is not.** `ADR-008` binds command IDs, `--json`
   and exit codes - never an implementation language. An agent running `migx session.now --json`
   cannot tell which language answered, which is exactly what makes this migration safe.
-- **The engine stays C++/Qt** (`ADR-002`). Swift is not a third engine language and must not leak
-  into the RT graph.
+- **The engine stays C++** (`ADR-002`, `ADR-010`). Swift is not a third engine language and must not
+  leak into the RT graph. Qt on `process()` is Mixxx inheritance to peel, not the object model
+  (`ADR-010`).
 - **Audio transport goes native first**, because it is the one piece Python genuinely blocks.
 - **Filesystem SSoT is unchanged and language-agnostic**: `Collection/`, sidecars, `.migx` packages,
   the state dir, the session lock.
 
 ### Lane A - chosen
 `migx` becomes a **Swift arm64 binary**; the live deck is **AVAudioEngine**; it reaches the C++ engine
-over `engine.sock` when the full graph is up. The engine itself stays C++/Qt.
+over `engine.sock` when the full graph is up. The engine itself stays C++ (`ADR-010`).
 
     migx (Swift binary on PATH)
       ├── commands   set.plan · session.* · track.feedback · research.*

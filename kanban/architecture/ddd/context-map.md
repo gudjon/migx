@@ -5,16 +5,23 @@ title: "Migx context map — the RT signal chain and the control bus that crosse
 status: active
 owner: gudjon
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-18"
 defers_to:
   - kanban/architecture/README.md
   - kanban/architecture/DDD-BUILDOUT-PLAN.md
+  - kanban/architecture/decisions/ADR-010-domain-modules-vs-engine.md
 ---
 
 # Context map — the RT signal chain
 
 Migx's load-bearing axis is the **real-time audio boundary**, so the context map reads as a signal
 chain, not a deployment topology. One clock originates it; one bus crosses every context.
+
+A second axis sits across that chain: **domain modules vs the engine**
+([ADR-010](../decisions/ADR-010-domain-modules-vs-engine.md),
+[boundaries/domain-to-engine.md](boundaries/domain-to-engine.md)).
+Library, crates, sidecars, commands, and views never enter `process()`.
+The engine never names a song. The mixer and the control bus are the door.
 
 ```
                  arch-control-messaging  (src/control/, thread_domain: any)
@@ -59,6 +66,8 @@ deadline — dropping a video frame is fine, dropping an audio buffer is not (`A
 
 ## Why this shape
 The two ways a change silently breaks Migx are (1) violating the audio deadline and (2) botching Qt
-ownership. Every seam above is drawn to make one of those two failure modes *visible*: the RT contexts
-are `rt_safety: hard`, their edges are lock-free handoffs, and object lifetime is pushed off the
-callback. Full roster and status: `kanban/architecture/README.md`.
+ownership. A third, quieter one is leaking a domain type (crate, ISRC, sidecar, ArcFlow, DAO) onto
+the callback. Every seam above is drawn to make those failure modes *visible*: the RT contexts
+are `rt_safety: hard`, their edges are lock-free handoffs, object lifetime is pushed off the
+callback, and ADR-010 keeps DJ meaning off `process()`. Full roster:
+`kanban/architecture/README.md`.

@@ -28,6 +28,9 @@ consumes. Everything reachable from `process*()` runs on the **real-time audio c
 - **Qt affinity:** may *emit* Qt signals; must never *receive* a signal synchronously or mutate a GUI
   QObject on the audio thread; no `Qt::DirectConnection` across the RT boundary. `P-20`, `AP-14`.
 - **ControlObject single writer:** each `[Group],key` has one authoritative writer. `P-06`, `AP-03`.
+- **Domain stays outside:** no Collection/crate/playlist/ISRC/sidecar/DAO/ArcFlow/session on
+  `process()`. Partition: `ADR-010`, `kanban/architecture/ddd/boundaries/domain-to-engine.md`.
+  New DSP is not a `QObject`.
 - **Perf changes (the M4 north-star) need a benchmark contract** with p99/max + zero underruns, not a
   mean. `P-03`, `P-18`, `AP-11`.
 

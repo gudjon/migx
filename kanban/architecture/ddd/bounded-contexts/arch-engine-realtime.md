@@ -15,7 +15,7 @@ downstream: [arch-audio-io, arch-waveform-render, arch-vinylcontrol]
 maturity: hardened
 fork_delta: upstream-tracking
 agents_md: src/engine/AGENTS.md
-last_audited: "2026-07-17"
+last_audited: "2026-08-18"
 ---
 
 # engine-realtime — bounded context
@@ -43,6 +43,9 @@ is `rt_safety: hard`. Pointers, never copies — `src/engine/` is the truth.
 - **Qt affinity (`P-20`/`AP-14`):** may *emit* Qt signals; must never *receive* one synchronously or
   mutate a GUI QObject on the audio thread.
 - **Single sync master (`P-06`):** exactly one `Syncable` is master at a time; `EngineSync` owns the election.
+- **No domain types (`ADR-010`):** this context does not know Collection, crate, playlist, ISRC,
+  sidecar, `mixxxdb`, ArcFlow, or session. Crossings are the closed list in
+  `boundaries/domain-to-engine.md`. New DSP is not a `QObject`.
 
 ## Ubiquitous language
 | Term | Meaning here | Not to be confused with |
@@ -54,6 +57,7 @@ is `rt_safety: hard`. Pointers, never copies — `src/engine/` is the truth.
 ## Boundaries (edges by id)
 | Dir | Seam | Other context | Mechanism | Doc |
 |---|---|---|---|---|
+| in | domain partition (closed list) | (domain modules) | atomics / load FIFO / snapshots | boundaries/domain-to-engine.md |
 | in | `[ChannelN],*` control values | arch-control-messaging | ControlObject atomics | boundaries/control-to-engine.md |
 | in | decoded sample blocks | arch-sources-decode | cachingreader + worker scheduler | — |
 | out | mixed master `CSAMPLE` buffer | arch-audio-io | `SoundManager` callback | boundaries/engine-to-soundio.md |

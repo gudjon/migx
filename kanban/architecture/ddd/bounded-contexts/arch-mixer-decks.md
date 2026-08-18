@@ -13,7 +13,7 @@ downstream: [arch-engine-realtime]
 maturity: hardened
 fork_delta: upstream-tracking
 agents_md: src/mixer/AGENTS.md
-last_audited: "2026-07-17"
+last_audited: "2026-08-18"
 ---
 
 # mixer-decks — bounded context
@@ -47,6 +47,9 @@ never copies — `src/mixer/` is the truth.
   processing state, not the QObject. No synchronous slot delivery across the RT boundary.
 - **Single writer per channel control (`P-06`/`AP-03`):** the player owning `[ChannelN]` is the
   authoritative writer of its state controls; other contexts read via proxy.
+- **Door, not a third product (`ADR-010`):** this is the only constructor of `EngineChannel` and
+  the only caller of `EngineBuffer::loadTrack`. Session/crate/browse logic stays in domain
+  modules. `boundaries/domain-to-engine.md`.
 
 ## Ubiquitous language
 | Term | Meaning here | Not to be confused with |
@@ -59,6 +62,7 @@ never copies — `src/mixer/` is the truth.
 ## Boundaries (edges by id)
 | Dir | Seam | Other context | Mechanism | Doc |
 |---|---|---|---|---|
+| out | domain → engine door | arch-engine-realtime | `EngineChannel*` + `loadTrack` | boundaries/domain-to-engine.md |
 | out | `EngineChannel` nodes + wiring | arch-engine-realtime | pointer handoff, GUI-constructed | boundaries/control-to-engine.md |
 | in | `[ChannelN],*` control state | arch-control-messaging | `ControlProxy` / `ControlObject` | boundaries/control-to-engine.md |
 | in | loaded `Track` objects | arch-library-db | `TrackPointer` load requests | — |

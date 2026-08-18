@@ -1,5 +1,10 @@
 # Seam: control → engine (the control bus into the RT graph)
 
+This is legal crossing #1 of the domain/engine partition
+([ADR-010](../../decisions/ADR-010-domain-modules-vs-engine.md),
+[domain-to-engine.md](domain-to-engine.md)). It is not a license for domain
+types to enter `src/engine/`.
+
 **Contexts:** `arch-control-messaging` (src/control/) → `arch-engine-realtime` (src/engine/), and the
 same mechanism serves `arch-mixer-decks` (src/mixer/).
 **Direction:** control is upstream; the engine (and the mixer's players) read it. The engine may also

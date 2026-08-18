@@ -43,6 +43,7 @@ makes a control safe to read on the audio thread.
 - Making the atomic value store block or allocate (it is read on the audio thread).
 
 ## Cross-references
+This bus is legal crossing #1 of the domain/engine partition (`ADR-010`).
 Downstream consumers: `src/engine/AGENTS.md` (RT reads `[ChannelN],*`), `src/mixer/AGENTS.md`
 (player state), `src/controllers/` (scripted controls), `src/skin/`+`src/qml/` (widget bindings).
 Seam: `kanban/architecture/ddd/boundaries/control-to-engine.md`.

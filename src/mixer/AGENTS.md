@@ -29,6 +29,9 @@ in `src/engine/`.
   not the QObject. No synchronous slot delivery across the RT boundary. `P-20`, `AP-14`.
 - **Single writer per channel control:** the player owning `[ChannelN]` is the authoritative writer of
   its state controls; other contexts read via proxy. `P-06`, `AP-03`.
+- **This folder is the domain→engine door, not a third product.** `PlayerManager` / `BaseTrackPlayer`
+  construct `EngineChannel` and call `EngineBuffer::loadTrack`. Session, crate, ontology, and browse
+  logic do not grow here. `ADR-010`, `kanban/architecture/ddd/boundaries/domain-to-engine.md`.
 
 ## Build / test entry points
 - Build: `cmake --build build --parallel $(sysctl -n hw.ncpu)` (configure once with
