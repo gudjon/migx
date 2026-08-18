@@ -78,7 +78,41 @@ the plugin contract without special-casing, it is ready. If either needs a priva
 - **Not a place for policy.** Permission classes stay on the command table. The engine refuses
   malformed intents; it does not know what an agent is.
 
-## Open
+## Resolved — one daemon per user, and TWO scopes of authority
 
-Whether the daemon is one process serving multiple sessions, or one per session (the lock already says
-one session per user, which argues for one). Answer it in `AUD`, with the lock as the constraint.
+**One daemon per OS user.** Not system-wide: everything it owns is already per-user (device selection,
+library root, the lock), and a global daemon would have to arbitrate between users for one master
+output. Arbitration needs an authority above both — a system service, meaning root, the launchd system
+domain, TCC prompts for the music folder, and a new attack surface. Real cost, and it buys nothing:
+nobody DJs two sets on one laptop.
+
+The failure it avoids is specific. The daemon owns **hardware** — one device, one master. If two
+clients attached, whoever last set the crossfader would win **silently**: no error, just a fader moving
+on its own mid-set. That is the `P-34` shape at the worst possible moment.
+
+### The part the question was hiding
+
+*Per user* and *per session* are not the same thing: one user can open two terminals against one
+library. So which thing is the lock?
+
+**Two scopes, deliberately not overlapping:**
+
+| Authority | Guards | Exists when | Held by |
+| --- | --- | --- | --- |
+| **library lock** | Collection mutations — ingest · adopt · rename | always, daemon or not | the lock file (`sessionlock`, built) |
+| **playback authority** | decks · master · cue | only while playing | the **daemon itself** |
+
+The daemon does not need a lock file to prove it owns playback — **its existence is the claim**, and
+binding to the audio device is the enforcement. Adding a second file that also says "playback is mine"
+would be two authorities over one fact, which is exactly the defect the lock was written to prevent.
+
+Equally, the library lock must **not** grant playback, and the daemon must **not** guard ingest. A
+prep session mutating the library while nothing plays is legitimate and must not require a daemon; a
+running daemon must not block a library command that touches no deck.
+
+### What this changes in already-shipped code
+
+`sessionlock` (pid + start time, stale detectable) is correct and stays — but its **scope narrows to
+the library**. Its docstring currently says "one live Migx session per OS user", which under this ADR
+over-claims: it guards the library, not the night. Narrow the wording when `AUD` lands, so the two
+authorities are named where each is enforced.
