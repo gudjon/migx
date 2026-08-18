@@ -80,7 +80,12 @@ the plugin contract without special-casing, it is ready. If either needs a priva
 
 ## Resolved — one daemon per user, and TWO scopes of authority
 
-**One daemon per OS user.** Not system-wide: everything it owns is already per-user (device selection,
+**One daemon per OS user — and in practice one per machine**, because the box has one audio card.
+Fast user switching can log two users in, but only the active console session holds the device, so a
+second user's daemon has nothing to play through. The per-user framing is the *scope*; the singular
+card is why the question barely arises.
+
+Not system-wide: everything it owns is already per-user (device selection,
 library root, the lock), and a global daemon would have to arbitrate between users for one master
 output. Arbitration needs an authority above both — a system service, meaning root, the launchd system
 domain, TCC prompts for the music folder, and a new attack surface. Real cost, and it buys nothing:
@@ -102,9 +107,24 @@ library. So which thing is the lock?
 | **library lock** | Collection mutations — ingest · adopt · rename | always, daemon or not | the lock file (`sessionlock`, built) |
 | **playback authority** | decks · master · cue | only while playing | the **daemon itself** |
 
-The daemon does not need a lock file to prove it owns playback — **its existence is the claim**, and
-binding to the audio device is the enforcement. Adding a second file that also says "playback is mine"
-would be two authorities over one fact, which is exactly the defect the lock was written to prevent.
+The daemon does not need a lock file to prove it owns playback — **its existence is the claim**.
+Adding a second file that also says "playback is mine" would be two authorities over one fact, which
+is exactly the defect the lock was written to prevent.
+
+**Correction (2026-08-18):** an earlier draft said *binding the audio device* is the enforcement.
+**It is not.** CoreAudio does not grant exclusive access by default — that is how system sounds play
+over music — so two daemons would both bind the device and both output, **mixed together**. The
+singular audio card means there *should* be one daemon; it does not make one happen.
+
+**The socket bind is the mutex.** One process binds `engine.sock`; a second gets `EADDRINUSE` and
+exits classified (`P-34`). That is atomic, kernel-enforced, needs no lock file, and cannot go stale
+the way a pid file can — the fundamental reason `sessionlock` needed pid+start-time in the first
+place. A daemon that cannot bind its socket must **refuse to start**, never fall back to "start anyway
+and share the device", which is the silent-mix failure by another route (`P-11`).
+
+The stale-socket case is the one to handle deliberately: a crashed daemon leaves the file behind, so
+startup removes it **only** after confirming nothing is listening — connect first, and treat a refused
+connection as proof, exactly as `sessionlock.is_stale` treats a recycled pid.
 
 Equally, the library lock must **not** grant playback, and the daemon must **not** guard ingest. A
 prep session mutating the library while nothing plays is legitimate and must not require a daemon; a
