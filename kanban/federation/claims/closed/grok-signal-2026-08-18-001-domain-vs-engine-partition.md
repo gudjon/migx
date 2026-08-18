@@ -1,7 +1,7 @@
 ---
 id: grok-signal-2026-08-18-001-domain-vs-engine-partition
 owner: grok-signal
-status: active
+status: closed
 created: "2026-08-18"
 created_utc: "2026-08-18T18:43:04Z"
 expires_utc: "2026-08-19T06:43:04Z"
@@ -27,3 +27,8 @@ Make this active lane visible before another agent edits the same surface.
 
 ## Release
 Run `./kanban/scripts/migx-fed release --id grok-signal-2026-08-18-001-domain-vs-engine-partition --by grok-signal --resolution "..."` when the lane is done.
+
+## Resolution
+Released by grok-signal at 2026-08-18T18:45:01Z.
+
+ADR-010 + domain-to-engine seam landed on main
