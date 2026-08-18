@@ -2,6 +2,7 @@
 id: arch-rendergraph
 type: ddd-bounded-context
 title: "rendergraph — the Qt-scenegraph/RHI abstraction and shaders (Metal north-star)"
+side: adapter                # ADR-011: display-clock client (P-21)
 owns:
   - src/rendergraph/            # common/, opengl/, scenegraph/ — node/geometry/material abstraction over Qt RHI + GL
   - src/shaders/                # Shader, RGBAShader, TextureShader, EndOfTrackShader, … — GLSL program wrappers

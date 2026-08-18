@@ -2,7 +2,7 @@
 id: ADR-011
 type: decision
 title: "Migx is a Swift TUI workstation on Apple Silicon — Qt out, harness in"
-status: proposed
+status: accepted
 owner: gudjon
 created: "2026-08-18"
 lastUpdated: "2026-08-18"
@@ -13,8 +13,12 @@ related: [ADR-006, ADR-008, ADR-010, P-02, P-11, P-34, arch-cli-commands]
 
 # ADR-011 — Swift TUI workstation, no linked Qt
 
-**Status: proposed.** This changes what Migx *is*, so it wants an explicit yes.
-Recommendation below is unambiguous; the decision is the owner's.
+**Status: accepted 2026-08-18 (Gudjon).** Direction stated repeatedly and unambiguously across the
+design conversation: Swift-first, Apple Silicon only, Qt out, TUI as the surface.
+
+Accepting the ADR is reversible — it is a status field. **Deleting `src/` is not**, and this ADR does
+not do it. The Mixxx tree stays on disk until a dossier removes it against acceptance, so the
+irreversible half remains a separate, explicit decision.
 
 ## Context
 

@@ -2,6 +2,7 @@
 id: arch-effects-chain
 type: ddd-bounded-context
 title: "effects-chain — the effect graph processed inside the RT engine"
+side: engine                # ADR-011: runs inside the callback
 owns:
   - src/engine/effects/         # EngineEffectsManager, EngineEffect, EngineEffectChain, EngineEffectsDelay — the RT side
   - src/effects/                # EffectsManager, EffectChain, EffectSlot, backends/, chains/, presets/, EffectsMessenger — the GUI side

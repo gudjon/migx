@@ -2,6 +2,7 @@
 id: arch-qml-ui
 type: ddd-bounded-context
 title: "qml-ui — the new Qt Quick interface and its C++ proxies"
+side: adapter                # ADR-011: inherited GUI — moot under ADR-011
 owns:
   - src/qml/                    # QmlApplication, QmlControlProxy, QmlPlayerProxy, QmlWaveformDisplay, model proxies
   - res/qml/                    # the Qt Quick UI: Deck.qml, Mixer.qml, EffectUnit.qml, Library, Theme, main.qml

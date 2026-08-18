@@ -2,6 +2,7 @@
 id: arch-vinylcontrol
 type: ddd-bounded-context
 title: "vinylcontrol — timecode-vinyl signal processing into deck control"
+side: engine                # ADR-011: timecode feeds the graph on the deadline
 owns:
   - src/vinylcontrol/           # VinylControlManager, VinylControlProcessor, VinylControlXwax, SteadyPitch, signal widget
 exclude: []

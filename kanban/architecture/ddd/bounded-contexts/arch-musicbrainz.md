@@ -2,6 +2,7 @@
 id: arch-musicbrainz
 type: ddd-bounded-context
 title: "musicbrainz — online metadata lookup over async network tasks"
+side: domain                # ADR-011: identity lookup, off any deadline
 owns:
   - src/musicbrainz/            # TagFetcher, ChromaPrinter, MusicBrainz*, web/ lookup tasks
   - src/network/                # WebTask, JsonWebTask, NetworkTask — the async HTTP task base

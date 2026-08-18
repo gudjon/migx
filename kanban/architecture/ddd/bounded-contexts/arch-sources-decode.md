@@ -2,6 +2,7 @@
 id: arch-sources-decode
 type: ddd-bounded-context
 title: "sources-decode — audio file decode and encode off the RT thread"
+side: seam                # ADR-011: decode worker feeding the graph
 owns:
   - src/sources/                # SoundSource*, SoundSourceProxy, provider registry, AudioSource, metadata sources
   - src/encoder/                # Encoder*, format-specific encoders/settings (broadcast/record)

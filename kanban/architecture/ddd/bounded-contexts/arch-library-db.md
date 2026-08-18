@@ -2,6 +2,7 @@
 id: arch-library-db
 type: ddd-bounded-context
 title: "library-db — the track collection, SQLite schema and typed DAO layer"
+side: domain                # ADR-011: library + DAO — never linked by the engine
 owns:
   - src/library/                # TrackCollection, Library, LibraryTableModel, dao/, features, playlists/crates, scanner
   - src/database/               # MixxxDb, SchemaManager — the SQLite connection and migrations

@@ -2,6 +2,7 @@
 id: arch-audio-io
 type: ddd-bounded-context
 title: "audio-io — the sound-device layer that originates the RT audio thread"
+side: engine                # ADR-011: Core Audio HAL — the clock origin
 owns:
   - src/soundio/                # SoundManager, SoundDevice*, PortAudio/Pipewire/Network backends, enumerators, SoundManagerConfig
 exclude: []

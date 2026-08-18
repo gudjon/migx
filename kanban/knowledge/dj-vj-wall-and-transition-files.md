@@ -73,3 +73,41 @@ product, because club LED is *directed*.
 in `vocab.CLOSED_FIELDS`. The visual engine is a **consumer** of session state, never a producer —
 which is what lets it be built later, by someone else, or not at all, without touching audio or
 library architecture.
+
+## Lyrics as a prep-time producer (VIS scope, after AUD)
+
+Transcription (Whisper-class) is a **subprocess that writes the package**, same class as
+`migx-analyze`: prep-time, never live, never near a deadline. Analysis writes the sidecar; the model
+reads the sidecar; nothing listens in real time.
+
+Outputs land in three different homes, and conflating them is the failure:
+
+| Output | Home | Why |
+| --- | --- | --- |
+| Timestamped lyrics | `lyrics.json` in the package | large; word-level timing is the payload |
+| Theme · emotion · temperature | `notes.md` frontmatter | the index — what you filter on |
+| Full transcript | package body file | deep read, loaded per candidate |
+| **Set theme · storytelling arc** | the **set / session** | an arc is a property of the night, not a record |
+
+A track has no "set theme". Putting one there would make every record claim an arc it cannot know.
+
+### Two failure modes to design against before building it
+
+**Provenance, not just values.** BPM is *measured*, lyrics are *transcribed*, theme and emotion are
+*inferred*. Those carry wildly different trust, and `theme: heartbreak` guessed from a mumbled vocal
+must not look identical to a BPM from DSP. `pairs.py` already has the shape — every edge stamps
+`layer` and `source`. Inferred frontmatter carries how it was derived and a confidence, or it is a
+confident lie (`P-34`).
+
+Transcription of club music is wrong **often**: heavy processing, vocal chops, non-English, and
+instrumentals with a two-word hook.
+
+**Vocabulary drift.** A model will happily emit `melancholic`, `wistful`, `bittersweet` where the pack
+says `dark` — three spellings of one idea, the exact drift `vocab.CLOSED_FIELDS` exists to stop. AI-
+proposed frontmatter is **checked against the pack and warned**, never written free.
+
+### What VIS actually wants from this
+
+**Timestamped lyrics, not theme.** Word-level timing is a real tap the compositor can subscribe to —
+typographic visuals locked to the vocal is an established VJ technique, and it samples like beat and
+phase (`P-21`). Theme and emotion are more use to `set.plan` than to the wall.

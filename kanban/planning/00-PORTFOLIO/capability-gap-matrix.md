@@ -142,6 +142,7 @@ the music volume is mounted; `SWF` is deliberately late; `IDX` last and may shri
 | — | IDX indexes | claude-code | rebuild fixtures **plus the negative case**: delete a cue from a sidecar, rebuild, confirm it is gone from SQLite |
 
 | — | VIS visual compositor | claude-code | wall samples lock-free taps only; zero engine calls from the render path; killing the renderer does not interrupt playback (`P-21`) |
+| — | lyrics producer (VIS) | claude-code | prep-time subprocess; timestamped `lyrics.json`; inferred fields carry provenance + confidence and are checked against the vocab pack |
 | — | transition audio (`kind: sfx`) | claude-code | staged never auto-fired; excluded from next-track candidates; `fits_after`/bars in sidecar; plays as a third node |
 
 **VIS comes after AUD** — a compositor needs a real playhead to subscribe to, and there is not one yet.

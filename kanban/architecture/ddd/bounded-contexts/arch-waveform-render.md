@@ -2,6 +2,7 @@
 id: arch-waveform-render
 type: ddd-bounded-context
 title: "waveform-render — display-clock waveform drawing off a lock-free engine tap"
+side: adapter                # ADR-011: display-clock client (P-21)
 owns:
   - src/waveform/               # WaveformWidgetFactory, VisualPlayPosition, VSyncThread, renderers/, widgets/, Waveform
 exclude: []

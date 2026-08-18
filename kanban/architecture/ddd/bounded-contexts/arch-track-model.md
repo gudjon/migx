@@ -2,6 +2,7 @@
 id: arch-track-model
 type: ddd-bounded-context
 title: "track-model — the Track aggregate read across every thread"
+side: seam                # ADR-011: snapshot read is a LEGAL engine crossing
 owns:
   - src/track/                  # Track, GlobalTrackCache, Beats, Cue, Keys, ReplayGain, Bpm, TrackRecord, metadata
 exclude: []

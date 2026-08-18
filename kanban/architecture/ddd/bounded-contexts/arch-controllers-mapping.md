@@ -2,6 +2,7 @@
 id: arch-controllers-mapping
 type: ddd-bounded-context
 title: "controllers-mapping — MIDI/HID hardware bound to controls via scripts"
+side: adapter                # ADR-011: MIDI/HID input adapter
 owns:
   - src/controllers/            # ControllerManager, Controller, midi/, hid/, bulk/, scripting/ QJSEngine, mappings, SoftTakeover
 exclude: []

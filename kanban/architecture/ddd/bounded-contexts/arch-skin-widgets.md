@@ -2,6 +2,7 @@
 id: arch-skin-widgets
 type: ddd-bounded-context
 title: "skin-widgets — the legacy QWidget skin engine and control widgets"
+side: adapter                # ADR-011: inherited GUI
 owns:
   - src/skin/                   # SkinLoader, LegacySkinParser, SkinContext — XML skin → widget tree
   - src/widget/                 # WWidget and the WPushButton/WKnob/WWaveformViewer/WOverview widget family

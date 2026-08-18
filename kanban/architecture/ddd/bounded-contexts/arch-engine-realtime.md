@@ -2,6 +2,7 @@
 id: arch-engine-realtime
 type: ddd-bounded-context
 title: "engine-realtime — the real-time audio processing graph"
+side: engine                # ADR-011: the RT graph itself — process() lives here
 owns:
   - src/engine/                 # EngineMixer, EngineBuffer, channels/, bufferscalers/, cachingreader/, filters/, controls/, sidechain/
   - src/engine/sync/            # EngineSync, InternalClock, Syncable — beat/tempo sync authority

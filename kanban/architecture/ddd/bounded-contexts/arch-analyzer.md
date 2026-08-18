@@ -2,6 +2,7 @@
 id: arch-analyzer
 type: ddd-bounded-context
 title: "analyzer — off-thread beat/key/gain/waveform analysis of tracks"
+side: domain                # ADR-011: batch analysis, worker-class (migx-analyze)
 owns:
   - src/analyzer/               # AnalyzerThread, TrackAnalysisScheduler, AnalyzerBeats/Key/Gain/Ebur128/Waveform, plugins/
 exclude: []

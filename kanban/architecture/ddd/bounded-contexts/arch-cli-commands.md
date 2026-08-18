@@ -2,6 +2,7 @@
 id: arch-cli-commands
 type: ddd-bounded-context
 title: "cli-commands — the application surface every adapter drives"
+side: domain                # ADR-011: the application surface (ADR-008)
 owns:
   - tools/migx-cli/             # migx_cli package: auth, api, mirror, resolve, ingest, layout, quality
 exclude: []

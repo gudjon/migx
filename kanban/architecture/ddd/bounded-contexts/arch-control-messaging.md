@@ -2,6 +2,7 @@
 id: arch-control-messaging
 type: ddd-bounded-context
 title: "control-messaging — the cross-thread string-keyed control bus"
+side: seam                # ADR-011: ControlObject bus — the door, both sides touch it
 owns:
   - src/control/                # ControlObject, ControlProxy, ControlValue, ControlPushButton, ControlPotmeter, ControlObjectScript, PollingControlProxy
 exclude: []

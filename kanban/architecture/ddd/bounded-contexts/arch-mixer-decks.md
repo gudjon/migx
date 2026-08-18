@@ -2,6 +2,7 @@
 id: arch-mixer-decks
 type: ddd-bounded-context
 title: "mixer-decks — deck/sampler/player lifecycle owner straddling RT and GUI"
+side: seam                # ADR-011: deck/mixer objects: engine below, app above
 owns:
   - src/mixer/                  # PlayerManager, Deck, Sampler, PreviewDeck, Microphone, Auxiliary, BaseTrackPlayer, SamplerBank
 exclude: []
