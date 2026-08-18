@@ -6,7 +6,7 @@ status: active
 owner: gudjon
 authored_by: grok-signal
 created: "2026-08-07"
-lastUpdated: "2026-08-07"
+lastUpdated: "2026-08-18"
 defers_to:
   - kanban/architecture/ddd/capability-catalogue.md
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
@@ -16,6 +16,7 @@ defers_to:
 related:
   - kanban/knowledge/arcflow-tui-agentic-dj-integration.md
   - kanban/tasks/arcflow-distinct-playlist-count-semantics.md
+  - kanban/tasks/arcflow-bounded-graph-query-cli.md
   - kanban/tasks/macbook-trackpad-v1-appkit-gestures.md
   - kanban/federation/signal/2026-08-07-full-dj-closed-loop-agentic-buildout.md
   - kanban/federation/signal/2026-08-07-tui-first-dj-workstation-field.md
@@ -30,7 +31,7 @@ note: >
 # Capability gap matrix
 
 **Purpose:** single home for “what is not done yet” so automatic agentic development
-opens **dossiers with contracts**, not vibes.  
+opens **dossiers with contracts**, not vibes.
 **Law:** MG-1 (closed loop) · MG-3 (SSoT — this matrix cites, does not restate catalogue cards) ·
 MG-5 (dossier unit) · ADR-008 (every product behavior is a command/query/event/capability).
 
@@ -57,7 +58,7 @@ MG-5 (dossier unit) · ADR-008 (every product behavior is a command/query/event/
 
 ---
 
-## A — Command surface (live `system.capabilities`, 21 rows)
+## A — Command surface (live `system.capabilities`, 35 rows)
 
 Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability listed.
 
@@ -85,7 +86,19 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | `library.rename` | command | shipped | re-file after analysis | — |
 | `library.art` | query | shipped | chafa optional; placeholder degrade | brew install chafa for live art |
 | `library.covers` | command | shipped | backfill cover.* from thumbs + APIC | run once after mass ingest |
-| `system.capabilities` | capability | shipped | 23 rows | grow only with command land |
+| `set.plan` | query | shipped | deterministic pair scoring | improve optimizer after evidence |
+| `set.play` | command | partial | offline preview render | replace with live native transport |
+| `track.feedback` | command | shipped | append-only structured verdict | — |
+| `session.now` | query | shipped | live-status schema + unreachable distinction | — |
+| `session.bind` | command | shipped | `_live.json` + session log | — |
+| `session.room` | command | shipped | session-local room state | — |
+| `session.clear` | command | shipped | unbind while retaining log | — |
+| `session.show` | query | shipped | reconstruct append-only night log | — |
+| `library.suspects` | query | shipped | analysis review queue | — |
+| `library.pairs` | query | shipped | observed transitions from session evidence | — |
+| `library.vocab` | query | shipped | vocabulary packs + drift report | — |
+| `graph.rank` | query | shipped | native distinct-playlist fixtures + live corpus | add snapshot/rebuild gate |
+| `system.capabilities` | capability | shipped | 35 rows | grow only with command land |
 
 ### A2 — Surface commitments (TUI-first, not yet commands)
 
@@ -104,15 +117,15 @@ Acceptance default: `python3 tools/migx-cli/test_migx_cli.py` + capability liste
 | jobs strip (non-blocking) | gap | mode switch during analyze | claude-code | field P1 |
 | three-column PREP workspace | gap | Yazi grammar | claude-code | after composer |
 | AppKit trackpad v1 | gap | KEYMAP twins; native host only | claude-code | task `macbook-trackpad-v1-appkit-gestures` |
-| `session.now` / `session.bind` / `session.clear` | shipped | `_live.json` off-RT | — |
-| `session.room` | shipped | theme/energy/note on `_live.json` | — |
-| `session.show` | shipped | `_session.jsonl` → plays[] + events[] | night reconstruct |
-| `track.feedback` (+ `now`) | shipped | sidecar + night log; weak/worked/transition bias rank | set.plan + Arrange |
-| Session coach skill (speech→CLI) | shipped | `.claude/skills/migx-session-coach/` | dogfood voice→flags |
-| Engine-driven live position in `_live.json` | gap | app writes playposition off-RT | later engine bridge |
-| Session lock (one live session / OS user) | gap | lockfile in Application Support; stale detectable | before multi-writer hooks |
-| `session/now.json` + `history.jsonl` (state dir) | gap | level-triggered agent truth; atomic off-RT | agent-filesystem-hooks-integration |
-| Hooks (TrackPlaying / Transition* / Session*) | gap | config → command + JSON stdin + timeout | **after** now.json; never RT |
+| `session.now` / `session.bind` / `session.clear` | shipped | `_live.json` off-RT | claude-code | — |
+| `session.room` | shipped | theme/energy/note on `_live.json` | claude-code | — |
+| `session.show` | shipped | `_session.jsonl` → plays[] + events[] | claude-code | night reconstruct |
+| `track.feedback` (+ `now`) | shipped | sidecar + night log; verdict biases rank | claude-code | set.plan + Arrange |
+| Session coach skill (speech→CLI) | shipped | `.claude/skills/migx-session-coach/` | claude-code | dogfood voice→flags |
+| Engine-driven live position in `_live.json` | gap | app writes playposition off-RT | claude-code | later engine bridge |
+| Session lock (one live session / OS user) | gap | lockfile; stale detectable | claude-code | before multi-writer hooks |
+| `session/now.json` + `history.jsonl` | gap | level-triggered truth; atomic off-RT | claude-code | agent filesystem hooks |
+| Hooks (TrackPlaying / Transition*/ Session*) | gap | command + JSON stdin + timeout | claude-code | **after** now.json; never RT |
 
 ### MCP is a non-goal (decided 2026-08-08)
 
@@ -126,7 +139,7 @@ already have (`P-11`), bought for no capability we lack.
 
 A coding agent integrates as a **shell client**, which is how these workflows actually run:
 
-```
+```text
 migx <noun.verb> … --json   →   stdout: structured receipt   →   agent reads, plans, calls next
 ```
 
@@ -199,10 +212,11 @@ This table is the **buildout queue** for closed loops.
 
 | id | status | acceptance | next |
 | --- | --- | --- | --- |
-| graph load (`mirrors-to-graph`) | partial | full corpus load numbers recorded | pin patched ArcFlow binary |
-| distinct playlist counts | **blocked** | task acceptance | `arcflow-distinct-playlist-count-semantics` |
-| co-occurrence / centrality rankings | blocked | on distinct-playlist | after task |
-| TUI/CLI query commands for graph | gap | `migx graph.*` or query through ArcFlow socket | after rankings honest |
+| graph load (`mirrors-to-graph`) | shipped | 83 mirrors / 6,765 nodes / 9,483 relationships on pinned runtime | prove rebuild equivalence |
+| distinct playlist counts | shipped | native GQL + independent 4,300-membership reference | — |
+| track / artist centrality | shipped | `graph.rank` bounded CLI + JSON | add co-occurrence query only when product-used |
+| TUI graph inspector | gap | same command result rendered with evidence | after Swift command parity |
+| snapshot export / rebuild | gap | restored/rebuilt store returns identical semantic ranking | ArcFlow sync snapshot filename mismatch is open |
 | RT use of ArcFlow | **wont-do** | house physics | never |
 
 ---
@@ -215,7 +229,7 @@ Reorder weekly from Strategy + this matrix. **Current recommendation (2026-08-07
 | --- | --- | --- | --- |
 | 1 | TUI P0: status line + `?` help | claude-code | snapshot fields + KEYMAP overlay; tests |
 | 2 | TUI P1: composer dispatches command IDs | claude-code | `playlist.pull` / `track.show` from composer |
-| 3 | ArcFlow distinct-playlist | codex-cli (ArcFlow) + claude later | task acceptance |
+| 3 | ArcFlow bounded graph rank | codex-cli | **shipped** `graph.rank` CLI/JSON; snapshot/rebuild remains |
 | 4 | `migx --agent` + receipt schema | claude-code | JSONL round-trip fixture |
 | 5 | Arrange next-track rank (cap-copilot) | claude-code | ng-judge / fixtures |
 | 6 | Engine bridge: load free-deck only | claude-code | precondition + receipt |

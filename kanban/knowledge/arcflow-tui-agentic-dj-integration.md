@@ -6,7 +6,7 @@ status: active
 owner: gudjon
 authored_by: codex-cli
 created: "2026-08-07"
-lastUpdated: "2026-08-08"
+lastUpdated: "2026-08-18"
 defers_to:
   - kanban/Strategy-Current.md
   - kanban/architecture/decisions/ADR-008-cli-core-two-equal-clients.md
@@ -16,6 +16,7 @@ related:
   - headless-sim-ground-truth-agentic-cli
   - kanban/planning/00-PORTFOLIO/capability-gap-matrix.md
   - kanban/tasks/arcflow-distinct-playlist-count-semantics.md
+  - kanban/tasks/arcflow-bounded-graph-query-cli.md
   - ADR-005
   - P-02
   - P-06
@@ -45,7 +46,7 @@ human TUI | CLI/JSON | --agent/MCP | future graphical adapter
                     /                         \
        query/event/proposal                  engine intent
                  /                               \
-       ArcFlow local daemon                 ControlObject boundary
+       ArcFlow local process               ControlObject boundary
   world model | live views | workflows             |
                                               audio engine RT
 ```
@@ -204,20 +205,42 @@ native Rust/C++ integration later.
 - Backpressure or ArcFlow failure degrades intelligence and history, never playback continuity.
 - An agent disconnect or ArcFlow restart cannot revoke local human control or stop a playing deck.
 
+### First product query
+
+`migx graph.rank` now exposes track and artist centrality through the same CLI
+and `--json` surface used by agents. The adapter invokes the pinned `arcflow`
+runtime with a Migx-owned read-only template and returns
+`migx.graph-ranking/1`; callers cannot submit arbitrary GQL. Both templates use
+native `count(DISTINCT p.id)` and carry the ArcFlow snapshot URI as provenance.
+
+The local Unix-socket daemon is **not** the A0 product path yet. The installed
+`arcflow-daemon` predates the verified `83c86311` CLI build, so its embedded
+runtime is not pinned to the UTF-8/distinct fixes. A fresh daemon build and
+contract proof must precede adoption.
+
+Snapshot proof also remains open. Live probing on 2026-08-18 found that
+`arcflow query --data-dir` restores `arcflow.snapshot.json`, while
+`arcflow sync snapshot --data-dir` reads `worldcypher.snapshot.json`; against
+the populated Migx store it exported an empty graph. Do not call that a backup
+until ArcFlow reconciles the two persistence paths and a semantic round trip
+passes.
+
 ## Build horizons
 
 ### A0 - contract proof (loader and distinct semantics complete)
 
 The Track/Artist/Playlist loader and full UTF-8 corpus proof are complete against
 the installed merged-main runtime. Distinct-playlist aggregation is fixed,
-independently checked, and pinned to a source commit plus binary hash. Finish A0
-by adding the remaining bounded queries and proving snapshot export/rebuild.
-Then extend the graph with the minimal `Observation`/`SetSession` mapping. No
-engine connection.
+independently checked, and pinned to a source commit plus binary hash. The first
+bounded product query, `graph.rank`, is implemented for track and artist
+centrality. Finish A0 by proving snapshot export/rebuild, then add a bounded
+co-occurrence query only when a product workflow consumes it. Next extend the
+graph with the minimal `Observation`/`SetSession` mapping. No engine connection.
 
 **Gate:** the achieved 83-mirror/3,720-track/2,962-artist load stays green; all
-ranking queries count distinct playlists correctly in the engine; one JSON query
-returns ranked candidates with evidence; rebuild produces the same semantic result.
+ranking queries count distinct playlists correctly in the engine;
+`graph.rank --json` returns ranked candidates with evidence; rebuild produces
+the same semantic result.
 
 ### A1 - PREP workspace world model
 
@@ -264,7 +287,7 @@ disconnect takeover, and audio-underrun acceptance all pass.
 
 ## Next concrete dossier
 
-The next implementation dossier should remain **A0 only**: add the remaining
-bounded queries, prove export/rebuild, and decide whether the Unix-socket daemon
-contract is stable enough for A1. It must not touch the audio engine or
-ControlObjects.
+The next implementation dossier should remain **A0 only**: reconcile ArcFlow's
+query/sync snapshot paths, prove export/rebuild equivalence, and build a freshly
+pinned daemon before deciding whether its Unix-socket contract is stable enough
+for A1. It must not touch the audio engine or ControlObjects.
