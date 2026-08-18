@@ -12,9 +12,11 @@ PKCE/auth needs a live account and is not covered here.
 Run: python3 tools/migx-cli/test_migx_cli.py   (exit 0 = pass)
 """
 
+import json
 import os
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import time
@@ -27,6 +29,7 @@ from migx_cli import (  # noqa: E402
     api,
     auth,
     feedback,
+    graph,
     ingest,
     keys,
     layout,
@@ -169,6 +172,101 @@ def main() -> int:
     def check(cond, desc):
         if not cond:
             failures.append(desc)
+
+    # ---- ArcFlow: bounded native rankings, no arbitrary query surface
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        store = root / "graph"
+        store.mkdir()
+        runtime = root / "arcflow"
+        captured = root / "query.txt"
+        capture_line = (
+            f"pathlib.Path({str(captured)!r}).write_text("
+            "query, encoding='utf-8')\n"
+        )
+        fake_source = (
+            "#!/usr/bin/env python3\n"
+            "import json, pathlib, sys\n"
+            "query = sys.argv[2]\n"
+        ) + capture_line + (
+            "if 'a:Artist' in query:\n"
+            "    columns = ['artist', 'playlists']\n"
+            "    rows = [{'artist': 'RÜFÜS DU SOL', 'playlists': '12'}]\n"
+            "else:\n"
+            "    columns = ['key', 'track', 'playlists']\n"
+            "    rows = [{'key': 'ISRC-1', 'track': 'Ysée', "
+            "'playlists': '6'}, {'key': 'ISRC-2', 'track': '123', "
+            "'playlists': '5'}]\n"
+            "print(json.dumps({'__snapshot': 'arcflow://snapshot/test', "
+            "'columns': columns, 'rows': rows, 'count': len(rows)}, "
+            "ensure_ascii=False))\n"
+        )
+        runtime.write_text(
+            fake_source,
+            encoding="utf-8",
+        )
+        runtime.chmod(0o755)
+
+        ranked = graph.rank(
+            "track", limit=7, data_dir=store, binary=runtime
+        )
+        check(
+            ranked["schema"] == "migx.graph-ranking/1",
+            "graph rank schema is pinned",
+        )
+        check(
+            ranked["rows"]
+            == [
+                {"key": "ISRC-1", "track": "Ysée", "playlists": 6},
+                {"key": "ISRC-2", "track": "123", "playlists": 5},
+            ],
+            "graph rank preserves names and restores metric scalars",
+        )
+        native_query = captured.read_text(encoding="utf-8")
+        check(
+            "count(DISTINCT p.id)" in native_query
+            and "LIMIT 7" in native_query,
+            "track rank uses native distinct-playlist semantics and a bound",
+        )
+        check(
+            "DELETE" not in native_query and "CREATE" not in native_query,
+            "graph rank template is read-only",
+        )
+
+        cli = Path(__file__).parent / "migx"
+        proc = subprocess.run(
+            [
+                str(cli), "graph.rank", "--entity", "artist", "--limit", "3",
+                "--data-dir", str(store), "--arcflow", str(runtime), "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        cli_doc = json.loads(proc.stdout)
+        check(
+            proc.returncode == 0,
+            "graph.rank CLI succeeds through fake ArcFlow",
+        )
+        check(
+            cli_doc["rows"]
+            == [{"artist": "RÜFÜS DU SOL", "playlists": 12}],
+            "graph.rank CLI emits agent-safe artist JSON",
+        )
+        check(
+            "count(DISTINCT p.id)" in captured.read_text(encoding="utf-8"),
+            "artist rank also counts distinct playlists natively",
+        )
+
+        for entity, limit in (("album", 3), ("track", 0), ("artist", 101)):
+            try:
+                graph.rank(entity, limit=limit, data_dir=store, binary=runtime)
+            except graph.GraphError:
+                pass
+            else:
+                check(
+                    False,
+                    f"graph rank rejects entity={entity} limit={limit}",
+                )
 
     # ---- naming: sanitisation and template rendering
     check(
@@ -1556,10 +1654,10 @@ def main() -> int:
 
     # The filter graph must chain N-1 crossfades and end on [out].
     argv = setplay.build_command(segs, Path("/tmp/x.mp3"))
-    graph = argv[argv.index("-filter_complex") + 1]
-    check(graph.count("acrossfade") == 2, "N-1 crossfades for N tracks")
-    check(graph.rstrip().endswith("[out]"), "graph terminates at [out]")
-    check("atempo" in graph, "a pitched track carries atempo")
+    filter_graph = argv[argv.index("-filter_complex") + 1]
+    check(filter_graph.count("acrossfade") == 2, "N-1 crossfades for N tracks")
+    check(filter_graph.rstrip().endswith("[out]"), "graph terminates at [out]")
+    check("atempo" in filter_graph, "a pitched track carries atempo")
     check(argv.count("-ss") == 3 and argv.count("-t") == 3,
           "each input is trimmed to its segment")
 

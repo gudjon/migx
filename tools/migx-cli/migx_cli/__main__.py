@@ -29,6 +29,7 @@ from . import (
     auth,
     config,
     feedback,
+    graph,
     ingest,
     layout,
     mirror,
@@ -474,6 +475,20 @@ CAPABILITIES: list[dict[str, Any]] = [
         " not a correctness one — blocking a DJ who invents a word would train"
         " people to stop annotating. Packs live at <library>/Vocabulary/*.md"
         " and are additive: techno and disco keep separate vocabularies.",
+    },
+    {
+        "id": "graph.rank",
+        "kind": "query",
+        "summary": "Rank tracks or artists by distinct playlist membership.",
+        "args": {
+            "--entity": "track | artist (default track)",
+            "--limit": "1..100 rows (default 12)",
+            "--data-dir": "ArcFlow graph store (default ~/.migx/graph)",
+            "--arcflow": "runtime path (else $MIGX_ARCFLOW_BIN)",
+        },
+        "emits": "migx.graph-ranking/1",
+        "note": "Read-only, off-RT, bounded Migx-owned GQL. Counts distinct "
+        "playlists, not repeated placements; no arbitrary query input.",
     },
     {
         "id": "system.capabilities",
@@ -2066,6 +2081,25 @@ def cmd_capabilities(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_graph_rank(args: argparse.Namespace) -> int:
+    doc = graph.rank(
+        args.entity,
+        limit=args.limit,
+        data_dir=args.data_dir,
+        binary=args.arcflow,
+    )
+    if args.json:
+        _out(doc, True)
+        return 0
+
+    label = "Track" if args.entity == "track" else "Artist"
+    print(f"{label} centrality by distinct playlist membership")
+    for index, row in enumerate(doc["rows"], 1):
+        name = row.get("track") or row.get("artist") or row.get("key")
+        print(f"{index:>2}. {name}  ({row['playlists']} playlists)")
+    return 0
+
+
 # --------------------------------------------------------------------- main
 
 
@@ -2441,6 +2475,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-play", action="store_true")
     p.set_defaults(fn=cmd_set_play)
 
+    p = sub.add_parser(
+        "graph.rank", help="rank graph entities by distinct playlists"
+    )
+    p.add_argument("--entity", choices=["track", "artist"], default="track")
+    p.add_argument("--limit", type=int, default=12)
+    p.add_argument("--data-dir", default=str(graph.DEFAULT_DATA_DIR))
+    p.add_argument("--arcflow", default=None)
+    p.set_defaults(fn=cmd_graph_rank)
+
     sub.add_parser(
         "system.capabilities", help="machine-readable command manifest"
     ).set_defaults(fn=cmd_capabilities)
@@ -2452,7 +2495,7 @@ def main(argv: list[str] | None = None) -> int:
     args.json = getattr(args, "json", False)
     try:
         return args.fn(args)
-    except (auth.AuthError, api.ApiError) as exc:
+    except (auth.AuthError, api.ApiError, graph.GraphError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:

@@ -35,7 +35,7 @@ workspace, LIVE control, long-lived `--agent` stream, receipts, events, MCP
 adapter, and engine bridge are planned. This bounded context records their
 contract without claiming those later capabilities ship today.
 
-**Operational gap queue** (shipped vs planned commands and TUI commitments):  
+**Operational gap queue** (shipped vs planned commands and TUI commitments):
 `kanban/planning/00-PORTFOLIO/capability-gap-matrix.md` (§A / §A2). Product capability
 names: `kanban/architecture/ddd/capability-catalogue.md`.
 
@@ -52,6 +52,7 @@ names: `kanban/architecture/ddd/capability-catalogue.md`.
 | quality gate | `migx_cli/quality.py` | tier verdict; nothing enters the index ungated |
 | layout | `migx_cli/layout.py` | Collection (one file) + Crates (symlinks) |
 | ingest | `migx_cli/ingest.py` | the intake valve into the Collection |
+| graph query adapter | `migx_cli/graph.py` | bounded read-only ArcFlow rankings over a derived index |
 
 ## Invariants (an agent MUST respect these)
 
@@ -92,6 +93,7 @@ names: `kanban/architecture/ddd/capability-catalogue.md`.
 | `config` | the CLI's own settings file (`migx.config/1`) | Mixxx user preferences / `mixxx.cfg` (arch-preferences) |
 | `set` | an ordered run of tracks planned to be mixable end to end (`migx.set-plan/1`) | a `crate` (unordered selection), a `playlist` (a remote mirror), or Python's `set` |
 | `session` | one performance in progress — what is playing now, and the room's state while it plays | a `set` (the planned order, which outlives the night) or a shell/login session |
+| `graph` | the disposable ArcFlow Track/Artist/Playlist index queried through Migx-owned templates | the RT engine graph or a second source of truth |
 
 ## Boundaries (edges by id — detail in ../boundaries/)
 
@@ -100,6 +102,7 @@ names: `kanban/architecture/ddd/capability-catalogue.md`.
 | out | filed tracks + indexing | arch-library-db | DAO layer (`P-27`), never raw SQL | — |
 | out | track identity / tags | arch-track-model | file tags + sidecars | — |
 | in | remote catalogue identities | *(external)* | Spotify Web API, read-only | `tools/migx-cli/README.md` |
+| out | derived world-model query | ArcFlow *(external)* | bounded CLI JSON query, read-only and off-RT | `kanban/knowledge/arcflow-tui-agentic-dj-integration.md` |
 | out | *(planned)* deck/mixer intent | arch-control-messaging | single-writer handler (`P-06`) | boundaries/control-to-engine.md |
 
 ## Key patterns (cited, not restated)

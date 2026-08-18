@@ -55,6 +55,24 @@ Every surface entry is exactly one of four kinds (ADR-008, accepted):
 `--json` works before *or* after the subcommand. Machine output goes to **stdout**,
 human prose to **stderr**, so an agent can pipe stdout without filtering.
 
+## ArcFlow world-model queries
+
+`graph.rank` is the first ArcFlow-backed product query. Migx owns two bounded,
+read-only GQL templates; callers choose the entity and limit, not arbitrary
+query text. Both rank by **distinct playlist membership**, so repeated positions
+inside one playlist do not inflate the result.
+
+```bash
+./tools/migx-cli/migx graph.rank --entity track --limit 12
+./tools/migx-cli/migx graph.rank --entity artist --limit 12 --json
+```
+
+The default derived store is `~/.migx/graph`, built by
+`tools/migx-cli/mirrors-to-graph`. Override it with `--data-dir`; override the
+runtime with `--arcflow` or `MIGX_ARCFLOW_BIN`. ArcFlow is off-RT, read-only on
+this command path, and disposable: playlist mirrors remain source truth. No
+DuckDB or parallel analytical store is involved.
+
 ## Wave 1 — Spotify identity + playlist mirroring
 
 ```bash
@@ -130,8 +148,8 @@ Files (library root, off-RT): `_live.json` (current bind + room),
 | `--transition 1..5` | how well blends *into* this track landed |
 | `--segment shorter` / `longer` | play length for offline audition (`set.play`) |
 
-TUI: open Track mode (`t`) also runs `session.bind` (source=`tui`).  
-Agent skill: `.claude/skills/migx-session-coach/` — maps speech → these commands.  
+TUI: open Track mode (`t`) also runs `session.bind` (source=`tui`).
+Agent skill: `.claude/skills/migx-session-coach/` — maps speech → these commands.
 Research: `kanban/knowledge/session-coaching-multimodal-agent.md`.
 
 ## Cover art in the terminal (optional chafa)
@@ -149,7 +167,7 @@ brew install chafa                         # macOS
 ```
 
 Cover discovery (no tag decoding): `cover.jpg` / `folder.png` next to the audio,
-images in `<track>.migx/`, or a fuzzy match under `_Inbox/.thumb/`.  
+images in `<track>.migx/`, or a fuzzy match under `_Inbox/.thumb/`.
 **Ingest / watch:** when a cover is found next to the source (or in `.thumb`),
 `library.ingest` copies it to `cover.<ext>` beside the Collection file so art
 survives after the inbox is drained.
@@ -162,7 +180,7 @@ survives after the inbox is drained.
 ./tools/migx-cli/migx library.covers --no-embedded
 ```
 
-Override binary: `MIGX_CHAFA_BIN=/path/to/chafa`.  
+Override binary: `MIGX_CHAFA_BIN=/path/to/chafa`.
 Curses uses **symbols + monochrome** only (no ANSI); `--color` / kitty / sixels
 are for raw TTY stdout.
 
