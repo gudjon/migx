@@ -7,7 +7,7 @@ severity: MUST
 domain: gpu
 related: [P-02, P-22, P-23, AP-12, AP-14]
 created: "2026-07-17"
-lastUpdated: "2026-07-17"
+lastUpdated: "2026-08-18"
 ---
 
 # P-21 — GPU/waveform work never gates the audio callback deadline
@@ -53,3 +53,34 @@ TSan + allocation-counting allocator on engine tests (`P-32`).
 ## Cross-references
 Serves `P-02`; pairs with `P-22` (zero-copy) and `P-23` (display clock). The blocking violation is
 `AP-12`, a special case of `AP-14`.
+
+## Scope extension — the visual compositor (2026-08-18)
+
+Written for waveform rendering; it governs **every GPU consumer**, and the one now arriving is the
+wall: projectors, LED, lasers behind the DJ. The industry treats DJ+visuals as one booking, so this
+stops being a niche and becomes a second output the same night drives.
+
+**Clock direction is the whole rule.** Audio is the clock; the wall subscribes.
+
+| Consumer | Budget | On a miss |
+| --- | --- | --- |
+| audio callback | a buffer period (<3 ms) | an underrun — the night |
+| booth TUI | a redraw | nobody notices |
+| visual compositor | a display frame | a blemish |
+
+So the compositor **samples** lock-free taps — beat, phase, energy, section, now/next, technique — and
+never calls into the engine, never holds a lock the callback can want, and never becomes something the
+callback waits on. A stalled renderer must not stall a deck. That is the same law as waveform offload,
+with more at stake because a projector failing is visible to a room.
+
+Corollaries that follow from it, not from taste:
+
+- **One renderer for UI *and* wall is wrong** — different frame budgets. Booth chrome may drop a
+  frame; the wall at 60 fps in front of a crowd is a different contract.
+- **A generative layer is not a master clock.** WebGPU/WebView content is a *layer*, sampled like any
+  other. `ADR-004` already refused a web stack as the performance surface; this extends that to the
+  wall.
+- **Live AI video generation is not the wall.** Latency plus surprise on a deadline nobody can retry.
+  Bake loops offline into the Collection and play them like tracks.
+- Rive is the **native chrome** layer (logo, stinger, "track incoming") per `ADR-004` — not the engine
+  for a 20 m LED wall.

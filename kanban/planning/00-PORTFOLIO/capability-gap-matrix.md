@@ -141,6 +141,12 @@ the music volume is mounted; `SWF` is deliberately late; `IDX` last and may shri
 | — | SWF Swift port | claude-code | `parity-check.sh` green for every ported ID; no second session store; the Python path is **deleted** for anything Swift now serves |
 | — | IDX indexes | claude-code | rebuild fixtures **plus the negative case**: delete a cue from a sidecar, rebuild, confirm it is gone from SQLite |
 
+| — | VIS visual compositor | claude-code | wall samples lock-free taps only; zero engine calls from the render path; killing the renderer does not interrupt playback (`P-21`) |
+| — | transition audio (`kind: sfx`) | claude-code | staged never auto-fired; excluded from next-track candidates; `fits_after`/bars in sidecar; plays as a third node |
+
+**VIS comes after AUD** — a compositor needs a real playhead to subscribe to, and there is not one yet.
+Designing it against a clock that does not exist is how you get a spec nobody can implement.
+
 **Killed by ADR-011:** `EPL` (peel Qt off `process()`) and `BRG` (unpark EngineBridge). Both presuppose
 a Qt engine on the booth path.
 

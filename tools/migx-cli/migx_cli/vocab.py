@@ -49,7 +49,15 @@ VOCAB_DIR = "Vocabulary"
 
 # Fields a pack may constrain. Anything else in frontmatter is free text by
 # design — packs narrow the axes you filter on, not everything you can say.
-CLOSED_FIELDS = ("mood", "floor", "tested", "policy")
+CLOSED_FIELDS = ("mood", "floor", "tested", "policy", "kind")
+
+# `kind` separates what a file IS from what it sounds like. A riser is not a
+# track: it must never be offered as the next record, and it must not be
+# excluded by accident either. Transition audio (risers, impacts, sweepers,
+# 4-16 bar beds) is a first-class library object under kind: sfx — one inode in
+# Collection like anything else, crated under Crates/transitions/, and staged
+# by the DJ. Never auto-fired: an FX bed firing without a receipt is the same
+# lie as silent Automix, in a smaller costume.
 
 
 def vocab_dir(library_root: Path | str) -> Path:

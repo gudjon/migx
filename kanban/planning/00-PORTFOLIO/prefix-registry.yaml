@@ -31,6 +31,11 @@ families:
 
 # --- Registered dossier prefixes (3-letter) ---
 dossiers:
+  - prefix: VIS
+    slug: visual-compositor-wall
+    title: "Visual compositor — the wall follows the session clock"
+    facilitator: gudjon
+    registered: "2026-08-18"
   - prefix: HRN
     slug: harness-permissions-sandbox
     title: "The harness: permission classes, sandbox, transcript/resume"
